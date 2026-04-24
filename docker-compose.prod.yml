@@ -1,0 +1,10 @@
+services:
+  openresty:
+    image: openresty/openresty:1.25.3.2-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./openresty/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
+      - ./openresty/conf.d/prod:/etc/nginx/conf.d:ro
+      - ./openresty/lua:/etc/nginx/lua:ro
+    restart: always
