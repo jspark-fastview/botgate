@@ -1,7 +1,8 @@
 -- Bot filtering entry point — called from nginx access_by_lua_block
 -- Stages: 1) malicious UA block  2) AI bot rDNS verify  3) log + pass
 
-local rdns = require "rdns"
+local rdns   = require "rdns"
+local logger = require "logger"
 
 local _M = {}
 
@@ -65,11 +66,13 @@ function _M.run()
 
         if not verified then
             json_log({ bot_category = "fake_ai_bot", action = "block", detail = detail })
+            logger.access(ngx.var.http_user_agent, ngx.var.host, ngx.var.remote_addr, false)
             ngx.exit(ngx.HTTP_FORBIDDEN)
         end
 
         -- verified real AI bot → log and pass (token check comes next phase)
         json_log({ bot_category = "real_ai_bot", action = "pass", detail = detail })
+        logger.access(ngx.var.http_user_agent, ngx.var.host, ngx.var.remote_addr, true)
         ngx.req.set_header("X-Bot-Verified", "1")
         return
     end
