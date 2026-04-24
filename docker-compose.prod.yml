@@ -7,4 +7,15 @@ services:
       - ./openresty/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
       - ./openresty/conf.d/prod:/etc/nginx/conf.d:ro
       - ./openresty/lua:/etc/nginx/lua:ro
+    depends_on:
+      - token-api
     restart: always
+
+  token-api:
+    build: ./token-api
+    volumes:
+      - token-data:/app/data
+    restart: always
+
+volumes:
+  token-data:

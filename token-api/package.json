@@ -1,0 +1,14 @@
+{
+  "name": "token-api",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/app.js",
+    "start": "node src/app.js"
+  },
+  "dependencies": {
+    "fastify": "^4.28.0",
+    "better-sqlite3": "^11.1.2",
+    "nanoid": "^5.0.7"
+  }
+}
