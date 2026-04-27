@@ -1,5 +1,6 @@
 import Fastify from 'fastify'
-import cors from '@fastify/cors'
+import cors   from '@fastify/cors'
+import static_ from '@fastify/static'
 import { mkdirSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -18,6 +19,12 @@ const app = Fastify({ logger: true })
 
 // PoC: 전체 오픈, 운영 시 origin 지정
 app.register(cors, { origin: true })
+
+// UI 정적 파일 서빙 (/ui → web/)
+app.register(static_, {
+  root:   join(__dirname, '../web'),
+  prefix: '/ui/',
+})
 
 app.register(internalRoutes)
 app.register(clientRoutes)

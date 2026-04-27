@@ -20,6 +20,7 @@ services:
       - "3000:3000"
     volumes:
       - token-data:/app/data
+      - ./web:/app/web:ro
     restart: unless-stopped
 
 volumes:

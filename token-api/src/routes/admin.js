@@ -41,6 +41,13 @@ const statsByDay = db.prepare(`
   ORDER BY date DESC
 `)
 
+const recentLogs = db.prepare(`
+  SELECT id, token, bot_ua, domain, ip, verified, ts
+  FROM access_logs
+  ORDER BY id DESC
+  LIMIT ?
+`)
+
 export default async function adminRoutes(app) {
   // 토큰 목록
   app.get('/admin/tokens', (_req, reply) => {
@@ -102,5 +109,11 @@ export default async function adminRoutes(app) {
   // 일별 접근량 (30일)
   app.get('/admin/stats/daily', (_req, reply) => {
     return reply.send(statsByDay.all())
+  })
+
+  // 최근 로그
+  app.get('/admin/logs', (req, reply) => {
+    const limit = Math.min(Number(req.query.limit) || 100, 500)
+    return reply.send(recentLogs.all(limit))
   })
 }

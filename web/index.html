@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>botgate — rDNS gate for AI crawlers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: 'Inter', -apple-system, 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+
+    /* dark (default) */
+    --bg:        oklch(0.14 0.015 240);
+    --bg-2:      oklch(0.17 0.017 240);
+    --surface:   oklch(0.195 0.018 240);
+    --surface-2: oklch(0.22 0.019 240);
+    --border:    oklch(0.29 0.021 240);
+    --border-2:  oklch(0.35 0.024 240);
+    --text:      oklch(0.95 0.008 240);
+    --text-dim:  oklch(0.72 0.012 240);
+    --text-mute: oklch(0.55 0.014 240);
+
+    --ok:    oklch(0.80 0.16 160);
+    --bad:   oklch(0.70 0.22 25);
+    --warn:  oklch(0.84 0.15 85);
+    --info:  oklch(0.80 0.13 200);
+    --accent:oklch(0.80 0.13 200);
+
+    --ok-bg:   oklch(0.25 0.07 160 / 0.35);
+    --bad-bg:  oklch(0.30 0.12 25 / 0.35);
+    --warn-bg: oklch(0.30 0.09 85 / 0.35);
+    --info-bg: oklch(0.28 0.08 200 / 0.35);
+
+    --shadow: 0 1px 0 0 oklch(1 0 0 / 0.04) inset, 0 8px 28px -16px oklch(0 0 0 / 0.6);
+    --grid: oklch(0.22 0.02 240 / 0.5);
+
+    --row-h: 30px;
+    --radius: 3px;
+  }
+
+  html[data-theme="light"] {
+    --bg:        oklch(0.985 0.003 240);
+    --bg-2:      oklch(0.96 0.004 240);
+    --surface:   oklch(0.995 0.002 240);
+    --surface-2: oklch(0.975 0.003 240);
+    --border:    oklch(0.87 0.008 240);
+    --border-2:  oklch(0.78 0.01 240);
+    --text:      oklch(0.20 0.015 240);
+    --text-dim:  oklch(0.40 0.012 240);
+    --text-mute: oklch(0.58 0.01 240);
+
+    --ok:    oklch(0.52 0.16 160);
+    --bad:   oklch(0.55 0.22 25);
+    --warn:  oklch(0.62 0.15 85);
+    --info:  oklch(0.55 0.14 220);
+    --accent:oklch(0.55 0.14 220);
+
+    --ok-bg:   oklch(0.92 0.05 160 / 0.55);
+    --bad-bg:  oklch(0.94 0.05 25 / 0.55);
+    --warn-bg: oklch(0.94 0.06 85 / 0.55);
+    --info-bg: oklch(0.93 0.04 220 / 0.55);
+
+    --shadow: 0 1px 0 0 oklch(1 0 0) inset, 0 4px 18px -12px oklch(0 0 0 / 0.18);
+    --grid: oklch(0.87 0.006 240 / 0.7);
+  }
+
+  html[data-density="comfortable"] { --row-h: 38px; }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--text); }
+  body {
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-position: -1px -1px;
+  }
+
+  .mono { font-family: var(--mono); font-feature-settings: 'ss02' on, 'zero' on; }
+
+  /* ============ layout ============ */
+  .app { display: grid; grid-template-rows: auto 1fr; min-height: 100vh; }
+  .topbar {
+    display: flex; align-items: center; gap: 20px;
+    padding: 0 20px; height: 52px;
+    background: color-mix(in oklch, var(--bg) 82%, transparent);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-weight: 700; font-size: 14px;
+    letter-spacing: 0.02em;
+  }
+  .brand-mark {
+    width: 22px; height: 22px; position: relative;
+  }
+  .brand-mark svg { display: block; }
+  .brand-name { color: var(--text); }
+  .brand-name .slash { color: var(--accent); }
+
+  .nav {
+    display: flex; gap: 2px; margin-left: 12px;
+    padding: 3px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .nav button {
+    appearance: none; background: transparent; border: 0;
+    color: var(--text-dim); font-family: var(--mono); font-size: 12px;
+    padding: 5px 11px; border-radius: 2px; cursor: pointer;
+    letter-spacing: 0.02em; font-weight: 500;
+    transition: color 120ms, background 120ms;
+  }
+  .nav button:hover { color: var(--text); }
+  .nav button[aria-current="true"] {
+    background: var(--bg-2); color: var(--text);
+    box-shadow: inset 0 0 0 1px var(--border-2);
+  }
+
+  .topbar .spacer { flex: 1; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+    padding: 4px 10px; border: 1px solid var(--border);
+    border-radius: 999px; background: var(--surface);
+  }
+  .status-pill .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ok); box-shadow: 0 0 10px var(--ok);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+
+  .icon-btn {
+    appearance: none; background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-dim); width: 32px; height: 30px;
+    border-radius: var(--radius); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: color 120ms, border-color 120ms;
+  }
+  .icon-btn:hover { color: var(--text); border-color: var(--border-2); }
+
+  /* ============ cards & primitives ============ */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+  }
+  .card-hd {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 11px; color: var(--text-mute);
+    letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600;
+  }
+  .card-hd .flex1 { flex: 1; }
+
+  .kbd {
+    font-family: var(--mono); font-size: 10px; color: var(--text-mute);
+    padding: 1px 5px; border: 1px solid var(--border);
+    border-radius: 2px; background: var(--bg-2);
+  }
+
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+    padding: 2px 7px; border-radius: 2px; letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  .tag.ok   { color: var(--ok);   background: var(--ok-bg);   box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ok) 35%, transparent); }
+  .tag.bad  { color: var(--bad);  background: var(--bad-bg);  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--bad) 35%, transparent); }
+  .tag.warn { color: var(--warn); background: var(--warn-bg); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--warn) 35%, transparent); }
+  .tag.info { color: var(--info); background: var(--info-bg); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--info) 35%, transparent); }
+  .tag.mute { color: var(--text-mute); background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--border); }
+
+  .btn {
+    appearance: none; border: 1px solid var(--border-2); background: var(--surface);
+    color: var(--text); font-family: var(--mono); font-size: 12px; font-weight: 500;
+    padding: 7px 14px; border-radius: var(--radius); cursor: pointer;
+    letter-spacing: 0.02em; transition: all 120ms;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn:hover { border-color: var(--text-dim); }
+  .btn.primary {
+    background: var(--accent); color: oklch(0.15 0.02 240); border-color: var(--accent);
+    font-weight: 600;
+  }
+  .btn.primary:hover { filter: brightness(1.1); }
+  .btn.ghost { background: transparent; }
+  .btn.danger { color: var(--bad); border-color: color-mix(in oklch, var(--bad) 50%, var(--border)); }
+
+  .input {
+    appearance: none; background: var(--bg-2); border: 1px solid var(--border);
+    color: var(--text); font-family: var(--mono); font-size: 12px;
+    padding: 6px 10px; border-radius: var(--radius); width: 100%;
+  }
+  .input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 20%, transparent); }
+
+  /* ============ screens ============ */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ============ scrollbars (subtle) ============ */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; border: 2px solid var(--bg); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-2); }
+
+  /* ============ utility ============ */
+  .row { display: flex; align-items: center; gap: 12px; }
+  .col { display: flex; flex-direction: column; gap: 12px; }
+  .grid { display: grid; gap: 14px; }
+  .hover-row:hover { background: var(--bg-2); }
+
+  /* crosshair/scope decorative */
+  .scope { position: relative; }
+  .scope::before, .scope::after {
+    content: ''; position: absolute; width: 10px; height: 10px;
+    border: 1px solid var(--accent); pointer-events: none;
+  }
+  .scope::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+  .scope::after  { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; text-underline-offset: 3px; }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- default tweaks JSON block (for __edit_mode persistence, not currently wired to tweaks panel) -->
+  <script>
+  window.__BOTGATE_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "theme": "dark",
+    "density": "compact",
+    "accentHue": 200,
+    "livePlay": true
+  }/*EDITMODE-END*/;
+  </script>
+
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="bg-data.jsx"></script>
+  <script type="text/babel" src="bg-api.jsx"></script>
+  <script type="text/babel" src="bg-icons.jsx"></script>
+  <script type="text/babel" src="bg-icons-extra.jsx"></script>
+  <script type="text/babel" src="bg-viz.jsx"></script>
+  <script type="text/babel" src="bg-landing.jsx"></script>
+  <script type="text/babel" src="bg-dashboard.jsx"></script>
+  <script type="text/babel" src="bg-buyer.jsx"></script>
+  <script type="text/babel" src="bg-log.jsx"></script>
+  <script type="text/babel" src="bg-config.jsx"></script>
+  <script type="text/babel" src="bg-app.jsx"></script>
+</body>
+</html>
