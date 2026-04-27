@@ -1,268 +1,760 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-role="admin">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>botgate — rDNS gate for AI crawlers</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>botgate — 대시보드</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="botgate-marketing.css?v=2"/>
 <style>
-  :root {
-    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-    --sans: 'Inter', -apple-system, 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  body { background: #f6f8fb; }
 
-    /* dark (default) */
-    --bg:        oklch(0.14 0.015 240);
-    --bg-2:      oklch(0.17 0.017 240);
-    --surface:   oklch(0.195 0.018 240);
-    --surface-2: oklch(0.22 0.019 240);
-    --border:    oklch(0.29 0.021 240);
-    --border-2:  oklch(0.35 0.024 240);
-    --text:      oklch(0.95 0.008 240);
-    --text-dim:  oklch(0.72 0.012 240);
-    --text-mute: oklch(0.55 0.014 240);
+  .app-shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
 
-    --ok:    oklch(0.80 0.16 160);
-    --bad:   oklch(0.70 0.22 25);
-    --warn:  oklch(0.84 0.15 85);
-    --info:  oklch(0.80 0.13 200);
-    --accent:oklch(0.80 0.13 200);
+  /* ============ SIDEBAR ============ */
+  .side {
+    background: #fff;
+    border-right: 1px solid var(--line);
+    padding: 20px 16px;
+    position: sticky; top: 0; height: 100vh;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+  .side-logo {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-weight: 800; font-size: 19px; letter-spacing: -0.02em;
+    color: var(--ink);
+    padding: 4px 6px;
+  }
+  .side-logo .logo-mark { width:28px; height:28px; border-radius:8px; }
+  .side-section { display: flex; flex-direction: column; gap: 2px; }
+  .side-section .h {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-mute);
+    padding: 6px 10px;
+  }
+  .side a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 10px;
+    font-size: 14px; font-weight: 500;
+    color: var(--ink-2);
+    cursor: pointer; transition: background 120ms;
+  }
+  .side a:hover { background: var(--bg-soft); color: var(--ink); }
+  .side a.active {
+    background: var(--brand-soft); color: var(--brand); font-weight: 600;
+  }
+  .side a svg { width: 18px; height: 18px; flex-shrink: 0; }
 
-    --ok-bg:   oklch(0.25 0.07 160 / 0.35);
-    --bad-bg:  oklch(0.30 0.12 25 / 0.35);
-    --warn-bg: oklch(0.30 0.09 85 / 0.35);
-    --info-bg: oklch(0.28 0.08 200 / 0.35);
+  .side-foot {
+    margin-top: auto;
+    padding: 14px;
+    background: var(--bg-soft);
+    border-radius: 14px;
+    font-size: 13px;
+  }
+  .side-foot .name { font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+  .side-foot .sub { color: var(--ink-dim); font-size: 12px; }
 
-    --shadow: 0 1px 0 0 oklch(1 0 0 / 0.04) inset, 0 8px 28px -16px oklch(0 0 0 / 0.6);
-    --grid: oklch(0.22 0.02 240 / 0.5);
+  /* ============ MAIN ============ */
+  main { padding: 28px 32px 60px; max-width: 1280px; }
 
-    --row-h: 30px;
-    --radius: 3px;
+  .page-head {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 28px;
+  }
+  .page-head h1 {
+    font-size: 28px; font-weight: 800; letter-spacing: -0.02em;
+    margin: 0; color: var(--ink);
+  }
+  .page-head .greeting {
+    font-size: 14px; color: var(--ink-dim); margin-top: 4px;
+  }
+  .page-head .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+  .range-pill {
+    display: inline-flex; gap: 4px;
+    background: #fff; border: 1px solid var(--line);
+    border-radius: var(--radius-pill); padding: 4px;
+  }
+  .range-pill button {
+    border: none; background: transparent;
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    padding: 6px 14px; border-radius: var(--radius-pill);
+    color: var(--ink-2); cursor: pointer;
+  }
+  .range-pill button.active {
+    background: var(--ink); color: #fff; font-weight: 600;
   }
 
-  html[data-theme="light"] {
-    --bg:        oklch(0.985 0.003 240);
-    --bg-2:      oklch(0.96 0.004 240);
-    --surface:   oklch(0.995 0.002 240);
-    --surface-2: oklch(0.975 0.003 240);
-    --border:    oklch(0.87 0.008 240);
-    --border-2:  oklch(0.78 0.01 240);
-    --text:      oklch(0.20 0.015 240);
-    --text-dim:  oklch(0.40 0.012 240);
-    --text-mute: oklch(0.58 0.01 240);
+  /* ============ KPI ROW ============ */
+  .kpis {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 22px 24px;
+    position: relative; overflow: hidden;
+  }
+  .kpi.accent { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .kpi.accent .l, .kpi.accent .s { color: rgba(255,255,255,0.85); }
+  .kpi .l { font-size: 13px; color: var(--ink-dim); font-weight: 500; margin-bottom: 8px; }
+  .kpi .v {
+    font-size: 30px; font-weight: 800; letter-spacing: -0.02em;
+    line-height: 1.1; color: inherit;
+  }
+  .kpi .s {
+    font-size: 12.5px; color: var(--ink-dim);
+    margin-top: 8px; display: flex; align-items: center; gap: 5px;
+  }
+  .kpi .s.up { color: var(--ok); }
+  .kpi .s.down { color: var(--bad); }
+  .kpi.accent .s.up { color: #c8ffd9; }
+  .kpi .icon {
+    position: absolute; top: 18px; right: 18px;
+    width: 38px; height: 38px; border-radius: 12px;
+    background: var(--brand-soft); color: var(--brand);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .kpi.accent .icon { background: rgba(255,255,255,0.18); color: #fff; }
 
-    --ok:    oklch(0.52 0.16 160);
-    --bad:   oklch(0.55 0.22 25);
-    --warn:  oklch(0.62 0.15 85);
-    --info:  oklch(0.55 0.14 220);
-    --accent:oklch(0.55 0.14 220);
+  /* ============ GRID ============ */
+  .row { display: grid; gap: 16px; margin-bottom: 16px; }
+  .row.r-7-5 { grid-template-columns: 7fr 5fr; }
+  .row.r-6-6 { grid-template-columns: 1fr 1fr; }
+  .row.r-8-4 { grid-template-columns: 8fr 4fr; }
+  @media (max-width: 1100px) { .row.r-7-5, .row.r-6-6, .row.r-8-4 { grid-template-columns: 1fr; } }
 
-    --ok-bg:   oklch(0.92 0.05 160 / 0.55);
-    --bad-bg:  oklch(0.94 0.05 25 / 0.55);
-    --warn-bg: oklch(0.94 0.06 85 / 0.55);
-    --info-bg: oklch(0.93 0.04 220 / 0.55);
+  .panel {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+  }
+  .panel.pastel-blue   { background: var(--pastel-blue); border-color: transparent; }
+  .panel.pastel-mint   { background: var(--pastel-mint); border-color: transparent; }
+  .panel.pastel-peach  { background: var(--pastel-peach); border-color: transparent; }
+  .panel.pastel-lemon  { background: var(--pastel-lemon); border-color: transparent; }
+  .panel.pastel-lilac  { background: var(--pastel-lilac); border-color: transparent; }
+  .panel.pastel-rose   { background: var(--pastel-rose); border-color: transparent; }
 
-    --shadow: 0 1px 0 0 oklch(1 0 0) inset, 0 4px 18px -12px oklch(0 0 0 / 0.18);
-    --grid: oklch(0.87 0.006 240 / 0.7);
+  .panel-head {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+  }
+  .panel-head h3 {
+    font-size: 16px; font-weight: 700; letter-spacing: -0.01em;
+    margin: 0; color: var(--ink);
+  }
+  .panel-head .sub {
+    font-size: 13px; color: var(--ink-dim); margin-left: 4px;
+  }
+  .panel-head .right { margin-left: auto; display: flex; gap: 8px; }
+  .panel-head .right a {
+    font-size: 13px; color: var(--brand); font-weight: 600;
   }
 
-  html[data-density="comfortable"] { --row-h: 38px; }
+  /* ============ CHART ============ */
+  .chart {
+    height: 220px; display: flex; align-items: flex-end; gap: 6px;
+    padding: 12px 0;
+  }
+  .chart .col {
+    flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
+    gap: 2px; position: relative; cursor: pointer;
+  }
+  .chart .col .bar {
+    background: var(--brand); border-radius: 4px 4px 0 0;
+    transition: opacity 160ms;
+  }
+  .chart .col:hover .bar { opacity: 0.7; }
+  .chart .col .bar.b1 { background: #2b6df6; }
+  .chart .col .bar.b2 { background: #9d6bff; }
+  .chart .col .bar.b3 { background: #ff7a5c; }
+  .chart .col .bar.b4 { background: #1aa377; }
+  .chart-x {
+    display: flex; gap: 6px; padding-top: 8px;
+    border-top: 1px solid var(--line);
+  }
+  .chart-x .l {
+    flex: 1; text-align: center; font-size: 11px; color: var(--ink-mute);
+  }
+  .legend {
+    display: flex; gap: 18px; margin-top: 14px; flex-wrap: wrap;
+    font-size: 13px;
+  }
+  .legend .it { display: inline-flex; align-items: center; gap: 7px; }
+  .legend .it .dot {
+    width: 10px; height: 10px; border-radius: 3px;
+  }
 
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--text); }
-  body {
-    font-family: var(--sans);
+  /* ============ BOT LIST ============ */
+  .bot-list { display: flex; flex-direction: column; gap: 12px; }
+  .bot-row {
+    display: grid; grid-template-columns: 36px 1fr auto auto; gap: 14px;
+    align-items: center;
+  }
+  .bot-avatar {
+    width: 36px; height: 36px; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px; color: #fff;
+  }
+  .bot-row .meta .name {
+    font-size: 14px; font-weight: 700; color: var(--ink);
+  }
+  .bot-row .meta .ua {
+    font-family: var(--mono); font-size: 11px; color: var(--ink-mute);
+    margin-top: 1px;
+  }
+  .bot-row .req { text-align: right; }
+  .bot-row .req .n { font-weight: 700; font-size: 14px; }
+  .bot-row .req .s { font-size: 11.5px; color: var(--ink-dim); }
+  .bot-row .rev {
+    background: var(--brand-soft); color: var(--brand);
+    padding: 6px 11px; border-radius: 999px;
+    font-weight: 700; font-size: 13px;
+    min-width: 90px; text-align: right;
+  }
+  .bot-row.bg-blocked .rev { background: #ffe1e1; color: var(--bad); }
+
+  /* ============ RULES ============ */
+  .rules { display: flex; flex-direction: column; gap: 8px; }
+  .rule {
+    display: grid; grid-template-columns: 80px 1fr auto auto; gap: 14px;
+    align-items: center;
+    padding: 12px 14px;
+    background: var(--bg-soft);
+    border-radius: 12px;
     font-size: 14px;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-    background-image:
-      linear-gradient(var(--grid) 1px, transparent 1px),
-      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-    background-size: 32px 32px;
-    background-position: -1px -1px;
+  }
+  .rule:hover { background: #eef1f6; }
+  .badge {
+    font-size: 11.5px; font-weight: 700;
+    padding: 4px 10px; border-radius: 999px;
+    text-align: center;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .badge.free { background: var(--pastel-mint); color: var(--ok); }
+  .badge.paid { background: var(--brand-soft); color: var(--brand); }
+  .badge.block { background: #ffd9d3; color: var(--bad); }
+  .rule .path { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+  .rule .price { font-weight: 700; color: var(--ink); font-size: 13px; }
+  .rule .ax { color: var(--ink-mute); cursor: pointer; padding: 4px; }
+  .rule .ax:hover { color: var(--ink); }
+
+  .add-rule {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 12px;
+    padding: 9px 14px; background: #fff;
+    border: 1px dashed var(--line-2);
+    border-radius: 12px;
+    font-size: 13.5px; font-weight: 600;
+    color: var(--ink-2); cursor: pointer;
+  }
+  .add-rule:hover { border-color: var(--brand); color: var(--brand); }
+
+  /* ============ EVENTS ============ */
+  .events { display: flex; flex-direction: column; gap: 10px; }
+  .event {
+    display: grid; grid-template-columns: 8px 1fr auto; gap: 12px;
+    align-items: center;
+    padding: 11px 14px;
+    background: var(--bg-soft);
+    border-radius: 12px;
+    font-size: 13.5px;
+  }
+  .event .pin {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--brand);
+  }
+  .event.ev-ok .pin   { background: var(--ok); }
+  .event.ev-bad .pin  { background: var(--bad); }
+  .event.ev-warn .pin { background: var(--warn); }
+  .event .msg { color: var(--ink); }
+  .event .msg b { color: var(--ink); font-weight: 700; }
+  .event .msg .ua { font-family: var(--mono); font-size: 12px; color: var(--ink-dim); }
+  .event time { font-size: 12px; color: var(--ink-mute); white-space: nowrap; }
+
+  /* ============ payout banner ============ */
+  .payout-banner {
+    background: linear-gradient(120deg, var(--pastel-lemon) 0%, var(--pastel-peach) 100%);
+    border-radius: var(--radius-lg);
+    padding: 22px 26px;
+    display: flex; align-items: center; gap: 18px;
+    margin-bottom: 16px;
+  }
+  .payout-banner .ico {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+  }
+  .payout-banner .body { flex: 1; }
+  .payout-banner .body .h {
+    font-size: 15px; font-weight: 700; color: var(--ink);
+    margin-bottom: 3px;
+  }
+  .payout-banner .body .p {
+    font-size: 13.5px; color: var(--ink-2);
+  }
+  .payout-banner .v {
+    font-size: 24px; font-weight: 800; color: var(--ink);
+    letter-spacing: -0.02em;
   }
 
-  .mono { font-family: var(--mono); font-feature-settings: 'ss02' on, 'zero' on; }
+  /* sparkline ring */
+  .ring {
+    position: relative; width: 160px; height: 160px;
+    margin: 0 auto;
+  }
+  .ring svg { transform: rotate(-90deg); }
+  .ring .center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+  }
+  .ring .center .v {
+    font-size: 26px; font-weight: 800; letter-spacing: -0.02em;
+  }
+  .ring .center .l { font-size: 12px; color: var(--ink-dim); }
 
-  /* ============ layout ============ */
-  .app { display: grid; grid-template-rows: auto 1fr; min-height: 100vh; }
-  .topbar {
-    display: flex; align-items: center; gap: 20px;
-    padding: 0 20px; height: 52px;
-    background: color-mix(in oklch, var(--bg) 82%, transparent);
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; z-index: 50;
+  /* segment legend table */
+  .seg-legend { margin-top: 18px; display: flex; flex-direction: column; gap: 9px; }
+  .seg-legend .row-l {
+    display: grid; grid-template-columns: 14px 1fr auto; gap: 10px;
+    align-items: center; font-size: 13px;
   }
-  .brand {
-    display: flex; align-items: center; gap: 10px;
-    font-family: var(--mono); font-weight: 700; font-size: 14px;
-    letter-spacing: 0.02em;
-  }
-  .brand-mark {
-    width: 22px; height: 22px; position: relative;
-  }
-  .brand-mark svg { display: block; }
-  .brand-name { color: var(--text); }
-  .brand-name .slash { color: var(--accent); }
+  .seg-legend .dot { width: 10px; height: 10px; border-radius: 3px; }
+  .seg-legend .name { color: var(--ink); }
+  .seg-legend .pct { font-weight: 700; color: var(--ink); }
 
-  .nav {
-    display: flex; gap: 2px; margin-left: 12px;
-    padding: 3px; background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius);
+  @media (max-width: 980px) {
+    .app-shell { grid-template-columns: 1fr; }
+    .side { position: relative; height: auto; flex-direction: row; overflow-x: auto; padding: 12px; }
+    .side-section, .side-foot { display: none; }
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    main { padding: 20px; }
   }
-  .nav button {
-    appearance: none; background: transparent; border: 0;
-    color: var(--text-dim); font-family: var(--mono); font-size: 12px;
-    padding: 5px 11px; border-radius: 2px; cursor: pointer;
-    letter-spacing: 0.02em; font-weight: 500;
-    transition: color 120ms, background 120ms;
-  }
-  .nav button:hover { color: var(--text); }
-  .nav button[aria-current="true"] {
-    background: var(--bg-2); color: var(--text);
-    box-shadow: inset 0 0 0 1px var(--border-2);
-  }
-
-  .topbar .spacer { flex: 1; }
-  .status-pill {
-    display: inline-flex; align-items: center; gap: 7px;
-    font-family: var(--mono); font-size: 11px; color: var(--text-dim);
-    padding: 4px 10px; border: 1px solid var(--border);
-    border-radius: 999px; background: var(--surface);
-  }
-  .status-pill .dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: var(--ok); box-shadow: 0 0 10px var(--ok);
-    animation: pulse 2s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.45; }
-  }
-
-  .icon-btn {
-    appearance: none; background: var(--surface); border: 1px solid var(--border);
-    color: var(--text-dim); width: 32px; height: 30px;
-    border-radius: var(--radius); cursor: pointer;
-    display: inline-flex; align-items: center; justify-content: center;
-    transition: color 120ms, border-color 120ms;
-  }
-  .icon-btn:hover { color: var(--text); border-color: var(--border-2); }
-
-  /* ============ cards & primitives ============ */
-  .card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); box-shadow: var(--shadow);
-  }
-  .card-hd {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 14px; border-bottom: 1px solid var(--border);
-    font-family: var(--mono); font-size: 11px; color: var(--text-mute);
-    letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600;
-  }
-  .card-hd .flex1 { flex: 1; }
-
-  .kbd {
-    font-family: var(--mono); font-size: 10px; color: var(--text-mute);
-    padding: 1px 5px; border: 1px solid var(--border);
-    border-radius: 2px; background: var(--bg-2);
-  }
-
-  .tag {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-family: var(--mono); font-size: 10.5px; font-weight: 600;
-    padding: 2px 7px; border-radius: 2px; letter-spacing: 0.03em;
-    text-transform: uppercase;
-  }
-  .tag.ok   { color: var(--ok);   background: var(--ok-bg);   box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--ok) 35%, transparent); }
-  .tag.bad  { color: var(--bad);  background: var(--bad-bg);  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--bad) 35%, transparent); }
-  .tag.warn { color: var(--warn); background: var(--warn-bg); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--warn) 35%, transparent); }
-  .tag.info { color: var(--info); background: var(--info-bg); box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--info) 35%, transparent); }
-  .tag.mute { color: var(--text-mute); background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--border); }
-
-  .btn {
-    appearance: none; border: 1px solid var(--border-2); background: var(--surface);
-    color: var(--text); font-family: var(--mono); font-size: 12px; font-weight: 500;
-    padding: 7px 14px; border-radius: var(--radius); cursor: pointer;
-    letter-spacing: 0.02em; transition: all 120ms;
-    display: inline-flex; align-items: center; gap: 8px;
-  }
-  .btn:hover { border-color: var(--text-dim); }
-  .btn.primary {
-    background: var(--accent); color: oklch(0.15 0.02 240); border-color: var(--accent);
-    font-weight: 600;
-  }
-  .btn.primary:hover { filter: brightness(1.1); }
-  .btn.ghost { background: transparent; }
-  .btn.danger { color: var(--bad); border-color: color-mix(in oklch, var(--bad) 50%, var(--border)); }
-
-  .input {
-    appearance: none; background: var(--bg-2); border: 1px solid var(--border);
-    color: var(--text); font-family: var(--mono); font-size: 12px;
-    padding: 6px 10px; border-radius: var(--radius); width: 100%;
-  }
-  .input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 20%, transparent); }
-
-  /* ============ screens ============ */
-  .screen { display: none; }
-  .screen.active { display: block; }
-
-  /* ============ scrollbars (subtle) ============ */
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; border: 2px solid var(--bg); }
-  ::-webkit-scrollbar-thumb:hover { background: var(--border-2); }
-
-  /* ============ utility ============ */
-  .row { display: flex; align-items: center; gap: 12px; }
-  .col { display: flex; flex-direction: column; gap: 12px; }
-  .grid { display: grid; gap: 14px; }
-  .hover-row:hover { background: var(--bg-2); }
-
-  /* crosshair/scope decorative */
-  .scope { position: relative; }
-  .scope::before, .scope::after {
-    content: ''; position: absolute; width: 10px; height: 10px;
-    border: 1px solid var(--accent); pointer-events: none;
-  }
-  .scope::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
-  .scope::after  { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
-
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; text-underline-offset: 3px; }
 </style>
 </head>
 <body>
-  <div id="root"></div>
 
-  <!-- React + Babel -->
-  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<div class="app-shell">
 
-  <!-- default tweaks JSON block (for __edit_mode persistence, not currently wired to tweaks panel) -->
-  <script>
-  window.__BOTGATE_DEFAULTS = /*EDITMODE-BEGIN*/{
-    "theme": "dark",
-    "density": "compact",
-    "accentHue": 200,
-    "livePlay": true
-  }/*EDITMODE-END*/;
-  </script>
+  <!-- SIDEBAR -->
+  <aside class="side">
+    <a href="botgate-admin.html" class="side-logo">
+      <span class="logo-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 4.5-3.5 8.5-8 9-4.5-.5-8-4.5-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+      </span>
+      <span>botgate</span>
+    </a>
 
-  <script type="text/babel" src="tweaks-panel.jsx"></script>
-  <script type="text/babel" src="bg-data.jsx"></script>
-  <script type="text/babel" src="bg-api.jsx"></script>
-  <script type="text/babel" src="bg-icons.jsx"></script>
-  <script type="text/babel" src="bg-icons-extra.jsx"></script>
-  <script type="text/babel" src="bg-viz.jsx"></script>
-  <script type="text/babel" src="bg-landing.jsx"></script>
-  <script type="text/babel" src="bg-dashboard.jsx"></script>
-  <script type="text/babel" src="bg-buyer.jsx"></script>
-  <script type="text/babel" src="bg-log.jsx"></script>
-  <script type="text/babel" src="bg-config.jsx"></script>
-  <script type="text/babel" src="bg-app.jsx"></script>
+    <div class="side-section">
+      <span class="h">메인</span>
+      <a class="active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        대시보드
+      </a>
+      <a>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/></svg>
+        분석 리포트
+      </a>
+      <a>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M5 9l7-7 7 7M5 15l7 7 7-7"/></svg>
+        실시간 트래픽
+      </a>
+    </div>
+
+    <div class="side-section">
+      <span class="h">설정</span>
+      <a>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        가격 규칙
+      </a>
+      <a>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        봇 화이트리스트
+      </a>
+      <a>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+        도메인 연결
+      </a>
+    </div>
+
+    <div class="side-section">
+      <span class="h">정산</span>
+      <a>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        수익 & 정산
+      </a>
+      <a>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M8 14h.01M12 14h.01"/></svg>
+        세금계산서
+      </a>
+    </div>
+
+    <div class="side-foot">
+      <div class="name">DongA Daily</div>
+      <div class="sub">news.donga.example.com</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <div class="page-head">
+      <div>
+        <h1>안녕하세요, 동아일보 팀 👋</h1>
+        <div class="greeting">오늘도 AI들이 우리 콘텐츠를 잘 보고 있어요. 이번 달 수익이 지난달보다 18.4% 늘었어요.</div>
+      </div>
+      <div class="right">
+        <div class="range-pill">
+          <button>오늘</button>
+          <button>7일</button>
+          <button class="active">30일</button>
+          <button>전체</button>
+        </div>
+        <a class="btn" style="height:36px;">리포트 다운로드</a>
+      </div>
+    </div>
+
+    <!-- payout banner -->
+    <div class="payout-banner">
+      <div class="ico">💰</div>
+      <div class="body">
+        <div class="h">5월 1일에 ₩34,210,500이 입금될 예정이에요</div>
+        <div class="p">신한은행 110-***-***324 · 정산 보고서는 4월 30일에 이메일로 보내드려요</div>
+      </div>
+      <div class="v">+18.4%</div>
+    </div>
+
+    <!-- KPI -->
+    <div class="kpis">
+      <div class="kpi accent">
+        <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <div class="l">이번 달 수익</div>
+        <div class="v">₩34.2M</div>
+        <div class="s up">↑ 18.4% 지난달 대비</div>
+      </div>
+      <div class="kpi">
+        <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2"/></svg></div>
+        <div class="l">AI 봇 요청 수</div>
+        <div class="v" id="kpi-requests">12.3M</div>
+        <div class="s up" id="kpi-requests-sub">↑ 12.1% 지난달 대비</div>
+      </div>
+      <div class="kpi">
+        <div class="icon" style="background:#ffe1e1; color:#d4351c;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l14.14 14.14"/></svg></div>
+        <div class="l">차단된 무단 스크랩</div>
+        <div class="v" id="kpi-blocked">2.9M</div>
+        <div class="s up">자동 차단 작동중</div>
+      </div>
+      <div class="kpi">
+        <div class="icon" style="background:var(--pastel-mint); color:var(--ok);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
+        <div class="l">참여 AI 회사</div>
+        <div class="v" id="kpi-vendors">6곳</div>
+        <div class="s up">+2곳 신규 (이번 달)</div>
+      </div>
+    </div>
+
+    <!-- chart + revenue ring -->
+    <div class="row r-7-5">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>일별 AI 봇 요청 추이</h3>
+          <span class="sub">최근 14일</span>
+          <div class="right"><a>자세히 보기 →</a></div>
+        </div>
+        <div class="chart" id="chart">
+          <!-- bars filled by JS -->
+        </div>
+        <div class="chart-x" id="chartx"></div>
+        <div class="legend">
+          <span class="it"><span class="dot" style="background:#2b6df6;"></span>GPTBot</span>
+          <span class="it"><span class="dot" style="background:#9d6bff;"></span>ClaudeBot</span>
+          <span class="it"><span class="dot" style="background:#ff7a5c;"></span>PerplexityBot</span>
+          <span class="it"><span class="dot" style="background:#1aa377;"></span>Googlebot-Extended</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>수익 비중</h3>
+          <span class="sub">지난 30일</span>
+        </div>
+        <div class="ring">
+          <svg width="160" height="160" viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="60" stroke="#f0f2f6" stroke-width="20" fill="none"/>
+            <!-- segments: total 377, circumference = 377 -->
+            <circle cx="80" cy="80" r="60" stroke="#2b6df6" stroke-width="20" fill="none"
+              stroke-dasharray="155 377" stroke-dashoffset="0"/>
+            <circle cx="80" cy="80" r="60" stroke="#9d6bff" stroke-width="20" fill="none"
+              stroke-dasharray="98 377" stroke-dashoffset="-155"/>
+            <circle cx="80" cy="80" r="60" stroke="#ff7a5c" stroke-width="20" fill="none"
+              stroke-dasharray="55 377" stroke-dashoffset="-253"/>
+            <circle cx="80" cy="80" r="60" stroke="#1aa377" stroke-width="20" fill="none"
+              stroke-dasharray="45 377" stroke-dashoffset="-308"/>
+            <circle cx="80" cy="80" r="60" stroke="#c4a01a" stroke-width="20" fill="none"
+              stroke-dasharray="24 377" stroke-dashoffset="-353"/>
+          </svg>
+          <div class="center">
+            <div class="v">₩34.2M</div>
+            <div class="l">총 수익</div>
+          </div>
+        </div>
+        <div class="seg-legend">
+          <div class="row-l"><span class="dot" style="background:#2b6df6;"></span><span class="name">GPTBot (OpenAI)</span><span class="pct">41%</span></div>
+          <div class="row-l"><span class="dot" style="background:#9d6bff;"></span><span class="name">ClaudeBot (Anthropic)</span><span class="pct">26%</span></div>
+          <div class="row-l"><span class="dot" style="background:#ff7a5c;"></span><span class="name">PerplexityBot</span><span class="pct">15%</span></div>
+          <div class="row-l"><span class="dot" style="background:#1aa377;"></span><span class="name">Googlebot-Extended</span><span class="pct">12%</span></div>
+          <div class="row-l"><span class="dot" style="background:#c4a01a;"></span><span class="name">기타</span><span class="pct">6%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- bot list + rules -->
+    <div class="row r-6-6">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>AI 회사별 활동</h3>
+          <span class="sub">실시간</span>
+          <div class="right"><a>전체 보기 →</a></div>
+        </div>
+        <div class="bot-list">
+          <div class="bot-row">
+            <div class="bot-avatar" style="background:#2b6df6;">G</div>
+            <div class="meta">
+              <div class="name">GPTBot · OpenAI</div>
+              <div class="ua">GPTBot/1.2 (+https://openai.com/gptbot)</div>
+            </div>
+            <div class="req"><div class="n">4.89M</div><div class="s">요청</div></div>
+            <div class="rev">+₩14.0M</div>
+          </div>
+          <div class="bot-row">
+            <div class="bot-avatar" style="background:#9d6bff;">C</div>
+            <div class="meta">
+              <div class="name">ClaudeBot · Anthropic</div>
+              <div class="ua">ClaudeBot/1.0 (+https://anthropic.com)</div>
+            </div>
+            <div class="req"><div class="n">3.10M</div><div class="s">요청</div></div>
+            <div class="rev">+₩8.9M</div>
+          </div>
+          <div class="bot-row">
+            <div class="bot-avatar" style="background:#ff7a5c;">P</div>
+            <div class="meta">
+              <div class="name">PerplexityBot</div>
+              <div class="ua">PerplexityBot/1.0 (+https://perplexity.ai)</div>
+            </div>
+            <div class="req"><div class="n">1.48M</div><div class="s">요청</div></div>
+            <div class="rev">+₩5.1M</div>
+          </div>
+          <div class="bot-row">
+            <div class="bot-avatar" style="background:#1aa377;">G</div>
+            <div class="meta">
+              <div class="name">Googlebot-Extended</div>
+              <div class="ua">Googlebot-Extended/2.1</div>
+            </div>
+            <div class="req"><div class="n">2.20M</div><div class="s">요청</div></div>
+            <div class="rev">+₩4.1M</div>
+          </div>
+          <div class="bot-row bg-blocked">
+            <div class="bot-avatar" style="background:#d4351c;">!</div>
+            <div class="meta">
+              <div class="name">FakeBot · 가짜 봇</div>
+              <div class="ua">FakeBot/2.0 (검증 실패)</div>
+            </div>
+            <div class="req"><div class="n">2.9M</div><div class="s">차단됨</div></div>
+            <div class="rev">차단</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>가격 규칙</h3>
+          <span class="sub">경로별 설정</span>
+          <div class="right"><a>편집 →</a></div>
+        </div>
+        <div class="rules">
+          <div class="rule">
+            <span class="badge free">무료</span>
+            <span class="path">/robots.txt</span>
+            <span class="price">₩0</span>
+            <span class="ax">⋯</span>
+          </div>
+          <div class="rule">
+            <span class="badge free">무료</span>
+            <span class="path">/sitemap.xml</span>
+            <span class="price">₩0</span>
+            <span class="ax">⋯</span>
+          </div>
+          <div class="rule">
+            <span class="badge paid">유료</span>
+            <span class="path">/articles/*</span>
+            <span class="price">₩2.6 / 건</span>
+            <span class="ax">⋯</span>
+          </div>
+          <div class="rule">
+            <span class="badge paid">유료</span>
+            <span class="path">/reports/premium/*</span>
+            <span class="price">₩12.0 / 건</span>
+            <span class="ax">⋯</span>
+          </div>
+          <div class="rule">
+            <span class="badge paid">유료</span>
+            <span class="path">/columns/*</span>
+            <span class="price">₩5.2 / 건</span>
+            <span class="ax">⋯</span>
+          </div>
+          <div class="rule">
+            <span class="badge block">차단</span>
+            <span class="path">/admin/*</span>
+            <span class="price">—</span>
+            <span class="ax">⋯</span>
+          </div>
+        </div>
+        <button class="add-rule">+ 새 규칙 추가</button>
+      </div>
+    </div>
+
+    <!-- events -->
+    <div class="row r-8-4">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>최근 이벤트</h3>
+          <span class="sub">실시간</span>
+          <div class="right"><a>전체 로그 →</a></div>
+        </div>
+        <div class="events">
+          <div class="event ev-ok">
+            <span class="pin"></span>
+            <span class="msg"><b>GPTBot</b>이 <span class="ua">/articles/2026/04/27/economy-ai</span>에 접근 · ₩2.6 적립</span>
+            <time>방금 전</time>
+          </div>
+          <div class="event ev-ok">
+            <span class="pin"></span>
+            <span class="msg"><b>ClaudeBot</b>이 <span class="ua">/columns/donga-view-128</span>에 접근 · ₩5.2 적립</span>
+            <time>2초 전</time>
+          </div>
+          <div class="event ev-bad">
+            <span class="pin"></span>
+            <span class="msg">가짜 봇 <span class="ua">FakeBot/2.0</span> 차단 (User-Agent 검증 실패)</span>
+            <time>14초 전</time>
+          </div>
+          <div class="event ev-warn">
+            <span class="pin"></span>
+            <span class="msg"><b>PerplexityBot</b>이 시간당 호출 한도(50K)에 근접</span>
+            <time>1분 전</time>
+          </div>
+          <div class="event ev-ok">
+            <span class="pin"></span>
+            <span class="msg">새 AI 회사 <b>Cohere</b>가 화이트리스트 등록을 신청했어요</span>
+            <time>4분 전</time>
+          </div>
+          <div class="event ev-ok">
+            <span class="pin"></span>
+            <span class="msg"><b>GPTBot</b>이 <span class="ua">/reports/premium/2026-q1</span>에 접근 · ₩12.0 적립</span>
+            <time>6분 전</time>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel pastel-blue">
+        <div class="panel-head">
+          <h3>💡 알아두면 좋아요</h3>
+        </div>
+        <div style="font-size:14px; color:var(--ink-2); line-height:1.7; word-break:keep-all;">
+          <p style="margin:0 0 14px;"><strong>유료 콘텐츠 가격을 올려보세요.</strong> 비슷한 규모 매체의 평균은 건당 <strong>₩3.4</strong>예요. 현재 ₩2.6으로 설정되어 있어요.</p>
+          <p style="margin:0 0 14px;"><strong>새 AI 회사 6곳</strong>이 botgate에 추가되었어요. 화이트리스트에 추가하면 추가 수익이 발생해요.</p>
+          <p style="margin:0;"><strong>이번 주말 정산 보고서</strong>가 자동 발송됩니다. 미리 보려면 <a style="color:var(--brand); font-weight:600;">여기를 클릭</a>하세요.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const API = 'http://localhost:3000';
+
+  function fmt(n) {
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return String(n);
+  }
+
+  function renderChart(daily) {
+    const chart = document.getElementById('chart');
+    const chartx = document.getElementById('chartx');
+    chart.innerHTML = ''; chartx.innerHTML = '';
+
+    // 최근 14일 슬롯 생성 (없는 날은 0)
+    const today = new Date();
+    const slots = Array.from({length: 14}, (_, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() - (13 - i));
+      const key = d.toISOString().slice(0, 10);
+      const found = daily.find(r => r.date === key);
+      return { date: key, count: found ? found.count : 0, label: `${d.getMonth()+1}/${d.getDate()}` };
+    });
+
+    const max = Math.max(...slots.map(s => s.count), 1);
+    slots.forEach((s, i) => {
+      const h = Math.round((s.count / max) * 200);
+      const col = document.createElement('div');
+      col.className = 'col';
+      col.title = `${s.label} · ${s.count.toLocaleString()} 요청`;
+      col.innerHTML = `<div class="bar b1" style="height:${h}px;border-radius:4px 4px 0 0;"></div>`;
+      chart.appendChild(col);
+
+      const lbl = document.createElement('div');
+      lbl.className = 'l';
+      lbl.textContent = (i % 2 === 0) ? s.label : '';
+      chartx.appendChild(lbl);
+    });
+  }
+
+  async function loadData() {
+    try {
+      const [bots, daily] = await Promise.all([
+        fetch(`${API}/admin/stats/bots`).then(r => r.json()),
+        fetch(`${API}/admin/stats/daily`).then(r => r.json()),
+      ]);
+
+      // KPI 업데이트
+      const totalReq = bots.reduce((a, b) => a + b.count, 0);
+      const fakeReq  = bots.filter(b => !b.verified).reduce((a, b) => a + (b.count || 0), 0);
+      const vendors  = [...new Set(bots.map(b => b.bot_ua))].length;
+
+      const elReq = document.getElementById('kpi-requests');
+      if (elReq) elReq.textContent = fmt(totalReq);
+      const elSub = document.getElementById('kpi-requests-sub');
+      if (elSub) elSub.textContent = `총 ${bots.length}개 봇 종류`;
+      const elBlocked = document.getElementById('kpi-blocked');
+      if (elBlocked) elBlocked.textContent = fmt(fakeReq || 0);
+      const elVendors = document.getElementById('kpi-vendors');
+      if (elVendors) elVendors.textContent = `${vendors}곳`;
+
+      // 차트 업데이트
+      renderChart(daily);
+
+    } catch(e) {
+      console.warn('API 연결 실패, 목 데이터 사용:', e.message);
+      // fallback: 기존 랜덤 차트
+      const days = 14;
+      const data = Array.from({length: days}, (_, i) => {
+        const base = 600 + Math.sin(i / 2) * 120 + i * 12;
+        return { count: Math.round(base + Math.random() * 100), date: '' };
+      });
+      renderChart(data.map((d, i) => {
+        const dt = new Date(); dt.setDate(dt.getDate() - (13 - i));
+        return { date: dt.toISOString().slice(0,10), count: d.count };
+      }));
+    }
+  }
+
+  loadData();
+</script>
+
 </body>
 </html>

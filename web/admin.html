@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="ko" data-role="admin">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>botgate — AI 크롤러도 정당하게, 콘텐츠로 수익 만드세요</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="botgate-marketing.css?v=2"/>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="logo" href="./botgate-admin.html">
+      <span class="logo-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 4.5-3.5 8.5-8 9-4.5-.5-8-4.5-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+      </span>
+      <span>botgate</span>
+    </a>
+    <div class="nav-links">
+      <a href="#features">기능</a>
+      <a href="#how">이용 방법</a>
+      <a href="#numbers">현황</a>
+      <a href="botgate.html">대시보드</a>
+      <a href="botgate-user.html">AI 회사 →</a>
+    </div>
+    <span class="nav-spacer"></span>
+    <span class="nav-role"><strong>퍼블리셔</strong>용</span>
+    <a class="btn ghost" href="botgate.html">로그인</a>
+    <a class="btn brand" href="botgate.html">무료로 시작하기</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-text">
+    <div class="eyebrow"><span class="dot"></span> 콘텐츠 수익화 · 새로운 수익 모델</div>
+    <h1>
+      AI 크롤러도 이젠 <br/>
+      <span class="hl">정당하게</span> 비용을 내고<br/>
+      <span class="em">우리 콘텐츠</span>를 봅니다.
+    </h1>
+    <p class="lead">
+      ChatGPT, Claude, Perplexity 같은 AI들이 매일 수백만 번 우리 콘텐츠를 가져갑니다.
+      botgate는 어떤 AI가 무엇을 보는지 한눈에 보여드리고,
+      <strong>요청 한 건당 자동으로 수익이 쌓이게</strong> 만들어드려요.
+    </p>
+    <div class="hero-cta">
+      <a class="btn brand" href="botgate.html">
+        지금 무료로 시작
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <a class="btn" href="botgate.html">대시보드 미리보기</a>
+    </div>
+
+    <div class="hero-stats">
+      <div><div class="k">지난 30일 분석</div><div class="v">12.3M</div><div class="sub">AI 봇 요청</div></div>
+      <div><div class="k">발생 수익</div><div class="v">₩34M</div><div class="sub">자동 정산</div></div>
+      <div><div class="k">참여 AI 회사</div><div class="v">6곳</div><div class="sub">매월 증가</div></div>
+      <div><div class="k">설정 시간</div><div class="v">10분</div><div class="sub">한 번이면 끝</div></div>
+    </div>
+  </div>
+
+  <div class="hero-art" aria-hidden="true">
+    <div class="blob a"></div>
+    <div class="blob b"></div>
+
+    <!-- floating cards -->
+    <div class="card" style="top:40px; left:40px; transform: rotate(-3deg);">
+      <div class="l">오늘 수익</div>
+      <div class="v" style="color: var(--brand);">+₩1,247,300</div>
+    </div>
+    <div class="card" style="top:90px; right:30px; transform: rotate(2deg);">
+      <div class="l">실시간 요청</div>
+      <div class="v">2,481 / 분</div>
+    </div>
+    <div class="card" style="bottom:60px; left:50px; transform: rotate(2deg); width: 200px;">
+      <div class="l" style="margin-bottom:8px;">AI 회사별 비중</div>
+      <div style="display:flex; gap:6px; align-items:flex-end; height:40px;">
+        <span style="flex:4; background:#2b6df6; border-radius:4px 4px 0 0; height:100%;"></span>
+        <span style="flex:3; background:#9d6bff; border-radius:4px 4px 0 0; height:75%;"></span>
+        <span style="flex:2; background:#ff7a5c; border-radius:4px 4px 0 0; height:50%;"></span>
+        <span style="flex:2; background:#1aa377; border-radius:4px 4px 0 0; height:48%;"></span>
+        <span style="flex:1; background:#c4a01a; border-radius:4px 4px 0 0; height:25%;"></span>
+      </div>
+    </div>
+    <div class="card" style="bottom:80px; right:50px; transform: rotate(-2deg);">
+      <div class="l">차단된 무단 스크랩</div>
+      <div class="v" style="color:#d4351c;">2.9M건</div>
+    </div>
+
+    <!-- center mark -->
+    <svg width="160" height="160" viewBox="0 0 160 160" style="z-index:1;">
+      <circle cx="80" cy="80" r="60" fill="#fff" stroke="#2b6df6" stroke-width="2"/>
+      <circle cx="80" cy="80" r="40" fill="#2b6df6" opacity="0.1"/>
+      <path d="M80 50 L100 60 L100 84 C100 96 92 104 80 108 C68 104 60 96 60 84 L60 60 Z" fill="#2b6df6"/>
+      <path d="M70 80 L78 88 L92 72" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <div class="section-head">
+    <div class="section-tag">━ 주요 기능</div>
+    <h2>복잡한 설정 없이, <br/>콘텐츠가 알아서 돈이 됩니다</h2>
+    <p>코드 한 줄, 클릭 몇 번이면 끝. 어려운 건 botgate가 다 처리합니다.</p>
+  </div>
+
+  <div class="fgrid">
+    <div class="fcard p-blue span-7">
+      <div class="ftag">실시간 분석</div>
+      <h3>어떤 AI가 우리 사이트를 얼마나 보는지, 한눈에</h3>
+      <p>GPTBot, ClaudeBot, PerplexityBot, Googlebot까지 — 봇별로 어떤 페이지가 인기 있고 어디서 수익이 나는지 실시간으로 보여드려요. 분석을 위한 별도 작업은 필요 없어요.</p>
+      <div class="vis">
+        <div style="background:#fff; border-radius:14px; padding:16px;">
+          <div style="display:flex; justify-content:space-between; font-size:13px; color:var(--ink-dim); margin-bottom:10px;">
+            <span style="font-weight:600; color:var(--ink);">AI 회사별 요청 (지난 7일)</span>
+            <span>실시간</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:7px; font-size:13px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="width:90px; color:var(--ink);">GPTBot</span>
+              <div style="flex:1; height:10px; background:#f0f2f6; border-radius:5px; overflow:hidden;"><div style="width:82%; height:100%; background:#2b6df6;"></div></div>
+              <span style="color:var(--ink); font-weight:600; min-width:60px; text-align:right;">4.89M</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="width:90px; color:var(--ink);">ClaudeBot</span>
+              <div style="flex:1; height:10px; background:#f0f2f6; border-radius:5px; overflow:hidden;"><div style="width:55%; height:100%; background:#9d6bff;"></div></div>
+              <span style="color:var(--ink); font-weight:600; min-width:60px; text-align:right;">3.10M</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="width:90px; color:var(--ink);">Perplexity</span>
+              <div style="flex:1; height:10px; background:#f0f2f6; border-radius:5px; overflow:hidden;"><div style="width:35%; height:100%; background:#ff7a5c;"></div></div>
+              <span style="color:var(--ink); font-weight:600; min-width:60px; text-align:right;">1.48M</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="width:90px; color:var(--ink);">Googlebot</span>
+              <div style="flex:1; height:10px; background:#f0f2f6; border-radius:5px; overflow:hidden;"><div style="width:42%; height:100%; background:#1aa377;"></div></div>
+              <span style="color:var(--ink); font-weight:600; min-width:60px; text-align:right;">2.20M</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fcard p-mint span-5">
+      <div class="ftag">자동 수익화</div>
+      <h3>요청 1건당 자동으로 수익이 쌓여요</h3>
+      <p>AI가 우리 페이지를 한 번 볼 때마다 미리 정한 가격이 자동으로 정산됩니다. 월말에 한 번에 입금받으세요.</p>
+      <div class="vis">
+        <div class="mini-line" style="font-family: var(--sans); font-size:14px;">
+          <div>📰 기사 페이지 1건 → <strong style="color:var(--ok);">+₩2.6</strong></div>
+          <div>📊 분석 리포트 1건 → <strong style="color:var(--ok);">+₩5.2</strong></div>
+          <div style="margin-top:6px; padding-top:6px; border-top:1px solid rgba(0,0,0,0.08); font-weight:700;">오늘만 ₩1,247,300 적립 ✨</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fcard p-peach span-4">
+      <div class="ftag">간단한 규칙</div>
+      <h3>어떤 페이지를 어떻게 줄지 직접 정하세요</h3>
+      <p>무료로 공개할 곳, 유료로 줄 곳, 아예 막을 곳 — 경로별로 자유롭게 설정. 변경은 바로 적용돼요.</p>
+      <div class="vis">
+        <div style="background:rgba(255,255,255,0.75); border-radius:12px; padding:12px; font-size:13.5px; line-height:1.9;">
+          <div><span style="background:var(--pastel-mint); color:var(--ok); padding:2px 8px; border-radius:6px; font-size:11.5px; font-weight:700;">무료</span>&nbsp; /robots.txt</div>
+          <div><span style="background:var(--brand-soft); color:var(--brand); padding:2px 8px; border-radius:6px; font-size:11.5px; font-weight:700;">유료</span>&nbsp; /articles/*</div>
+          <div><span style="background:#ffd9d3; color:var(--bad); padding:2px 8px; border-radius:6px; font-size:11.5px; font-weight:700;">차단</span>&nbsp; /admin/*</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fcard p-lilac span-4">
+      <div class="ftag">무단 스크랩 방지</div>
+      <h3>가짜 봇, 무단 크롤러는 자동으로 차단</h3>
+      <p>User-Agent를 속이는 가짜 봇과 robots.txt를 무시하는 무단 크롤러를 엣지에서 자동으로 막아드려요.</p>
+      <div class="vis">
+        <div style="background:rgba(255,255,255,0.75); border-radius:12px; padding:14px; font-family:var(--mono); font-size:12px; line-height:1.7;">
+          <div style="color:var(--ok);">✓ GPTBot/1.2 — 검증 완료</div>
+          <div style="color:var(--bad);">✗ FakeBot/2.0 — 차단됨</div>
+          <div style="color:var(--bad);">✗ scrapy/2.5 — 차단됨</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fcard p-rose span-4">
+      <div class="ftag">매월 자동 정산</div>
+      <h3>은행 계좌로 매월 자동 입금</h3>
+      <p>정산 보고서, 세금계산서, 입금까지 전부 자동. 신경 쓸 일은 콘텐츠를 만드는 것뿐이에요.</p>
+      <div class="vis">
+        <div style="background:rgba(255,255,255,0.75); border-radius:12px; padding:14px;">
+          <div style="font-size:12px; color:var(--ink-dim); margin-bottom:4px;">2026년 4월 정산 예정</div>
+          <div style="font-size:24px; font-weight:800; color:var(--ink);">₩34,210,500</div>
+          <div style="font-size:12px; color:var(--ok); margin-top:4px;">↑ 지난달 대비 +18.4%</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fcard dark span-12">
+      <div style="display:grid; grid-template-columns: 1.4fr 1fr; gap:32px; align-items:center;">
+        <div>
+          <div class="ftag">새로운 콘텐츠 수익 모델</div>
+          <h3 style="font-size:30px; max-width:560px;">광고에만 의존하지 마세요. <br/>좋은 콘텐츠는 AI에게도 가치 있습니다.</h3>
+          <p style="margin-top:12px;">AI 시대, 콘텐츠가 가진 가치를 정당하게 인정받을 차례입니다. botgate는 크리에이터와 퍼블리셔가 새로운 수익 채널을 열 수 있도록 돕습니다.</p>
+        </div>
+        <div style="font-family:var(--mono); font-size:13px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); border-radius:14px; padding:18px; line-height:1.8;">
+          <div style="color:#9aa1ad; margin-bottom:6px;">월별 수익 추이</div>
+          <div style="color:#fff;">1월 &nbsp; ₩18M</div>
+          <div style="color:#fff;">2월 &nbsp; ₩24M</div>
+          <div style="color:#fff;">3월 &nbsp; ₩29M</div>
+          <div style="color:var(--brand-2); font-weight:700;">4월 &nbsp; ₩34M ↑</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how">
+  <div class="section-head">
+    <div class="section-tag">━ 이용 방법</div>
+    <h2>처음 써도 10분이면 충분해요</h2>
+    <p>설치 한 번이면 그 다음부터는 자동입니다. 매일 아침 대시보드만 확인하세요.</p>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="num">1</div>
+      <h4>가입하기</h4>
+      <p>이메일만 있으면 가입 끝. 신용카드 등록도 필요 없어요.</p>
+    </div>
+    <div class="step">
+      <div class="num">2</div>
+      <h4>사이트 연결</h4>
+      <p>제공해드린 한 줄 설정을 서버에 추가. Cloudflare 사용중이면 클릭 한 번이면 돼요.</p>
+    </div>
+    <div class="step">
+      <div class="num">3</div>
+      <h4>가격 정하기</h4>
+      <p>어떤 페이지를 얼마에 팔지 자유롭게 설정. 추천 가격을 그대로 써도 돼요.</p>
+    </div>
+    <div class="step">
+      <div class="num">4</div>
+      <h4>수익 받기</h4>
+      <p>매월 1일 자동 정산, 자동 입금. 보고서까지 메일로 보내드려요.</p>
+    </div>
+  </div>
+</section>
+
+<!-- BAND -->
+<section class="band" id="numbers">
+  <div class="band-inner">
+    <div class="section-tag">━ 숫자로 보는 botgate</div>
+    <h2>이미 많은 퍼블리셔가 함께하고 있어요</h2>
+    <p class="lead">2026년 1분기 기준, botgate가 처리한 트래픽입니다.</p>
+    <div class="numbers">
+      <div><div class="big">12.3M+</div><div class="label">매달 처리하는 AI 봇 요청</div></div>
+      <div><div class="big">2.9M+</div><div class="label">자동 차단된 무단 스크랩</div></div>
+      <div><div class="big">₩340M+</div><div class="label">퍼블리셔에게 정산된 누적 수익</div></div>
+      <div><div class="big">99.99%</div><div class="label">엣지 게이트웨이 가동률</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <div class="cta-inner">
+    <h2>좋은 콘텐츠가 정당한 가치를 받는,<br/>새로운 수익의 시작.</h2>
+    <p>14일 무료 체험 · 신용카드 등록 없이 시작 · 언제든 해지 가능</p>
+    <div class="cta-btns">
+      <a class="btn brand" href="botgate.html">
+        지금 무료로 시작
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+      <a class="btn" href="botgate.html">대시보드 미리보기</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-inner">
+    <span>© 2026 botgate · AI 시대의 콘텐츠 수익화 플랫폼</span>
+    <div class="links">
+      <a href="botgate-user.html">AI 회사 페이지</a>
+      <a href="botgate.html">대시보드</a>
+      <a href="#">고객센터</a>
+      <a href="#">이용약관</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
