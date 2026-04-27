@@ -7,8 +7,9 @@
     "start": "node src/app.js"
   },
   "dependencies": {
-    "fastify": "^4.28.0",
+    "@fastify/cors": "^9.0.1",
     "better-sqlite3": "^11.1.2",
+    "fastify": "^4.28.0",
     "nanoid": "^5.0.7"
   }
 }

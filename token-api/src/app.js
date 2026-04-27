@@ -1,4 +1,5 @@
 import Fastify from 'fastify'
+import cors from '@fastify/cors'
 import { mkdirSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -14,6 +15,9 @@ mkdirSync(join(__dirname, '../data'), { recursive: true })
 await import('./db/schema.js')
 
 const app = Fastify({ logger: true })
+
+// PoC: 전체 오픈, 운영 시 origin 지정
+app.register(cors, { origin: true })
 
 app.register(internalRoutes)
 app.register(clientRoutes)
