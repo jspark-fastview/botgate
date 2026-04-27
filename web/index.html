@@ -362,7 +362,7 @@
 
   /* ============ LIVE LOG ============ */
   .log-wrap { overflow-x: auto; }
-  .log-hd, .log-row { display: grid; grid-template-columns: 90px 80px 170px 1fr 80px; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--line); align-items: center; font-family: var(--mono); font-size: 12px; }
+  .log-hd, .log-row { display: grid; grid-template-columns: 90px 70px 160px 130px 1fr 80px; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line); align-items: center; font-family: var(--mono); font-size: 12px; }
   .log-hd { background: var(--bg-soft); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-mute); }
   .log-row:hover { background: var(--bg-soft); }
   .log-ok  { color: var(--ok); }
@@ -638,7 +638,7 @@
 
     <div class="panel" style="padding:0;overflow:hidden;">
       <div class="log-hd">
-        <span>시각</span><span>검증</span><span>Bot UA</span><span>도메인</span><span>IP</span>
+        <span>시각</span><span>검증</span><span>Bot UA</span><span>도메인</span><span>경로</span><span>IP</span>
       </div>
       <div id="traffic-rows" style="max-height:calc(100vh - 240px);overflow-y:auto;"></div>
     </div>
@@ -1070,12 +1070,13 @@
       if (!logs.length) { el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:24px;">로그 없음</div>'; return; }
       el.innerHTML = logs.map(l => {
         const cls = l.verified ? 'ev-ok' : 'ev-bad';
-        const ua  = esc((l.bot_ua || 'unknown').split('/')[0]);
-        const path   = l.path ? `<span class="ua"> ${esc(l.path)}</span>` : '';
+        const ua     = esc((l.bot_ua || 'unknown').split('/')[0]);
+        const path   = l.path ? `<span class="ua">${esc(l.path)}</span>` : '';
+        const billed = l.billed ? ` <span style="font-size:10px;color:var(--brand);font-weight:700;">●과금</span>` : '';
         const domain = esc(l.domain || '—');
         const ts  = fmtTime(l.ts);
         const msg = l.verified
-          ? `<b>${ua}</b> → ${domain}${path}`
+          ? `<b>${ua}</b> → ${domain} ${path}${billed}`
           : `미검증 <span class="ua">${esc(l.bot_ua || 'unknown')}</span> (${domain})`;
         return `<div class="event ${cls}"><span class="pin"></span><span class="msg">${msg}</span><time>${ts}</time></div>`;
       }).join('');
@@ -1242,11 +1243,13 @@
     el.innerHTML = trafficRows.map(l => {
       const ok = l.verified ? 'log-ok' : 'log-bad';
       const vLabel = l.verified ? '✓ 검증' : '✗ 실패';
+      const billed = l.billed ? ' <span style="color:var(--brand);font-size:10px;font-weight:700;">●</span>' : '';
       return `<div class="log-row">
         <span class="log-dim">${fmtTime(l.ts)}</span>
         <span class="${ok}" style="font-weight:700;">${vLabel}</span>
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.bot_ua || '—')}</span>
         <span style="color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.domain || '—')}</span>
+        <span style="color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.path || '—')}${billed}</span>
         <span class="log-dim">${esc(l.ip || '—')}</span>
       </div>`;
     }).join('') || '<div style="padding:24px;text-align:center;color:var(--ink-mute);font-size:14px;">로그가 없어요</div>';
