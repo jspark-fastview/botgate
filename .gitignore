@@ -1,0 +1,4 @@
+node_modules/
+token-api/node_modules/
+token-api/data/
+*.db
