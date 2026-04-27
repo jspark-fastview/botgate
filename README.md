@@ -1,67 +1,90 @@
 # botgate
 
-OpenResty 기반 AI 봇 rDNS 검증 및 트래픽 수익화 게이트웨이 PoC.
+OpenResty 기반 AI 봇 트래픽 수익화 게이트웨이.
 
-AI 크롤러(GPTBot, ClaudeBot 등)의 User-Agent 사칭을 PTR + forward DNS 이중 검증으로 차단하고, 검증된 봇의 접근을 토큰 기반으로 관리합니다.
+AI 크롤러(GPTBot, ClaudeBot 등)의 rDNS 이중 검증 + 토큰 인증으로 유료 접근을 관리하고,  
+등록된 채널(사이트)을 리버스 프록시로 연결해 봇 트래픽 통계를 수집합니다.
 
 ## 아키텍처
 
 ```
-AI봇 / 일반 사용자
-       ↓
-  OpenResty (botgate)
-  ├─ 악성 UA → 403
-  ├─ AI봇 rDNS 검증 실패 → 403
-  └─ 검증 통과 → origin 통과 + 이벤트 로깅
+AI봇 요청
+    ↓
+OpenResty (port 80)
+  ├─ bot_filter.lua   악성 UA → 403
+  ├─ rdns.lua         PTR + forward A 이중 검증
+  ├─ filter.lua       토큰 검증 → access_log 기록
+  └─ channels.lua     Host 헤더 → 채널 upstream 조회 (60s 캐시)
+       ↓ (리버스 프록시)
+  실제 오리진 서버
        ↓ (fire-and-forget)
-   token-api (Fastify)
-  ├─ /internal  - OpenResty 전용 (검증, 로깅)
-  ├─ /tokens    - 클라이언트 (토큰 발급/사용량)
-  └─ /admin     - 어드민 (통계, 토큰 관리)
-       ↓
-     SQLite
+token-api (Fastify / port 3000)
+  ├─ /internal        OpenResty 전용 (검증·로깅·캐시 무효화)
+  ├─ /admin           어드민 API (ADMIN_KEY 인증)
+  ├─ /auth            회원 인증 (register·login·logout·me)
+  ├─ /me              채널 오너 포털 API
+  └─ SQLite           botgate.db
 ```
 
-## 구조
+## 디렉터리 구조
 
 ```
 botgate/
-├── docker-compose.yml           # dev  (포트 8081)
-├── docker-compose.prod.yml      # prod (포트 80, Cloudflare realip)
+├── docker-compose.yml           # dev  (port 80)
+├── docker-compose.prod.yml      # prod (port 80, restart:always)
+├── .env.example                 # ADMIN_KEY 설정 예시
 ├── openresty/
 │   ├── nginx.conf
 │   ├── lua/
-│   │   ├── rdns.lua             # PTR + forward A 이중 검증 / 1시간 캐시
-│   │   ├── bot_filter.lua       # 악성 UA 차단 → AI봇 rDNS 게이트
-│   │   └── logger.lua           # 비동기 fire-and-forget → token-api
-│   └── conf.d/
-│       ├── dev/bot.conf         # X-Test-IP 헤더로 rDNS 직접 테스트 가능
-│       └── prod/bot.conf        # CF-Connecting-IP realip 처리
-└── token-api/                   # Fastify + SQLite
-    └── src/routes/
-        ├── internal.js          # 토큰 검증 + 접근 기록
-        ├── client.js            # 토큰 발급/사용량 조회
-        └── admin.js             # 토큰 관리 + 통계
+│   │   ├── rdns.lua             # PTR + A 이중 검증 / 1시간 캐시
+│   │   ├── bot_filter.lua       # 악성 UA 차단
+│   │   ├── filter.lua           # 토큰 검증 + 접근 기록
+│   │   ├── channels.lua         # Host → upstream 조회 (shared_dict 캐시)
+│   │   └── path_rules.lua       # 경로별 allow/block/meter 규칙
+│   └── conf.d/dev/bot.conf      # 채널 리버스 프록시 + 내부 캐시 무효화 엔드포인트
+├── token-api/
+│   └── src/
+│       ├── app.js               # Fastify 앱, ADMIN_KEY 미들웨어
+│       ├── db/schema.js         # SQLite 스키마 + 마이그레이션
+│       └── routes/
+│           ├── internal.js      # 토큰 검증 + 접근 기록
+│           ├── client.js        # 클라이언트 토큰 API
+│           ├── admin.js         # 어드민 CRUD + 통계
+│           ├── auth.js          # 회원 인증 (scrypt)
+│           └── user.js          # 채널 오너 /me/* 라우트
+└── web/                         # 정적 파일 (/ui/ prefix로 서빙)
+    ├── admin.html               # 퍼블리셔 랜딩 페이지
+    ├── index.html               # 어드민 대시보드 SPA
+    ├── portal.html              # 채널 오너 포털 SPA
+    ├── user.html                # AI회사용 랜딩 페이지
+    └── botgate-marketing.css
 ```
 
-## 봇 처리 흐름
+## 페이지 흐름
 
 ```
-요청 수신
-  │
-  ├─ 악성 UA (sqlmap, masscan 등) ──────────→ 403  (로깅 없음)
-  │
-  ├─ AI봇 UA (GPTBot, ClaudeBot 등)
-  │     │
-  │     ├─ PTR 없음 / hostname 패턴 불일치
-  │     │   → 403 + access_log (verified=false)
-  │     │
-  │     └─ PTR + forward A 검증 통과
-  │         → X-Bot-Verified: 1 + origin 통과
-  │         + access_log (verified=true)
-  │
-  └─ 일반 UA ───────────────────────────────→ 통과 (로깅 없음)
+/ui/admin.html  (퍼블리셔 랜딩)
+    └─ 무료로 시작하기 →  /ui/index.html  (어드민 대시보드, ADMIN_KEY 필요)
+
+/ui/portal.html  (채널 오너 포털, 로그인 후 /me/* API 사용)
 ```
+
+## 채널 리버스 프록시
+
+Host 헤더와 채널 테이블을 매핑해 봇 요청을 실 서버로 프록시합니다.
+
+```
+등록 예시:
+  도메인: news.example.com
+  업스트림: http://origin.example.com
+
+동작:
+  AI봇 → botgate (news.example.com) → rDNS 검증 → origin.example.com
+                                         ↓ 로깅
+                                      access_logs (domain=news.example.com)
+```
+
+채널 설정 변경 시 `/_internal/cache/invalidate`가 자동 호출되어 Lua 캐시를 즉시 갱신합니다.
 
 ## 지원 AI 봇
 
@@ -76,45 +99,86 @@ botgate/
 | CCBot | `*.commoncrawl.org` |
 | Bytespider | `*.bytedance.com` |
 
-## API
+## API 엔드포인트
 
-| 호출자 | 메서드 | 엔드포인트 | 설명 |
-|---|---|---|---|
-| OpenResty | POST | `/internal/tokens/validate` | 토큰 유효성 확인 |
-| OpenResty | POST | `/internal/access` | 봇 접근 기록 |
-| 클라이언트 UI | POST | `/tokens` | 토큰 발급 신청 |
-| 클라이언트 UI | GET | `/tokens/:token/usage` | 사용량 조회 |
-| 어드민 UI | GET/POST | `/admin/tokens` | 토큰 목록/발급 |
-| 어드민 UI | PATCH/DELETE | `/admin/tokens/:id` | 활성화/삭제 |
-| 어드민 UI | GET | `/admin/stats/bots` | 봇별 접근 통계 |
-| 어드민 UI | GET | `/admin/stats/domains` | 도메인별 통계 |
-| 어드민 UI | GET | `/admin/stats/daily` | 일별 접근량 (30일) |
+### Internal (OpenResty → token-api)
+| 메서드 | 엔드포인트 | 설명 |
+|---|---|---|
+| POST | `/internal/tokens/validate` | 토큰 유효성 확인 |
+| POST | `/internal/access` | 봇 접근 기록 |
+| GET | `/_internal/cache/invalidate` | Lua 캐시 무효화 (Docker 네트워크 전용) |
+
+### Admin (ADMIN_KEY Bearer 인증)
+| 메서드 | 엔드포인트 | 설명 |
+|---|---|---|
+| GET/POST | `/admin/tokens` | 토큰 목록/발급 |
+| PATCH/DELETE | `/admin/tokens/:id` | 활성화/삭제 |
+| GET | `/admin/channels` | 채널 목록 |
+| POST | `/admin/channels` | 채널 등록 |
+| PATCH/DELETE | `/admin/channels/:id` | 채널 수정/삭제 |
+| GET | `/admin/path-rules` | 경로 규칙 목록 |
+| POST | `/admin/path-rules` | 규칙 추가 |
+| PATCH/DELETE | `/admin/path-rules/:id` | 규칙 수정/삭제 |
+| GET | `/admin/stats/bots` | 봇별 통계 (`?domain=`) |
+| GET | `/admin/stats/daily` | 일별 통계 (`?domain=`) |
+| GET | `/admin/stats/hourly` | 시간별 통계 (`?date=&domain=`) |
+| GET | `/admin/stats/domains` | 도메인별 통계 |
+| GET | `/admin/stats/channels` | 채널별 요약 통계 |
+| GET | `/admin/logs` | 최근 접근 로그 (`?domain=&limit=`) |
+| GET/PATCH/DELETE | `/admin/users/:id` | 사용자 관리 |
+
+### Auth
+| 메서드 | 엔드포인트 | 설명 |
+|---|---|---|
+| POST | `/auth/register` | 회원가입 |
+| POST | `/auth/login` | 로그인 → 세션 토큰 |
+| POST | `/auth/logout` | 로그아웃 |
+| GET | `/auth/me` | 내 정보 |
+
+### User (세션 토큰 인증)
+| 메서드 | 엔드포인트 | 설명 |
+|---|---|---|
+| GET | `/me/dashboard` | 내 채널 요약 |
+| GET/POST | `/me/channels` | 내 채널 목록/추가 |
+| GET | `/me/tokens` | 내 토큰 목록 |
+| GET | `/me/profile` | 프로필 조회 |
 
 ## 실행
 
 ### Dev
 ```bash
+cp .env.example .env          # ADMIN_KEY 설정
 docker compose up -d
 
-# rDNS 직접 테스트 (X-Test-IP로 IP 오버라이드)
-curl -H "User-Agent: Googlebot/2.1" \
-     -H "X-Test-IP: 66.249.64.1" \
-     http://localhost:8081/test/rdns
+# 어드민 대시보드
+open http://localhost/ui/admin.html
 
-# 봇 통계 확인
-curl http://localhost:3000/admin/stats/bots
+# 봇 테스트
+TOKEN=bg_xxx bash scripts/perplexitybot.sh
+TOKEN=bg_xxx bash scripts/googlebot.sh
 ```
 
-### Prod (Cloudflare 앞단)
+### Prod (EC2)
 ```bash
+cp .env.example .env          # ADMIN_KEY 강력한 값으로 교체
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-prod는 `set_real_ip_from`으로 Cloudflare IP 대역을 신뢰하고 `CF-Connecting-IP`를 `$remote_addr`로 자동 교체합니다. Lua 코드 변경 없이 rDNS가 봇 실IP 기준으로 동작합니다.
+token-api는 외부에 포트를 열지 않고 (`expose: 3000`), SSH 포트포워딩 또는 동일 네트워크에서만 접근합니다.
 
-## Roadmap
+```bash
+# EC2에서 어드민 접근 (SSH 터널)
+ssh -L 3000:localhost:3000 ec2-user@<EC2_IP>
+open http://localhost:3000/ui/admin.html
+```
 
-- [ ] 토큰 기반 AI봇 유료 접근 (402 Payment Required)
-- [ ] 클라이언트 UI (토큰 발급/사용량)
-- [ ] 어드민 UI (통계 대시보드)
-- [ ] Elasticsearch 전환 (트래픽 증가 시)
+## SQLite 스키마
+
+```sql
+tokens        -- API 토큰 (id, token, owner, plan, active, user_id)
+access_logs   -- 봇 접근 기록 (token, bot_ua, domain, ip, path, verified, billed)
+channels      -- 등록 채널 (id, name, domain, upstream, active, owner_id)
+path_rules    -- 경로 규칙 (pattern, action: allow|block|meter)
+users         -- 채널 오너 계정 (email, password_hash, name, active)
+sessions      -- 로그인 세션 (token, user_id, expires_at)
+```

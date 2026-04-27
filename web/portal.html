@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>botgate — 채널 오너 포털</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="botgate-marketing.css?v=2"/>
+<style>
+  body { background: #f6f8fb; }
+  .app-shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* ── SIDEBAR ── */
+  .side {
+    background: #fff; border-right: 1px solid var(--line);
+    padding: 20px 16px; position: sticky; top: 0; height: 100vh;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+  .side-logo {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-weight: 800; font-size: 19px; letter-spacing: -0.02em; color: var(--ink);
+    padding: 4px 6px;
+  }
+  .side-logo .logo-mark {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--brand);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .side-section { display: flex; flex-direction: column; gap: 2px; }
+  .side-section .h {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-mute); padding: 6px 10px;
+  }
+  .side a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 10px;
+    font-size: 14px; font-weight: 500; color: var(--ink-2);
+    cursor: pointer; transition: background 120ms;
+    text-decoration: none;
+  }
+  .side a:hover { background: var(--bg-soft); color: var(--ink); }
+  .side a.active { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+  .side a svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .side-foot {
+    margin-top: auto; padding: 14px;
+    background: var(--bg-soft); border-radius: 14px; font-size: 13px;
+  }
+  .side-foot .name  { font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+  .side-foot .email { color: var(--ink-dim); font-size: 12px; }
+
+  /* ── MAIN ── */
+  main { padding: 28px 32px 60px; max-width: 1200px; }
+  .page-head { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+  .page-head h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 0; color: var(--ink); }
+  .page-head .greeting { font-size: 14px; color: var(--ink-dim); margin-top: 4px; }
+  .page-head .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+  /* ── KPI ── */
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+  .kpi {
+    background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg);
+    padding: 22px 24px; position: relative; overflow: hidden;
+  }
+  .kpi.accent { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .kpi.accent .l, .kpi.accent .s { color: rgba(255,255,255,.85); }
+  .kpi .l { font-size: 13px; color: var(--ink-dim); font-weight: 500; margin-bottom: 8px; }
+  .kpi .v { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+  .kpi .s { font-size: 12.5px; color: var(--ink-dim); margin-top: 8px; }
+  .kpi .icon {
+    position: absolute; top: 18px; right: 18px;
+    width: 38px; height: 38px; border-radius: 12px;
+    background: var(--brand-soft); color: var(--brand);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .kpi.accent .icon { background: rgba(255,255,255,.18); color: #fff; }
+
+  /* ── PANEL ── */
+  .panel { background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 16px; }
+  .panel-head { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .panel-head h3 { font-size: 16px; font-weight: 700; margin: 0; color: var(--ink); }
+  .panel-head .sub { font-size: 13px; color: var(--ink-dim); }
+  .panel-head .right { margin-left: auto; }
+
+  /* ── TABLE ── */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .tbl th {
+    padding: 10px 14px; text-align: left;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink-mute); background: var(--bg-soft); border-bottom: 1px solid var(--line);
+  }
+  .tbl td { padding: 12px 14px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: middle; }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl tr:hover td { background: var(--bg-soft); }
+  .tbl .mono { font-family: var(--mono); font-size: 12px; color: var(--ink-dim); }
+
+  .sdot { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+  .sdot::before { content:''; display:inline-block; width:7px; height:7px; border-radius:50%; }
+  .sdot.on::before  { background: var(--ok); }
+  .sdot.off::before { background: var(--ink-mute); }
+
+  .badge { font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .badge.free { background: var(--pastel-mint); color: var(--ok); }
+  .badge.paid { background: var(--brand-soft); color: var(--brand); }
+
+  .btn-sm { font-size:12px; font-weight:600; padding:5px 12px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink-2); cursor:pointer; }
+  .btn-sm:hover { border-color:var(--brand); color:var(--brand); }
+
+  /* ── SPA ── */
+  .page-section { display: none; }
+  .page-section.active { display: block; }
+
+  /* ── DBAR ── */
+  .dbar { height: 8px; background: var(--bg-soft); border-radius: 4px; overflow: hidden; margin-top: 4px; }
+  .dbar-fill { height: 100%; background: var(--brand); border-radius: 4px; transition: width 400ms; }
+
+  @media (max-width: 980px) {
+    .app-shell { grid-template-columns: 1fr; }
+    .side { position: relative; height: auto; flex-direction: row; overflow-x: auto; padding: 12px; }
+    .side-section, .side-foot { display: none; }
+    .kpis { grid-template-columns: 1fr 1fr; }
+    main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="side">
+    <a href="#" class="side-logo" onclick="return false;">
+      <span class="logo-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3l8 4v5c0 4.5-3.5 8.5-8 9-4.5-.5-8-4.5-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+      </span>
+      <span>botgate</span>
+    </a>
+
+    <div class="side-section">
+      <span class="h">포털</span>
+      <a class="active" onclick="nav(event,'page-dashboard')" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        내 대시보드
+      </a>
+      <a onclick="nav(event,'page-channels')" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+        내 채널
+      </a>
+      <a onclick="nav(event,'page-tokens')" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        내 토큰
+      </a>
+    </div>
+
+    <div class="side-foot">
+      <div class="name" id="side-user-name">—</div>
+      <div class="email" id="side-user-email">—</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+
+    <!-- ── 대시보드 ── -->
+    <section id="page-dashboard" class="page-section active">
+      <div class="page-head">
+        <div>
+          <h1>내 대시보드</h1>
+          <div class="greeting">내 채널의 AI 봇 트래픽 현황입니다.</div>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi accent">
+          <div class="icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+          </div>
+          <div class="l">등록 채널</div>
+          <div class="v" id="kpi-channels">—</div>
+          <div class="s">내 사이트 수</div>
+        </div>
+        <div class="kpi">
+          <div class="icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/><path d="M12 7v5l3 2"/></svg>
+          </div>
+          <div class="l">총 봇 요청</div>
+          <div class="v" id="kpi-total">—</div>
+          <div class="s">누적</div>
+        </div>
+        <div class="kpi">
+          <div class="icon" style="background:var(--pastel-mint);color:var(--ok);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+          </div>
+          <div class="l">검증된 요청</div>
+          <div class="v" id="kpi-verified">—</div>
+          <div class="s">유료 토큰 보유 봇</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>채널별 현황</h3>
+          <span class="sub">내 사이트 요약</span>
+          <div class="right">
+            <a onclick="nav({preventDefault:()=>{},currentTarget:document.querySelector('.side a:nth-child(2)')}, 'page-channels')" href="#"
+              style="font-size:13px;color:var(--brand);font-weight:600;" onclick="nav(event,'page-channels')">채널 관리 →</a>
+          </div>
+        </div>
+        <div id="dash-channel-list">
+          <div style="color:var(--ink-mute);font-size:14px;text-align:center;padding:40px 0;">로딩중…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 내 채널 ── -->
+    <section id="page-channels" class="page-section">
+      <div class="page-head">
+        <div>
+          <h1>내 채널</h1>
+          <div class="greeting">AI 봇 트래픽을 받을 내 사이트를 등록하세요.</div>
+        </div>
+        <div class="right">
+          <button class="btn" onclick="showAddChannel()">+ 채널 추가</button>
+        </div>
+      </div>
+
+      <div id="channel-form" style="display:none; margin-bottom:16px;">
+        <div class="panel" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;">
+            <label style="font-size:12px;color:var(--ink-dim);font-weight:600;">채널 이름</label>
+            <input id="ch-name" type="text" placeholder="내 뉴스 사이트"
+              style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:var(--sans);">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px;">
+            <label style="font-size:12px;color:var(--ink-dim);font-weight:600;">도메인</label>
+            <input id="ch-domain" type="text" placeholder="news.example.com"
+              style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:var(--mono);">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px;">
+            <label style="font-size:12px;color:var(--ink-dim);font-weight:600;">업스트림 URL</label>
+            <input id="ch-upstream" type="text" placeholder="http://origin.example.com"
+              style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:var(--mono);">
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn" onclick="submitChannel()">저장</button>
+            <button class="btn" style="background:#fff;color:var(--ink-2);" onclick="hideAddChannel()">취소</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="padding:0;overflow:hidden;">
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>채널 이름</th>
+                <th>도메인</th>
+                <th>업스트림 URL</th>
+                <th style="text-align:right;">총 요청</th>
+                <th style="text-align:right;">검증</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody id="channels-tbl-body">
+              <tr><td colspan="6" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 내 토큰 ── -->
+    <section id="page-tokens" class="page-section">
+      <div class="page-head">
+        <div>
+          <h1>내 토큰</h1>
+          <div class="greeting">내 계정에 연결된 API 토큰입니다.</div>
+        </div>
+      </div>
+
+      <div class="panel" style="padding:0;overflow:hidden;">
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>소유자</th>
+                <th>플랜</th>
+                <th>토큰</th>
+                <th>만료일</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody id="tokens-tbl-body">
+              <tr><td colspan="5" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  const API = window.location.origin;
+
+  /* ─── 헬퍼 ──────────────────────────────────────────── */
+  function fmt(n) {
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return String(n ?? 0);
+  }
+  function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function sessionToken() { return localStorage.getItem('portalToken') || '' }
+  function portalFetch(url, opts = {}) {
+    const tk = sessionToken()
+    return fetch(url, {
+      ...opts,
+      headers: { ...opts.headers, ...(tk ? { 'Authorization': `Bearer ${tk}` } : {}) },
+    })
+  }
+
+  /* ─── SPA ────────────────────────────────────────────── */
+  function nav(e, pageId) {
+    e.preventDefault();
+    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.side a[onclick]').forEach(a => a.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+    e.currentTarget.classList.add('active');
+    if (pageId === 'page-dashboard') loadDashboard();
+    if (pageId === 'page-channels')  loadChannels();
+    if (pageId === 'page-tokens')    loadTokens();
+  }
+
+  /* ─── 프로필 ─────────────────────────────────────────── */
+  async function loadProfile() {
+    try {
+      const r = await portalFetch(`${API}/me/profile`);
+      if (!r.ok) return;
+      const u = await r.json();
+      document.getElementById('side-user-name').textContent  = u.name;
+      document.getElementById('side-user-email').textContent = u.email;
+    } catch(_) {
+      document.getElementById('side-user-name').textContent  = '비로그인';
+      document.getElementById('side-user-email').textContent = '—';
+    }
+  }
+
+  /* ─── 대시보드 ───────────────────────────────────────── */
+  async function loadDashboard() {
+    document.getElementById('kpi-channels').textContent = '—';
+    document.getElementById('kpi-total').textContent    = '—';
+    document.getElementById('kpi-verified').textContent = '—';
+    const listEl = document.getElementById('dash-channel-list');
+    listEl.innerHTML = '<div style="color:var(--ink-mute);font-size:14px;text-align:center;padding:40px 0;">로딩중…</div>';
+    try {
+      const data = await portalFetch(`${API}/me/dashboard`).then(r => r.json());
+      const { channels = [], stats = [] } = data;
+      const statsMap = Object.fromEntries(stats.map(s => [s.domain, s]));
+
+      const totalReqs     = stats.reduce((a, b) => a + (b.total    || 0), 0);
+      const totalVerified = stats.reduce((a, b) => a + (b.verified || 0), 0);
+      document.getElementById('kpi-channels').textContent = channels.length + '개';
+      document.getElementById('kpi-total').textContent    = fmt(totalReqs);
+      document.getElementById('kpi-verified').textContent = fmt(totalVerified);
+
+      if (!channels.length) {
+        listEl.innerHTML = `
+          <div style="text-align:center;padding:40px 0;">
+            <div style="font-size:40px;margin-bottom:12px;">🌐</div>
+            <div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px;">등록된 채널이 없어요</div>
+            <div style="font-size:13px;color:var(--ink-dim);">내 채널 탭에서 사이트를 추가해보세요.</div>
+          </div>`;
+        return;
+      }
+
+      const maxReqs = Math.max(...stats.map(s => s.total || 0), 1);
+      const BOT_COLORS = ['#2b6df6','#9d6bff','#ff7a5c','#1aa377'];
+      listEl.innerHTML = channels.map((c, i) => {
+        const s   = statsMap[c.domain] || {};
+        const pct = Math.round((s.total || 0) / maxReqs * 100);
+        return `<div style="margin-bottom:20px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:32px;height:32px;border-radius:10px;background:${BOT_COLORS[i%BOT_COLORS.length]};
+                display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;">
+                ${esc(c.name[0].toUpperCase())}
+              </div>
+              <div>
+                <div style="font-size:14px;font-weight:700;color:var(--ink);">${esc(c.name)}</div>
+                <div style="font-size:11px;font-family:var(--mono);color:var(--ink-mute);">${esc(c.domain)}</div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:14px;font-weight:700;color:var(--ink);">${fmt(s.total||0)}건</div>
+              <div style="font-size:12px;color:var(--ok);">검증 ${fmt(s.verified||0)}건</div>
+            </div>
+          </div>
+          <div class="dbar"><div class="dbar-fill" style="width:${pct}%;background:${BOT_COLORS[i%BOT_COLORS.length]};"></div></div>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      listEl.innerHTML = '<div style="text-align:center;color:var(--ink-mute);padding:40px 0;">데이터 없음</div>';
+    }
+  }
+
+  /* ─── 내 채널 ────────────────────────────────────────── */
+  async function loadChannels() {
+    const tbody = document.getElementById('channels-tbl-body');
+    if (!tbody) return;
+    try {
+      const channels = await portalFetch(`${API}/me/channels`).then(r => r.json());
+      if (!channels.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-mute);padding:32px;">등록된 채널이 없어요.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = channels.map(c => `<tr>
+        <td style="font-weight:600;">${esc(c.name)}</td>
+        <td class="mono">${esc(c.domain)}</td>
+        <td class="mono" style="font-size:12px;color:var(--ink-dim);">${esc(c.upstream)}</td>
+        <td style="text-align:right;font-weight:700;">—</td>
+        <td style="text-align:right;color:var(--ok);">—</td>
+        <td>${c.active ? '<span class="sdot on">활성</span>' : '<span class="sdot off">비활성</span>'}</td>
+      </tr>`).join('');
+    } catch(e) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-mute);padding:24px;">데이터 없음</td></tr>';
+    }
+  }
+
+  function showAddChannel() {
+    document.getElementById('channel-form').style.display = 'block';
+    document.getElementById('ch-name').focus();
+  }
+  function hideAddChannel() {
+    document.getElementById('channel-form').style.display = 'none';
+    ['ch-name','ch-domain','ch-upstream'].forEach(id => document.getElementById(id).value = '');
+  }
+  async function submitChannel() {
+    const name     = document.getElementById('ch-name').value.trim();
+    const domain   = document.getElementById('ch-domain').value.trim();
+    const upstream = document.getElementById('ch-upstream').value.trim();
+    if (!name || !domain || !upstream) { alert('모든 항목을 입력하세요.'); return; }
+    if (!/^https?:\/\/.+/.test(upstream)) { alert('업스트림 URL은 http:// 또는 https://로 시작해야 해요.'); return; }
+    try {
+      const res = await portalFetch(`${API}/me/channels`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, domain, upstream }),
+      });
+      if (res.status === 401) { alert('로그인이 필요해요.'); return; }
+      if (res.status === 409) { alert('이미 등록된 도메인이에요.'); return; }
+      if (!res.ok) throw new Error(res.status);
+      hideAddChannel();
+      loadChannels();
+    } catch(e) { alert('저장 실패: ' + e.message); }
+  }
+
+  /* ─── 내 토큰 ────────────────────────────────────────── */
+  async function loadTokens() {
+    const tbody = document.getElementById('tokens-tbl-body');
+    if (!tbody) return;
+    try {
+      const tokens = await portalFetch(`${API}/me/tokens`).then(r => r.json());
+      if (!tokens.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-mute);padding:32px;">발급된 토큰이 없어요. 관리자에게 문의하세요.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = tokens.map(t => `<tr>
+        <td style="font-weight:600;">${esc(t.owner||'—')}</td>
+        <td><span class="badge ${t.plan==='paid'?'paid':'free'}">${esc(t.plan||'free')}</span></td>
+        <td class="mono">${esc(t.token)}</td>
+        <td style="font-size:13px;color:var(--ink-dim);">${(t.expires_at||'—').slice(0,10)}</td>
+        <td>${t.active ? '<span class="sdot on">활성</span>' : '<span class="sdot off">비활성</span>'}</td>
+      </tr>`).join('');
+    } catch(e) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-mute);padding:24px;">데이터 없음</td></tr>';
+    }
+  }
+
+  /* ─── INIT ──────────────────────────────────────────── */
+  loadProfile();
+  loadDashboard();
+</script>
+</body>
+</html>

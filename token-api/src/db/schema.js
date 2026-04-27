@@ -12,8 +12,10 @@ db.pragma('foreign_keys = ON')
 
 // 기존 DB 컬럼 추가 마이그레이션 (없는 경우에만)
 for (const sql of [
-  `ALTER TABLE access_logs ADD COLUMN path   TEXT`,
-  `ALTER TABLE access_logs ADD COLUMN billed INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE access_logs ADD COLUMN path     TEXT`,
+  `ALTER TABLE access_logs ADD COLUMN billed   INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE channels    ADD COLUMN owner_id TEXT`,
+  `ALTER TABLE tokens      ADD COLUMN user_id  TEXT`,
 ]) {
   try { db.exec(sql) } catch (_) { /* 이미 있으면 무시 */ }
 }
@@ -45,6 +47,24 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_access_logs_token  ON access_logs(token);
   CREATE INDEX IF NOT EXISTS idx_access_logs_ts     ON access_logs(ts);
   CREATE INDEX IF NOT EXISTS idx_access_logs_domain ON access_logs(domain);
+
+  CREATE TABLE IF NOT EXISTS users (
+    id            TEXT PRIMARY KEY,
+    email         TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    name          TEXT NOT NULL,
+    active        INTEGER NOT NULL DEFAULT 1,
+    created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    token      TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_sessions_user    ON sessions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 
   CREATE TABLE IF NOT EXISTS channels (
     id          TEXT PRIMARY KEY,

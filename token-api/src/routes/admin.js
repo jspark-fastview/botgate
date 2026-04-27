@@ -252,6 +252,40 @@ export default async function adminRoutes(app) {
     return reply.code(204).send()
   })
 
+  // ── users CRUD ────────────────────────────────────────
+
+  // 사용자 목록
+  app.get('/admin/users', (_req, reply) => {
+    return reply.send(
+      db.prepare(
+        `SELECT id, email, name, active, created_at FROM users ORDER BY created_at DESC`
+      ).all()
+    )
+  })
+
+  // 활성화/비활성화
+  app.patch('/admin/users/:id', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['active'],
+        properties: { active: { type: 'boolean' } },
+      },
+    },
+  }, (req, reply) => {
+    const result = db.prepare(`UPDATE users SET active = ? WHERE id = ?`)
+      .run(req.body.active ? 1 : 0, req.params.id)
+    if (result.changes === 0) return reply.code(404).send({ error: 'not found' })
+    return reply.send({ ok: true })
+  })
+
+  // 삭제 (sessions 는 CASCADE 로 자동 삭제)
+  app.delete('/admin/users/:id', (req, reply) => {
+    const result = db.prepare(`DELETE FROM users WHERE id = ?`).run(req.params.id)
+    if (result.changes === 0) return reply.code(404).send({ error: 'not found' })
+    return reply.code(204).send()
+  })
+
   // ── path_rules CRUD ────────────────────────────────────
 
   // 목록

@@ -425,7 +425,7 @@
 
   <!-- SIDEBAR -->
   <aside class="side">
-    <a href="botgate-admin.html" class="side-logo">
+    <a href="admin.html" class="side-logo">
       <span class="logo-mark">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 4.5-3.5 8.5-8 9-4.5-.5-8-4.5-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
       </span>
@@ -812,6 +812,37 @@
   </section>
 
 
+  <!-- ======================================================
+       사용자 관리
+  ====================================================== -->
+  <section id="page-users" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>사용자 관리</h1>
+        <div class="greeting">가입한 채널 오너 계정을 확인하고 관리하세요.</div>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:0;overflow:hidden;">
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>이름</th>
+              <th>이메일</th>
+              <th>가입일</th>
+              <th>상태</th>
+              <th style="text-align:right;">관리</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbl-body">
+            <tr><td colspan="5" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   </main>
 </div>
 
@@ -939,6 +970,7 @@
     if (pageId === 'page-tokens')    loadTokens();
     if (pageId === 'page-domains')   { loadChannels(); loadDomains(); }
     if (pageId === 'page-pricing')   loadRules();
+    if (pageId === 'page-users')     loadUsers();
   }
 
   /* ─── CHART helper (shared) ────────────────────────── */
@@ -1010,11 +1042,14 @@
     if (!bots.length) { el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>'; return; }
     const total = bots.reduce((a, b) => a + b.count, 0);
     el.innerHTML = bots.slice(0, 7).map((b, i) => {
-      const pct = total ? Math.round(b.count / total * 100) : 0;
-      const ua  = b.bot_ua.split('/')[0];
+      const pct  = total ? Math.round(b.count / total * 100) : 0;
+      const [name, ver] = b.bot_ua.split('/');
+      const label = ver
+        ? `${esc(name)} <span style="font-weight:400;color:var(--ink-mute);font-size:11px;">/${esc(ver)}</span>`
+        : esc(name);
       return `<div>
         <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
-          <span style="color:var(--ink);font-weight:600;">${esc(ua)}</span>
+          <span style="color:var(--ink);font-weight:600;">${label}</span>
           <span style="color:var(--ink-dim);">${fmt(b.count)} · ${pct}%</span>
         </div>
         <div style="height:8px;background:var(--bg-soft);border-radius:4px;overflow:hidden;">
@@ -1029,12 +1064,12 @@
     if (!el) return;
     if (!bots.length) { el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>'; return; }
     el.innerHTML = bots.slice(0, 5).map((b, i) => {
-      const label = b.bot_ua.split('/')[0];
-      const initials = label.slice(0, 1).toUpperCase();
+      const [name, ver] = b.bot_ua.split('/');
+      const initials = name.slice(0, 1).toUpperCase();
       return `<div class="bot-row">
         <div class="bot-avatar" style="background:${BOT_COLORS[i%BOT_COLORS.length]};">${initials}</div>
         <div class="meta">
-          <div class="name">${esc(label)}</div>
+          <div class="name">${esc(name)}${ver ? ` <span style="font-size:11px;font-weight:400;color:var(--ink-mute);">/${esc(ver)}</span>` : ''}</div>
           <div class="ua">${esc(b.bot_ua)}</div>
         </div>
         <div class="req"><div class="n">${fmt(b.count)}</div><div class="s">요청</div></div>
@@ -1187,10 +1222,14 @@
     if (!el) return;
     el.innerHTML = bots.slice(0, 8).map((b, i) => {
       const pct = total ? Math.round(b.count / total * 100) : 0;
+      const [name, ver] = b.bot_ua.split('/');
+      const label = ver
+        ? `${esc(name)} <span style="font-weight:400;color:var(--ink-mute);font-size:11px;">/${esc(ver)}</span>`
+        : esc(name);
       return `
         <div>
           <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
-            <span style="color:var(--ink);font-weight:600;">${esc(b.bot_ua)}</span>
+            <span style="color:var(--ink);font-weight:600;">${label}</span>
             <span style="color:var(--ink-dim);">${fmt(b.count)}</span>
           </div>
           <div style="height:8px;background:var(--bg-soft);border-radius:4px;overflow:hidden;">
@@ -1526,6 +1565,55 @@
     if (!confirm('이 규칙을 삭제할까요?')) return;
     await apiFetch(`${API}/admin/path-rules/${id}`, { method: 'DELETE' });
     loadRules();
+  }
+
+  /* ─── USERS ───────────────────────────────────────────── */
+  async function loadUsers() {
+    const tbody = document.getElementById('users-tbl-body');
+    if (!tbody) return;
+    try {
+      const users = await apiFetch(`${API}/admin/users`).then(r => r.json());
+      if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-mute);padding:24px;">가입한 사용자가 없어요</td></tr>';
+        return;
+      }
+      tbody.innerHTML = users.map(u => {
+        const status = u.active
+          ? '<span class="sdot on">활성</span>'
+          : '<span class="sdot off">비활성</span>';
+        return `<tr>
+          <td style="font-weight:600;">${esc(u.name)}</td>
+          <td class="mono">${esc(u.email)}</td>
+          <td style="font-size:13px;color:var(--ink-dim);">${(u.created_at||'').slice(0,10)}</td>
+          <td>${status}</td>
+          <td style="text-align:right;">
+            <div style="display:flex;gap:6px;justify-content:flex-end;">
+              ${u.active
+                ? `<button class="btn-sm danger" onclick="toggleUser('${u.id}',false)">비활성화</button>`
+                : `<button class="btn-sm" onclick="toggleUser('${u.id}',true)">활성화</button>`}
+              <button class="btn-sm danger" onclick="deleteUser('${u.id}')">삭제</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--bad);padding:24px;">API 연결 실패</td></tr>`;
+    }
+  }
+
+  async function toggleUser(id, active) {
+    await apiFetch(`${API}/admin/users/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active }),
+    });
+    loadUsers();
+  }
+
+  async function deleteUser(id) {
+    if (!confirm('이 사용자를 삭제할까요? 세션도 함께 삭제됩니다.')) return;
+    await apiFetch(`${API}/admin/users/${id}`, { method: 'DELETE' });
+    loadUsers();
   }
 
   /* ─── INIT ──────────────────────────────────────────── */

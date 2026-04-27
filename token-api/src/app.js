@@ -8,6 +8,8 @@ import { fileURLToPath } from 'url'
 import internalRoutes from './routes/internal.js'
 import clientRoutes   from './routes/client.js'
 import adminRoutes    from './routes/admin.js'
+import authRoutes     from './routes/auth.js'
+import userRoutes     from './routes/user.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 mkdirSync(join(__dirname, '../data'), { recursive: true })
@@ -42,6 +44,8 @@ app.register(static_, {
 app.register(internalRoutes)
 app.register(clientRoutes)
 app.register(adminRoutes)
+app.register(authRoutes)
+app.register(userRoutes)
 
 app.get('/health', () => ({ ok: true }))
 
