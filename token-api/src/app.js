@@ -20,6 +20,19 @@ const app = Fastify({ logger: true })
 // PoC: 전체 오픈, 운영 시 origin 지정
 app.register(cors, { origin: true })
 
+// ── 어드민 인증 ────────────────────────────────────────────
+// ADMIN_KEY 환경변수가 설정된 경우 /admin/* 엔드포인트 보호
+const ADMIN_KEY = process.env.ADMIN_KEY?.trim()
+if (ADMIN_KEY) {
+  app.addHook('preHandler', async (req, reply) => {
+    if (!req.url.startsWith('/admin')) return
+    const auth = (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '')
+    if (auth !== ADMIN_KEY) {
+      return reply.code(401).send({ error: 'unauthorized' })
+    }
+  })
+}
+
 // UI 정적 파일 서빙 (/ui → web/)
 app.register(static_, {
   root:   join(__dirname, '../web'),

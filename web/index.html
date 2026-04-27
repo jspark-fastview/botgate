@@ -337,9 +337,89 @@
     .kpis { grid-template-columns: repeat(2, 1fr); }
     main { padding: 20px; }
   }
+
+  /* ============ SPA NAV ============ */
+  .page-section { display: none; }
+  .page-section.active { display: block; }
+
+  /* ============ TABLE ============ */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .tbl th {
+    padding: 10px 14px; text-align: left;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink-mute); background: var(--bg-soft); border-bottom: 1px solid var(--line);
+  }
+  .tbl td { padding: 12px 14px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: middle; }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl tr:hover td { background: var(--bg-soft); }
+  .tbl .mono { font-family: var(--mono); font-size: 12px; color: var(--ink-dim); }
+
+  /* ============ STATUS DOT ============ */
+  .sdot { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+  .sdot::before { content:''; display:inline-block; width:7px; height:7px; border-radius:50%; }
+  .sdot.on::before { background: var(--ok); }
+  .sdot.off::before { background: var(--ink-mute); }
+
+  /* ============ LIVE LOG ============ */
+  .log-wrap { overflow-x: auto; }
+  .log-hd, .log-row { display: grid; grid-template-columns: 90px 80px 170px 1fr 80px; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--line); align-items: center; font-family: var(--mono); font-size: 12px; }
+  .log-hd { background: var(--bg-soft); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-mute); }
+  .log-row:hover { background: var(--bg-soft); }
+  .log-ok  { color: var(--ok); }
+  .log-bad { color: var(--bad); }
+  .log-dim { color: var(--ink-mute); }
+
+  /* ============ DOMAIN STAT ============ */
+  .dbar { height: 8px; background: var(--bg-soft); border-radius: 4px; overflow: hidden; margin-top: 4px; }
+  .dbar-fill { height: 100%; background: var(--brand); border-radius: 4px; }
+
+  /* ============ STUB ============ */
+  .stub { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:360px; gap:14px; }
+  .stub .ico { font-size:48px; }
+  .stub h2 { font-size:20px; font-weight:800; color:var(--ink); margin:0; }
+  .stub p { font-size:14px; color:var(--ink-dim); margin:0; text-align:center; max-width:360px; line-height:1.6; }
+  .stub .chip { background:var(--pastel-lemon); color:var(--ink); font-size:12px; font-weight:700; padding:5px 14px; border-radius:999px; letter-spacing:0.04em; }
+
+  /* inline btn variants */
+  .btn-sm { font-size:12px; font-weight:600; padding:5px 12px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink-2); cursor:pointer; }
+  .btn-sm:hover { border-color:var(--brand); color:var(--brand); }
+  .btn-sm.danger:hover { border-color:var(--bad); color:var(--bad); }
+
+  /* ============ CHANNEL SELECTOR ============ */
+  .ch-select {
+    padding: 6px 28px 6px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;
+    color: var(--ink); cursor: pointer; appearance: none; min-width: 150px;
+  }
+  .ch-select:focus { outline: none; border-color: var(--brand); }
 </style>
 </head>
 <body>
+
+<!-- ── 로그인 오버레이 ───────────────────────────────────── -->
+<div id="login-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:40px 36px;width:360px;box-shadow:0 24px 80px rgba(0,0,0,.25);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px;">
+      <span style="width:32px;height:32px;background:var(--brand);border-radius:9px;display:flex;align-items:center;justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3l8 4v5c0 4.5-3.5 8.5-8 9-4.5-.5-8-4.5-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+      </span>
+      <span style="font-size:20px;font-weight:800;letter-spacing:-.02em;">botgate</span>
+    </div>
+    <div style="font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px;">관리자 로그인</div>
+    <div style="font-size:14px;color:var(--ink-dim);margin-bottom:24px;">계속하려면 비밀번호를 입력하세요.</div>
+    <input id="login-pw" type="password" placeholder="비밀번호"
+      style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:var(--sans);box-sizing:border-box;margin-bottom:10px;outline:none;"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()"
+      style="width:100%;padding:11px;background:var(--brand);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--sans);">
+      로그인
+    </button>
+    <div id="login-error" style="color:var(--bad);font-size:13px;margin-top:10px;display:none;">비밀번호가 틀렸습니다.</div>
+  </div>
+</div>
 
 <div class="app-shell">
 
@@ -354,15 +434,15 @@
 
     <div class="side-section">
       <span class="h">메인</span>
-      <a class="active">
+      <a class="active" onclick="nav(event,'page-dashboard')" href="#">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
         대시보드
       </a>
-      <a>
+      <a onclick="nav(event,'page-analytics')" href="#">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/></svg>
         분석 리포트
       </a>
-      <a>
+      <a onclick="nav(event,'page-traffic')" href="#">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M5 9l7-7 7 7M5 15l7 7 7-7"/></svg>
         실시간 트래픽
       </a>
@@ -370,91 +450,56 @@
 
     <div class="side-section">
       <span class="h">설정</span>
-      <a>
+      <a onclick="nav(event,'page-pricing')" href="#">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-        가격 규칙
+        경로 규칙
       </a>
-      <a>
+      <a onclick="nav(event,'page-tokens')" href="#">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         봇 화이트리스트
       </a>
-      <a>
+      <a onclick="nav(event,'page-domains')" href="#">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
-        도메인 연결
+        채널 관리
       </a>
     </div>
 
-    <div class="side-section">
-      <span class="h">정산</span>
-      <a>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-        수익 & 정산
-      </a>
-      <a>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M8 14h.01M12 14h.01"/></svg>
-        세금계산서
-      </a>
-    </div>
-
-    <div class="side-foot">
-      <div class="name">DongA Daily</div>
-      <div class="sub">news.donga.example.com</div>
-    </div>
   </aside>
 
   <!-- MAIN -->
   <main>
+  <section id="page-dashboard" class="page-section active">
     <div class="page-head">
       <div>
-        <h1>안녕하세요, 동아일보 팀 👋</h1>
-        <div class="greeting">오늘도 AI들이 우리 콘텐츠를 잘 보고 있어요. 이번 달 수익이 지난달보다 18.4% 늘었어요.</div>
+        <h1>안녕하세요, 패스트뷰 님</h1>
+        <div class="greeting">봇 트래픽 현황을 실시간으로 확인하세요.</div>
       </div>
       <div class="right">
-        <div class="range-pill">
-          <button>오늘</button>
-          <button>7일</button>
-          <button class="active">30일</button>
-          <button>전체</button>
-        </div>
-        <a class="btn" style="height:36px;">리포트 다운로드</a>
+        <select id="dash-ch-select" class="ch-select ch-selector" onchange="onChannelChange(this)">
+          <option value="">전체 채널</option>
+        </select>
       </div>
-    </div>
-
-    <!-- payout banner -->
-    <div class="payout-banner">
-      <div class="ico">💰</div>
-      <div class="body">
-        <div class="h">5월 1일에 ₩34,210,500이 입금될 예정이에요</div>
-        <div class="p">신한은행 110-***-***324 · 정산 보고서는 4월 30일에 이메일로 보내드려요</div>
-      </div>
-      <div class="v">+18.4%</div>
     </div>
 
     <!-- KPI -->
-    <div class="kpis">
+    <div class="kpis" style="grid-template-columns:repeat(3,1fr);">
       <div class="kpi accent">
-        <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-        <div class="l">이번 달 수익</div>
-        <div class="v">₩34.2M</div>
-        <div class="s up">↑ 18.4% 지난달 대비</div>
-      </div>
-      <div class="kpi">
         <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2"/></svg></div>
-        <div class="l">AI 봇 요청 수</div>
-        <div class="v" id="kpi-requests">12.3M</div>
-        <div class="s up" id="kpi-requests-sub">↑ 12.1% 지난달 대비</div>
+        <div class="l">누적 요청 수</div>
+        <div class="v" id="kpi-requests">—</div>
+        <div class="s" id="kpi-requests-sub">로딩중…</div>
       </div>
       <div class="kpi">
-        <div class="icon" style="background:#ffe1e1; color:#d4351c;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l14.14 14.14"/></svg></div>
-        <div class="l">차단된 무단 스크랩</div>
-        <div class="v" id="kpi-blocked">2.9M</div>
-        <div class="s up">자동 차단 작동중</div>
+        <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
+        <div class="l">봇 종류</div>
+        <div class="v" id="kpi-vendors">—</div>
+        <div class="s">감지된 고유 봇 UA</div>
       </div>
       <div class="kpi">
         <div class="icon" style="background:var(--pastel-mint); color:var(--ok);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
-        <div class="l">참여 AI 회사</div>
-        <div class="v" id="kpi-vendors">6곳</div>
-        <div class="s up">+2곳 신규 (이번 달)</div>
+        <div class="l">활성 토큰</div>
+        <div class="v" id="kpi-tokens">—</div>
+        <div class="s">화이트리스트 등록</div>
       </div>
     </div>
 
@@ -470,45 +515,15 @@
           <!-- bars filled by JS -->
         </div>
         <div class="chart-x" id="chartx"></div>
-        <div class="legend">
-          <span class="it"><span class="dot" style="background:#2b6df6;"></span>GPTBot</span>
-          <span class="it"><span class="dot" style="background:#9d6bff;"></span>ClaudeBot</span>
-          <span class="it"><span class="dot" style="background:#ff7a5c;"></span>PerplexityBot</span>
-          <span class="it"><span class="dot" style="background:#1aa377;"></span>Googlebot-Extended</span>
-        </div>
       </div>
 
       <div class="panel">
         <div class="panel-head">
-          <h3>수익 비중</h3>
-          <span class="sub">지난 30일</span>
+          <h3>봇 종류별 비중</h3>
+          <span class="sub">누적</span>
         </div>
-        <div class="ring">
-          <svg width="160" height="160" viewBox="0 0 160 160">
-            <circle cx="80" cy="80" r="60" stroke="#f0f2f6" stroke-width="20" fill="none"/>
-            <!-- segments: total 377, circumference = 377 -->
-            <circle cx="80" cy="80" r="60" stroke="#2b6df6" stroke-width="20" fill="none"
-              stroke-dasharray="155 377" stroke-dashoffset="0"/>
-            <circle cx="80" cy="80" r="60" stroke="#9d6bff" stroke-width="20" fill="none"
-              stroke-dasharray="98 377" stroke-dashoffset="-155"/>
-            <circle cx="80" cy="80" r="60" stroke="#ff7a5c" stroke-width="20" fill="none"
-              stroke-dasharray="55 377" stroke-dashoffset="-253"/>
-            <circle cx="80" cy="80" r="60" stroke="#1aa377" stroke-width="20" fill="none"
-              stroke-dasharray="45 377" stroke-dashoffset="-308"/>
-            <circle cx="80" cy="80" r="60" stroke="#c4a01a" stroke-width="20" fill="none"
-              stroke-dasharray="24 377" stroke-dashoffset="-353"/>
-          </svg>
-          <div class="center">
-            <div class="v">₩34.2M</div>
-            <div class="l">총 수익</div>
-          </div>
-        </div>
-        <div class="seg-legend">
-          <div class="row-l"><span class="dot" style="background:#2b6df6;"></span><span class="name">GPTBot (OpenAI)</span><span class="pct">41%</span></div>
-          <div class="row-l"><span class="dot" style="background:#9d6bff;"></span><span class="name">ClaudeBot (Anthropic)</span><span class="pct">26%</span></div>
-          <div class="row-l"><span class="dot" style="background:#ff7a5c;"></span><span class="name">PerplexityBot</span><span class="pct">15%</span></div>
-          <div class="row-l"><span class="dot" style="background:#1aa377;"></span><span class="name">Googlebot-Extended</span><span class="pct">12%</span></div>
-          <div class="row-l"><span class="dot" style="background:#c4a01a;"></span><span class="name">기타</span><span class="pct">6%</span></div>
+        <div id="dash-bot-bars" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
+          <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
         </div>
       </div>
     </div>
@@ -517,104 +532,24 @@
     <div class="row r-6-6">
       <div class="panel">
         <div class="panel-head">
-          <h3>AI 회사별 활동</h3>
-          <span class="sub">실시간</span>
-          <div class="right"><a>전체 보기 →</a></div>
+          <h3>봇별 요청 현황</h3>
+          <span class="sub">누적</span>
+          <div class="right"><a onclick="nav(event,'page-analytics')" href="#">자세히 →</a></div>
         </div>
-        <div class="bot-list">
-          <div class="bot-row">
-            <div class="bot-avatar" style="background:#2b6df6;">G</div>
-            <div class="meta">
-              <div class="name">GPTBot · OpenAI</div>
-              <div class="ua">GPTBot/1.2 (+https://openai.com/gptbot)</div>
-            </div>
-            <div class="req"><div class="n">4.89M</div><div class="s">요청</div></div>
-            <div class="rev">+₩14.0M</div>
-          </div>
-          <div class="bot-row">
-            <div class="bot-avatar" style="background:#9d6bff;">C</div>
-            <div class="meta">
-              <div class="name">ClaudeBot · Anthropic</div>
-              <div class="ua">ClaudeBot/1.0 (+https://anthropic.com)</div>
-            </div>
-            <div class="req"><div class="n">3.10M</div><div class="s">요청</div></div>
-            <div class="rev">+₩8.9M</div>
-          </div>
-          <div class="bot-row">
-            <div class="bot-avatar" style="background:#ff7a5c;">P</div>
-            <div class="meta">
-              <div class="name">PerplexityBot</div>
-              <div class="ua">PerplexityBot/1.0 (+https://perplexity.ai)</div>
-            </div>
-            <div class="req"><div class="n">1.48M</div><div class="s">요청</div></div>
-            <div class="rev">+₩5.1M</div>
-          </div>
-          <div class="bot-row">
-            <div class="bot-avatar" style="background:#1aa377;">G</div>
-            <div class="meta">
-              <div class="name">Googlebot-Extended</div>
-              <div class="ua">Googlebot-Extended/2.1</div>
-            </div>
-            <div class="req"><div class="n">2.20M</div><div class="s">요청</div></div>
-            <div class="rev">+₩4.1M</div>
-          </div>
-          <div class="bot-row bg-blocked">
-            <div class="bot-avatar" style="background:#d4351c;">!</div>
-            <div class="meta">
-              <div class="name">FakeBot · 가짜 봇</div>
-              <div class="ua">FakeBot/2.0 (검증 실패)</div>
-            </div>
-            <div class="req"><div class="n">2.9M</div><div class="s">차단됨</div></div>
-            <div class="rev">차단</div>
-          </div>
+        <div id="dash-bot-list" class="bot-list">
+          <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
         </div>
       </div>
 
       <div class="panel">
         <div class="panel-head">
-          <h3>가격 규칙</h3>
-          <span class="sub">경로별 설정</span>
-          <div class="right"><a>편집 →</a></div>
+          <h3>경로 규칙</h3>
+          <span class="sub">현재 설정</span>
+          <div class="right"><a onclick="nav(event,'page-pricing')" href="#">편집 →</a></div>
         </div>
-        <div class="rules">
-          <div class="rule">
-            <span class="badge free">무료</span>
-            <span class="path">/robots.txt</span>
-            <span class="price">₩0</span>
-            <span class="ax">⋯</span>
-          </div>
-          <div class="rule">
-            <span class="badge free">무료</span>
-            <span class="path">/sitemap.xml</span>
-            <span class="price">₩0</span>
-            <span class="ax">⋯</span>
-          </div>
-          <div class="rule">
-            <span class="badge paid">유료</span>
-            <span class="path">/articles/*</span>
-            <span class="price">₩2.6 / 건</span>
-            <span class="ax">⋯</span>
-          </div>
-          <div class="rule">
-            <span class="badge paid">유료</span>
-            <span class="path">/reports/premium/*</span>
-            <span class="price">₩12.0 / 건</span>
-            <span class="ax">⋯</span>
-          </div>
-          <div class="rule">
-            <span class="badge paid">유료</span>
-            <span class="path">/columns/*</span>
-            <span class="price">₩5.2 / 건</span>
-            <span class="ax">⋯</span>
-          </div>
-          <div class="rule">
-            <span class="badge block">차단</span>
-            <span class="path">/admin/*</span>
-            <span class="price">—</span>
-            <span class="ax">⋯</span>
-          </div>
+        <div id="dash-rules">
+          <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
         </div>
-        <button class="add-rule">+ 새 규칙 추가</button>
       </div>
     </div>
 
@@ -626,87 +561,409 @@
           <span class="sub">실시간</span>
           <div class="right"><a>전체 로그 →</a></div>
         </div>
-        <div class="events">
-          <div class="event ev-ok">
-            <span class="pin"></span>
-            <span class="msg"><b>GPTBot</b>이 <span class="ua">/articles/2026/04/27/economy-ai</span>에 접근 · ₩2.6 적립</span>
-            <time>방금 전</time>
-          </div>
-          <div class="event ev-ok">
-            <span class="pin"></span>
-            <span class="msg"><b>ClaudeBot</b>이 <span class="ua">/columns/donga-view-128</span>에 접근 · ₩5.2 적립</span>
-            <time>2초 전</time>
-          </div>
-          <div class="event ev-bad">
-            <span class="pin"></span>
-            <span class="msg">가짜 봇 <span class="ua">FakeBot/2.0</span> 차단 (User-Agent 검증 실패)</span>
-            <time>14초 전</time>
-          </div>
-          <div class="event ev-warn">
-            <span class="pin"></span>
-            <span class="msg"><b>PerplexityBot</b>이 시간당 호출 한도(50K)에 근접</span>
-            <time>1분 전</time>
-          </div>
-          <div class="event ev-ok">
-            <span class="pin"></span>
-            <span class="msg">새 AI 회사 <b>Cohere</b>가 화이트리스트 등록을 신청했어요</span>
-            <time>4분 전</time>
-          </div>
-          <div class="event ev-ok">
-            <span class="pin"></span>
-            <span class="msg"><b>GPTBot</b>이 <span class="ua">/reports/premium/2026-q1</span>에 접근 · ₩12.0 적립</span>
-            <time>6분 전</time>
-          </div>
-        </div>
-      </div>
-
-      <div class="panel pastel-blue">
-        <div class="panel-head">
-          <h3>💡 알아두면 좋아요</h3>
-        </div>
-        <div style="font-size:14px; color:var(--ink-2); line-height:1.7; word-break:keep-all;">
-          <p style="margin:0 0 14px;"><strong>유료 콘텐츠 가격을 올려보세요.</strong> 비슷한 규모 매체의 평균은 건당 <strong>₩3.4</strong>예요. 현재 ₩2.6으로 설정되어 있어요.</p>
-          <p style="margin:0 0 14px;"><strong>새 AI 회사 6곳</strong>이 botgate에 추가되었어요. 화이트리스트에 추가하면 추가 수익이 발생해요.</p>
-          <p style="margin:0;"><strong>이번 주말 정산 보고서</strong>가 자동 발송됩니다. 미리 보려면 <a style="color:var(--brand); font-weight:600;">여기를 클릭</a>하세요.</p>
+        <div class="events" id="dash-events">
+          <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:24px;">로딩중…</div>
         </div>
       </div>
     </div>
+  </section><!-- /page-dashboard -->
+
+  <!-- ======================================================
+       분석 리포트
+  ====================================================== -->
+  <section id="page-analytics" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>분석 리포트</h1>
+        <div class="greeting">봇 종류별 요청 현황과 일별 추이를 확인하세요.</div>
+      </div>
+      <div class="right">
+        <select id="analytics-ch-select" class="ch-select ch-selector" onchange="onChannelChange(this)">
+          <option value="">전체 채널</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row r-7-5" style="margin-bottom:16px;">
+      <div class="panel">
+        <div class="panel-head">
+          <h3 id="analytics-chart-title">일별 요청 추이</h3>
+          <span class="sub" id="analytics-chart-sub">최근 30일</span>
+          <div class="right">
+            <button id="analytics-back-btn"
+              onclick="analyticsBackToDaily()"
+              style="display:none;font-size:12px;font-weight:600;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink-2);cursor:pointer;">
+              ← 30일 보기
+            </button>
+          </div>
+        </div>
+        <div class="chart" id="analytics-chart" style="height:240px;"></div>
+        <div class="chart-x" id="analytics-chartx"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>봇 종류별 요청 수</h3><span class="sub">누적</span></div>
+        <div id="analytics-bot-bars" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h3>봇 상세 테이블</h3></div>
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead><tr><th>Bot UA</th><th>요청 수</th><th>비율</th></tr></thead>
+          <tbody id="analytics-tbl-body">
+            <tr><td colspan="3" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================
+       실시간 트래픽
+  ====================================================== -->
+  <section id="page-traffic" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>실시간 트래픽</h1>
+        <div class="greeting">최근 접근 로그를 3초마다 자동 갱신합니다.</div>
+      </div>
+      <div class="right">
+        <select id="traffic-ch-select" class="ch-select ch-selector" onchange="onChannelChange(this)">
+          <option value="">전체 채널</option>
+        </select>
+        <span id="traffic-status" style="font-size:13px;color:var(--ok);font-weight:600;">● 라이브</span>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:0;overflow:hidden;">
+      <div class="log-hd">
+        <span>시각</span><span>검증</span><span>Bot UA</span><span>도메인</span><span>IP</span>
+      </div>
+      <div id="traffic-rows" style="max-height:calc(100vh - 240px);overflow-y:auto;"></div>
+    </div>
+  </section>
+
+  <!-- ======================================================
+       봇 화이트리스트 (토큰 관리)
+  ====================================================== -->
+  <section id="page-tokens" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>봇 화이트리스트</h1>
+        <div class="greeting">발급된 API 토큰을 관리하세요. 토큰이 있는 봇만 유료 콘텐츠에 접근할 수 있어요.</div>
+      </div>
+      <div class="right">
+        <button class="btn" onclick="issueToken()">+ 토큰 발급</button>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:0;overflow:hidden;">
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead><tr><th>소유자</th><th>플랜</th><th>토큰</th><th>만료일</th><th>상태</th><th style="text-align:right;">관리</th></tr></thead>
+          <tbody id="tokens-tbl-body">
+            <tr><td colspan="6" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================
+       채널 관리
+  ====================================================== -->
+  <section id="page-domains" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>채널 관리</h1>
+        <div class="greeting">내 사이트를 채널로 등록하면 AI 봇 트래픽을 리버스 프록시로 받을 수 있어요.</div>
+      </div>
+      <div class="right">
+        <button class="btn" onclick="showAddChannel()">+ 채널 추가</button>
+      </div>
+    </div>
+
+    <!-- 채널 추가 폼 (숨김) -->
+    <div id="channel-form" style="display:none; margin-bottom:16px;">
+      <div class="panel" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:160px;">
+          <label style="font-size:12px;color:var(--ink-dim);font-weight:600;">채널 이름</label>
+          <input id="ch-name" type="text" placeholder="내 뉴스 사이트"
+            style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px;">
+          <label style="font-size:12px;color:var(--ink-dim);font-weight:600;">도메인 (Host 헤더 매칭)</label>
+          <input id="ch-domain" type="text" placeholder="news.example.com"
+            style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:var(--mono);">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:220px;">
+          <label style="font-size:12px;color:var(--ink-dim);font-weight:600;">업스트림 URL (실제 서버)</label>
+          <input id="ch-upstream" type="text" placeholder="http://origin.example.com"
+            style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:var(--mono);">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" onclick="submitChannel()">저장</button>
+          <button class="btn" style="background:#fff;color:var(--ink-2);" onclick="hideAddChannel()">취소</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 채널 목록 -->
+    <div class="panel" style="padding:0;overflow:hidden;margin-bottom:16px;">
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>채널 이름</th>
+              <th>도메인</th>
+              <th>업스트림 URL</th>
+              <th style="text-align:right;">총 요청</th>
+              <th style="text-align:right;">검증</th>
+              <th style="text-align:right;">차단</th>
+              <th style="text-align:right;">봇 종류</th>
+              <th>상태</th>
+              <th style="text-align:right;">액션</th>
+            </tr>
+          </thead>
+          <tbody id="channels-tbl-body">
+            <tr><td colspan="5" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 도메인별 트래픽 현황 -->
+    <div class="panel">
+      <div class="panel-head"><h3>도메인별 요청 현황</h3><span class="sub">누적</span></div>
+      <div id="domains-list" style="display:flex;flex-direction:column;gap:14px;">
+        <div style="color:var(--ink-mute);font-size:14px;text-align:center;padding:24px;">로딩중…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================
+       경로 규칙 관리
+  ====================================================== -->
+  <section id="page-pricing" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>경로 규칙</h1>
+        <div class="greeting">허용·차단·과금 경로를 관리하세요. 규칙은 60초마다 게이트웨이에 반영됩니다.</div>
+      </div>
+      <div class="right">
+        <button class="btn" onclick="showAddRule()">+ 규칙 추가</button>
+      </div>
+    </div>
+
+    <!-- 추가 폼 (숨김) -->
+    <div id="rule-form" style="display:none; margin-bottom:16px;">
+      <div class="panel" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px;">
+          <label style="font-size:12px;color:var(--ink-dim);font-weight:600;">경로 패턴</label>
+          <input id="rule-pattern" type="text" placeholder="/articles/*"
+            style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:var(--mono);">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:130px;">
+          <label style="font-size:12px;color:var(--ink-dim);font-weight:600;">액션</label>
+          <select id="rule-action"
+            style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:#fff;">
+            <option value="meter">meter (과금)</option>
+            <option value="allow">allow (무료)</option>
+            <option value="block">block (차단)</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:150px;">
+          <label style="font-size:12px;color:var(--ink-dim);font-weight:600;">메모</label>
+          <input id="rule-note" type="text" placeholder="설명 (선택)"
+            style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" onclick="submitRule()">저장</button>
+          <button class="btn" style="background:#fff;color:var(--ink-2);" onclick="hideAddRule()">취소</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:0;overflow:hidden;">
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th style="width:180px;">경로 패턴</th>
+              <th style="width:100px;">액션</th>
+              <th>메모</th>
+              <th style="width:80px;">상태</th>
+              <th style="text-align:right;width:120px;">관리</th>
+            </tr>
+          </thead>
+          <tbody id="rules-tbl-body">
+            <tr><td colspan="5" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;padding:14px 16px;background:var(--pastel-blue);border-radius:var(--radius-lg);font-size:13px;color:var(--ink-2);line-height:1.7;">
+      <strong>패턴 규칙:</strong>
+      <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;font-family:var(--mono);">/admin/*</code> 형태로 뒤에 <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;font-family:var(--mono);">*</code>를 붙이면 하위 경로 전체에 적용됩니다.
+      더 긴 패턴이 우선 적용되며, 매칭되는 규칙이 없으면 <strong>meter</strong>(과금)가 기본값입니다.
+    </div>
+  </section>
+
+
   </main>
 </div>
 
 <script>
-  const API = 'http://localhost:3000';
+  const API = window.location.origin;
 
+  /* ─── 인증 ────────────────────────────────────────── */
+  function adminKey() { return localStorage.getItem('adminKey') || '' }
+
+  function apiFetch(url, opts = {}) {
+    const key = adminKey()
+    return fetch(url, {
+      ...opts,
+      headers: { ...opts.headers, ...(key ? { 'Authorization': `Bearer ${key}` } : {}) },
+    }).then(r => {
+      if (r.status === 401) { showLogin(); throw new Error('unauthorized') }
+      return r
+    })
+  }
+
+  function showLogin() {
+    const ov = document.getElementById('login-overlay')
+    ov.style.display = 'flex'
+    setTimeout(() => document.getElementById('login-pw').focus(), 50)
+  }
+  function hideLogin() {
+    document.getElementById('login-overlay').style.display = 'none'
+    document.getElementById('login-error').style.display = 'none'
+    document.getElementById('login-pw').value = ''
+  }
+  async function doLogin() {
+    const pw = document.getElementById('login-pw').value.trim()
+    if (!pw) return
+    localStorage.setItem('adminKey', pw)
+    try {
+      await apiFetch(`${API}/admin/tokens`)
+      hideLogin()
+      populateSelectors()
+      loadDashboard()
+    } catch(e) {
+      if (e.message === 'unauthorized') {
+        localStorage.removeItem('adminKey')
+        document.getElementById('login-error').style.display = 'block'
+      }
+    }
+  }
+
+  /* ─── helpers ─────────────────────────────────────── */
   function fmt(n) {
     if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
     if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
     return String(n);
   }
+  function fmtTime(iso) {
+    const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    const ss = String(d.getSeconds()).padStart(2,'0');
+    return `${hh}:${mm}:${ss}`;
+  }
+  function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
 
-  function renderChart(daily) {
-    const chart = document.getElementById('chart');
-    const chartx = document.getElementById('chartx');
+  /* ─── 전역 채널 상태 ───────────────────────────────── */
+  let _selectedChannel = null;   // null = 전체, string = domain
+  let _channelCache    = null;   // 채널 목록 캐시
+
+  async function fetchChannelList() {
+    if (_channelCache) return _channelCache;
+    try {
+      _channelCache = await apiFetch(`${API}/admin/channels`).then(r => r.json());
+    } catch(_) { _channelCache = []; }
+    return _channelCache;
+  }
+
+  async function populateSelectors() {
+    const channels = await fetchChannelList();
+    const opts = `<option value="">전체 채널</option>` +
+      channels.filter(c => c.active).map(c =>
+        `<option value="${esc(c.domain)}">${esc(c.name)}</option>`
+      ).join('');
+    document.querySelectorAll('.ch-selector').forEach(sel => {
+      sel.innerHTML = opts;
+      sel.value = _selectedChannel || '';
+    });
+  }
+
+  function onChannelChange(sel) {
+    _selectedChannel = sel.value || null;
+    // 다른 선택기도 동기화
+    document.querySelectorAll('.ch-selector').forEach(s => {
+      if (s !== sel) s.value = _selectedChannel || '';
+    });
+    // 현재 페이지 데이터 재로드
+    const activeId = document.querySelector('.page-section.active')?.id;
+    if (activeId === 'page-dashboard') loadDashboard();
+    if (activeId === 'page-analytics') { _analyticsDailyCache = null; loadAnalytics(); }
+    if (activeId === 'page-traffic')   { if (trafficTimer) { clearInterval(trafficTimer); trafficTimer = null; } startTraffic(); }
+  }
+
+  function chParam() {
+    return _selectedChannel ? `&domain=${encodeURIComponent(_selectedChannel)}` : '';
+  }
+
+  /* ─── SPA navigation ──────────────────────────────── */
+  let trafficTimer = null;
+
+  function nav(e, pageId) {
+    e.preventDefault();
+    // deactivate all sections and links
+    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.side a').forEach(a => a.classList.remove('active'));
+    // activate target
+    document.getElementById(pageId).classList.add('active');
+    e.currentTarget.classList.add('active');
+
+    // stop any running traffic poll
+    if (trafficTimer) { clearInterval(trafficTimer); trafficTimer = null; }
+
+    // lazy-load page data
+    populateSelectors();
+    if (pageId === 'page-analytics') loadAnalytics();
+    if (pageId === 'page-traffic')   startTraffic();
+    if (pageId === 'page-tokens')    loadTokens();
+    if (pageId === 'page-domains')   { loadChannels(); loadDomains(); }
+    if (pageId === 'page-pricing')   loadRules();
+  }
+
+  /* ─── CHART helper (shared) ────────────────────────── */
+  function buildChart(chartId, chartxId, daily, days) {
+    const chart  = document.getElementById(chartId);
+    const chartx = document.getElementById(chartxId);
+    if (!chart) return;
     chart.innerHTML = ''; chartx.innerHTML = '';
-
-    // 최근 14일 슬롯 생성 (없는 날은 0)
     const today = new Date();
-    const slots = Array.from({length: 14}, (_, i) => {
+    const slots = Array.from({length: days}, (_, i) => {
       const d = new Date(today);
-      d.setDate(today.getDate() - (13 - i));
+      d.setDate(today.getDate() - (days - 1 - i));
       const key = d.toISOString().slice(0, 10);
       const found = daily.find(r => r.date === key);
-      return { date: key, count: found ? found.count : 0, label: `${d.getMonth()+1}/${d.getDate()}` };
+      return { count: found ? found.count : 0, label: `${d.getMonth()+1}/${d.getDate()}` };
     });
-
     const max = Math.max(...slots.map(s => s.count), 1);
+    const chartH = chart.clientHeight || 200;
     slots.forEach((s, i) => {
-      const h = Math.round((s.count / max) * 200);
+      const h = Math.max(Math.round((s.count / max) * (chartH - 20)), s.count ? 2 : 0);
       const col = document.createElement('div');
       col.className = 'col';
-      col.title = `${s.label} · ${s.count.toLocaleString()} 요청`;
-      col.innerHTML = `<div class="bar b1" style="height:${h}px;border-radius:4px 4px 0 0;"></div>`;
+      col.title = `${s.label} · ${s.count.toLocaleString()}`;
+      col.innerHTML = `<div class="bar b1" style="height:${h}px;"></div>`;
       chart.appendChild(col);
-
       const lbl = document.createElement('div');
       lbl.className = 'l';
       lbl.textContent = (i % 2 === 0) ? s.label : '';
@@ -714,46 +971,576 @@
     });
   }
 
-  async function loadData() {
+  /* ─── DASHBOARD ────────────────────────────────────── */
+  const BOT_COLORS = ['#2b6df6','#9d6bff','#ff7a5c','#1aa377','#c4a01a','#e95c99','#00bcd4'];
+
+  async function loadDashboard() {
     try {
-      const [bots, daily] = await Promise.all([
-        fetch(`${API}/admin/stats/bots`).then(r => r.json()),
-        fetch(`${API}/admin/stats/daily`).then(r => r.json()),
+      const cp = chParam();
+      const [bots, daily, tokens, rules] = await Promise.all([
+        apiFetch(`${API}/admin/stats/bots?_=1${cp}`).then(r => r.json()),
+        apiFetch(`${API}/admin/stats/daily?_=1${cp}`).then(r => r.json()),
+        apiFetch(`${API}/admin/tokens`).then(r => r.json()),
+        apiFetch(`${API}/admin/path-rules`).then(r => r.json()),
       ]);
 
-      // KPI 업데이트
-      const totalReq = bots.reduce((a, b) => a + b.count, 0);
-      const fakeReq  = bots.filter(b => !b.verified).reduce((a, b) => a + (b.count || 0), 0);
-      const vendors  = [...new Set(bots.map(b => b.bot_ua))].length;
+      const totalReq    = bots.reduce((a, b) => a + b.count, 0);
+      const activeTokens = tokens.filter(t => t.active).length;
+      const el = id => document.getElementById(id);
 
-      const elReq = document.getElementById('kpi-requests');
-      if (elReq) elReq.textContent = fmt(totalReq);
-      const elSub = document.getElementById('kpi-requests-sub');
-      if (elSub) elSub.textContent = `총 ${bots.length}개 봇 종류`;
-      const elBlocked = document.getElementById('kpi-blocked');
-      if (elBlocked) elBlocked.textContent = fmt(fakeReq || 0);
-      const elVendors = document.getElementById('kpi-vendors');
-      if (elVendors) elVendors.textContent = `${vendors}곳`;
+      if (el('kpi-requests'))     el('kpi-requests').textContent = fmt(totalReq);
+      if (el('kpi-requests-sub')) el('kpi-requests-sub').textContent = `총 ${bots.length}개 봇 종류`;
+      if (el('kpi-vendors'))      el('kpi-vendors').textContent = `${bots.length}개`;
+      if (el('kpi-tokens'))       el('kpi-tokens').textContent = `${activeTokens}개`;
 
-      // 차트 업데이트
-      renderChart(daily);
-
+      buildChart('chart', 'chartx', daily, 14);
+      renderDashBotBars(bots);
+      renderDashBotList(bots);
+      renderDashRules(rules);
+      loadRecentEvents();
     } catch(e) {
-      console.warn('API 연결 실패, 목 데이터 사용:', e.message);
-      // fallback: 기존 랜덤 차트
-      const days = 14;
-      const data = Array.from({length: days}, (_, i) => {
-        const base = 600 + Math.sin(i / 2) * 120 + i * 12;
-        return { count: Math.round(base + Math.random() * 100), date: '' };
-      });
-      renderChart(data.map((d, i) => {
-        const dt = new Date(); dt.setDate(dt.getDate() - (13 - i));
-        return { date: dt.toISOString().slice(0,10), count: d.count };
-      }));
+      console.warn('Dashboard API 실패:', e.message);
+      buildChart('chart', 'chartx', [], 14);
     }
   }
 
-  loadData();
+  function renderDashBotBars(bots) {
+    const el = document.getElementById('dash-bot-bars');
+    if (!el) return;
+    if (!bots.length) { el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>'; return; }
+    const total = bots.reduce((a, b) => a + b.count, 0);
+    el.innerHTML = bots.slice(0, 7).map((b, i) => {
+      const pct = total ? Math.round(b.count / total * 100) : 0;
+      const ua  = b.bot_ua.split('/')[0];
+      return `<div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+          <span style="color:var(--ink);font-weight:600;">${esc(ua)}</span>
+          <span style="color:var(--ink-dim);">${fmt(b.count)} · ${pct}%</span>
+        </div>
+        <div style="height:8px;background:var(--bg-soft);border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${BOT_COLORS[i%BOT_COLORS.length]};border-radius:4px;transition:width 400ms;"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderDashBotList(bots) {
+    const el = document.getElementById('dash-bot-list');
+    if (!el) return;
+    if (!bots.length) { el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>'; return; }
+    el.innerHTML = bots.slice(0, 5).map((b, i) => {
+      const label = b.bot_ua.split('/')[0];
+      const initials = label.slice(0, 1).toUpperCase();
+      return `<div class="bot-row">
+        <div class="bot-avatar" style="background:${BOT_COLORS[i%BOT_COLORS.length]};">${initials}</div>
+        <div class="meta">
+          <div class="name">${esc(label)}</div>
+          <div class="ua">${esc(b.bot_ua)}</div>
+        </div>
+        <div class="req"><div class="n">${fmt(b.count)}</div><div class="s">요청</div></div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderDashRules(rules) {
+    const el = document.getElementById('dash-rules');
+    if (!el) return;
+    const active = rules.filter(r => r.active);
+    if (!active.length) { el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:24px;">규칙 없음</div>'; return; }
+    el.innerHTML = `<div class="rules">${active.map(r => {
+      const badge = r.action === 'allow'
+        ? '<span class="badge free">allow</span>'
+        : r.action === 'block'
+        ? '<span class="badge block">block</span>'
+        : '<span class="badge paid">meter</span>';
+      return `<div class="rule">
+        ${badge}
+        <span class="path">${esc(r.pattern)}</span>
+        <span style="font-size:12px;color:var(--ink-dim);">${esc(r.note || '')}</span>
+        <span></span>
+      </div>`;
+    }).join('')}</div>`;
+  }
+
+  async function loadRecentEvents() {
+    try {
+      const logs = await apiFetch(`${API}/admin/logs?limit=8${chParam()}`).then(r => r.json());
+      const el = document.getElementById('dash-events');
+      if (!el) return;
+      if (!logs.length) { el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:24px;">로그 없음</div>'; return; }
+      el.innerHTML = logs.map(l => {
+        const cls = l.verified ? 'ev-ok' : 'ev-bad';
+        const ua  = esc((l.bot_ua || 'unknown').split('/')[0]);
+        const path   = l.path ? `<span class="ua"> ${esc(l.path)}</span>` : '';
+        const domain = esc(l.domain || '—');
+        const ts  = fmtTime(l.ts);
+        const msg = l.verified
+          ? `<b>${ua}</b> → ${domain}${path}`
+          : `미검증 <span class="ua">${esc(l.bot_ua || 'unknown')}</span> (${domain})`;
+        return `<div class="event ${cls}"><span class="pin"></span><span class="msg">${msg}</span><time>${ts}</time></div>`;
+      }).join('');
+    } catch(_) {}
+  }
+
+  /* ─── ANALYTICS ────────────────────────────────────── */
+  let _analyticsDailyCache = null;
+
+  async function loadAnalytics() {
+    try {
+      const cp = chParam();
+      const [bots, daily] = await Promise.all([
+        apiFetch(`${API}/admin/stats/bots?_=1${cp}`).then(r => r.json()),
+        apiFetch(`${API}/admin/stats/daily?_=1${cp}`).then(r => r.json()),
+      ]);
+      _analyticsDailyCache = daily;
+      renderDailyChart(daily);
+      renderBotBars(bots);
+      renderBotTable(bots);
+    } catch(e) {
+      console.warn('Analytics 로드 실패:', e.message);
+    }
+  }
+
+  // 30일 차트 렌더 (클릭 시 시간별 드릴다운)
+  function renderDailyChart(daily) {
+    const chart  = document.getElementById('analytics-chart');
+    const chartx = document.getElementById('analytics-chartx');
+    document.getElementById('analytics-chart-title').textContent = '일별 요청 추이';
+    document.getElementById('analytics-chart-sub').textContent   = '최근 30일 · 막대 클릭 시 시간별 상세';
+    document.getElementById('analytics-back-btn').style.display  = 'none';
+    chart.innerHTML = ''; chartx.innerHTML = '';
+
+    const today = new Date();
+    const slots = Array.from({ length: 30 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() - (29 - i));
+      const key = d.toISOString().slice(0, 10);
+      const found = daily.find(r => r.date === key);
+      return { date: key, count: found ? found.count : 0, label: `${d.getMonth()+1}/${d.getDate()}` };
+    });
+
+    const max = Math.max(...slots.map(s => s.count), 1);
+    const chartH = chart.clientHeight || 220;
+
+    slots.forEach((s, i) => {
+      const h = Math.max(Math.round((s.count / max) * (chartH - 20)), s.count ? 2 : 0);
+      const col = document.createElement('div');
+      col.className = 'col';
+      col.title = `${s.label} · ${s.count.toLocaleString()}건 (클릭해서 시간별 보기)`;
+      col.style.cursor = 'pointer';
+      col.innerHTML = `<div class="bar b1" style="height:${h}px;"></div>`;
+      col.addEventListener('click', () => drillToHourly(s.date, s.label));
+      chart.appendChild(col);
+
+      const lbl = document.createElement('div');
+      lbl.className = 'l';
+      lbl.textContent = (i % 3 === 0) ? s.label : '';
+      chartx.appendChild(lbl);
+    });
+  }
+
+  // 시간별 드릴다운
+  async function drillToHourly(date, label) {
+    const chart  = document.getElementById('analytics-chart');
+    const chartx = document.getElementById('analytics-chartx');
+    chart.innerHTML  = `<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--ink-mute);font-size:13px;">로딩중…</div>`;
+    chartx.innerHTML = '';
+
+    document.getElementById('analytics-chart-title').textContent = `시간별 요청 추이`;
+    document.getElementById('analytics-chart-sub').textContent   = `${date} (${label})`;
+    document.getElementById('analytics-back-btn').style.display  = 'inline-flex';
+
+    try {
+      const hours = await apiFetch(`${API}/admin/stats/hourly?date=${date}${chParam()}`).then(r => r.json());
+      chart.innerHTML = ''; chartx.innerHTML = '';
+
+      const max = Math.max(...hours.map(h => h.count), 1);
+      const chartH = chart.clientHeight || 220;
+
+      hours.forEach((h, i) => {
+        const barH = Math.max(Math.round((h.count / max) * (chartH - 20)), h.count ? 2 : 0);
+        const col = document.createElement('div');
+        col.className = 'col';
+        col.title = `${h.hour}시 · ${h.count.toLocaleString()}건`;
+        col.innerHTML = `<div class="bar b2" style="height:${barH}px;"></div>`;
+        chart.appendChild(col);
+
+        const lbl = document.createElement('div');
+        lbl.className = 'l';
+        lbl.textContent = (i % 3 === 0) ? `${h.hour}시` : '';
+        chartx.appendChild(lbl);
+      });
+    } catch(e) {
+      chart.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--bad);font-size:13px;">로드 실패</div>`;
+    }
+  }
+
+  function analyticsBackToDaily() {
+    if (_analyticsDailyCache) renderDailyChart(_analyticsDailyCache);
+  }
+
+  function renderBotBars(bots) {
+    const total  = bots.reduce((a, b) => a + b.count, 0);
+    const colors = ['#2b6df6','#9d6bff','#ff7a5c','#1aa377','#c4a01a','#e95c99','#00bcd4'];
+    const el = document.getElementById('analytics-bot-bars');
+    if (!el) return;
+    el.innerHTML = bots.slice(0, 8).map((b, i) => {
+      const pct = total ? Math.round(b.count / total * 100) : 0;
+      return `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+            <span style="color:var(--ink);font-weight:600;">${esc(b.bot_ua)}</span>
+            <span style="color:var(--ink-dim);">${fmt(b.count)}</span>
+          </div>
+          <div style="height:8px;background:var(--bg-soft);border-radius:4px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${colors[i % colors.length]};border-radius:4px;transition:width 400ms;"></div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderBotTable(bots) {
+    const total  = bots.reduce((a, b) => a + b.count, 0);
+    const colors = ['#2b6df6','#9d6bff','#ff7a5c','#1aa377','#c4a01a','#e95c99','#00bcd4'];
+    const tbody = document.getElementById('analytics-tbl-body');
+    if (!tbody) return;
+    tbody.innerHTML = bots.map((b, i) => {
+      const pct = total ? (b.count / total * 100).toFixed(1) : 0;
+      return `<tr>
+        <td class="mono">${esc(b.bot_ua)}</td>
+        <td style="font-weight:700;">${fmt(b.count)}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:80px;height:6px;background:var(--bg-soft);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:${colors[i % colors.length]};border-radius:3px;"></div>
+            </div>
+            <span style="font-size:12px;color:var(--ink-dim);">${pct}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--ink-mute);padding:24px;">데이터 없음</td></tr>';
+  }
+
+  /* ─── TRAFFIC ──────────────────────────────────────── */
+  let trafficLastId = 0;
+  let trafficRows = [];
+
+  async function fetchTraffic() {
+    try {
+      const logs = await apiFetch(`${API}/admin/logs?limit=50${chParam()}`).then(r => r.json());
+      const newLogs = logs.filter(l => l.id > trafficLastId);
+      if (!newLogs.length) return;
+      trafficLastId = Math.max(...newLogs.map(l => l.id));
+      trafficRows = [...newLogs, ...trafficRows].slice(0, 200);
+      renderTrafficRows();
+    } catch(_) {}
+  }
+
+  function renderTrafficRows() {
+    const el = document.getElementById('traffic-rows');
+    if (!el) return;
+    el.innerHTML = trafficRows.map(l => {
+      const ok = l.verified ? 'log-ok' : 'log-bad';
+      const vLabel = l.verified ? '✓ 검증' : '✗ 실패';
+      return `<div class="log-row">
+        <span class="log-dim">${fmtTime(l.ts)}</span>
+        <span class="${ok}" style="font-weight:700;">${vLabel}</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.bot_ua || '—')}</span>
+        <span style="color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.domain || '—')}</span>
+        <span class="log-dim">${esc(l.ip || '—')}</span>
+      </div>`;
+    }).join('') || '<div style="padding:24px;text-align:center;color:var(--ink-mute);font-size:14px;">로그가 없어요</div>';
+  }
+
+  function startTraffic() {
+    trafficRows = []; trafficLastId = 0;
+    fetchTraffic();
+    trafficTimer = setInterval(fetchTraffic, 3000);
+  }
+
+  /* ─── TOKENS ───────────────────────────────────────── */
+  async function loadTokens() {
+    const tbody = document.getElementById('tokens-tbl-body');
+    if (!tbody) return;
+    try {
+      const tokens = await apiFetch(`${API}/admin/tokens`).then(r => r.json());
+      if (!tokens.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-mute);padding:24px;">발급된 토큰이 없어요</td></tr>';
+        return;
+      }
+      tbody.innerHTML = tokens.map(t => {
+        const status = t.active ? '<span class="sdot on">활성</span>' : '<span class="sdot off">비활성</span>';
+        const exp = t.expires_at ? t.expires_at.slice(0,10) : '—';
+        return `<tr>
+          <td style="font-weight:600;">${esc(t.owner || '—')}</td>
+          <td><span class="badge paid">${esc(t.plan || 'basic')}</span></td>
+          <td class="mono">${esc(t.token)}</td>
+          <td style="font-size:13px;color:var(--ink-dim);">${exp}</td>
+          <td>${status}</td>
+          <td style="text-align:right;">
+            ${t.active
+              ? `<button class="btn-sm danger" onclick="toggleToken('${t.id}',false)">비활성화</button>`
+              : `<button class="btn-sm" onclick="toggleToken('${t.id}',true)">활성화</button>`}
+          </td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--bad);padding:24px;">API 연결 실패</td></tr>`;
+    }
+  }
+
+  async function issueToken() {
+    const owner = prompt('소유자(봇 업체명)를 입력하세요:');
+    if (!owner) return;
+    const plan  = prompt('플랜을 입력하세요 (free / paid):', 'paid');
+    try {
+      const res = await apiFetch(`${API}/admin/tokens`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ owner, plan: plan || 'paid' })
+      }).then(r => r.json());
+      alert(`토큰 발급 완료:\n${res.token}`);
+      loadTokens();
+    } catch(e) { alert('발급 실패: ' + e.message); }
+  }
+
+  async function toggleToken(id, active) {
+    try {
+      await apiFetch(`${API}/admin/tokens/${id}`, {
+        method:'PATCH',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ active })
+      });
+      loadTokens();
+    } catch(e) { alert('변경 실패: ' + e.message); }
+  }
+
+  /* ─── CHANNELS ─────────────────────────────────────── */
+  async function loadChannels() {
+    const tbody = document.getElementById('channels-tbl-body');
+    if (!tbody) return;
+    try {
+      const [channels, stats] = await Promise.all([
+        apiFetch(`${API}/admin/channels`).then(r => r.json()),
+        apiFetch(`${API}/admin/stats/channels`).then(r => r.json()),
+      ]);
+      // 캐시 무효화 (채널 변경 후 selector 갱신)
+      _channelCache = channels;
+      populateSelectors();
+
+      if (!channels.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--ink-mute);padding:24px;">등록된 채널이 없어요. 채널을 추가해보세요.</td></tr>';
+        return;
+      }
+      const statsMap = Object.fromEntries(stats.map(s => [s.id, s]));
+      tbody.innerHTML = channels.map(c => {
+        const s = statsMap[c.id] || {};
+        const status = c.active
+          ? '<span class="sdot on">활성</span>'
+          : '<span class="sdot off">비활성</span>';
+        return `<tr>
+          <td style="font-weight:600;">${esc(c.name)}</td>
+          <td class="mono">${esc(c.domain)}</td>
+          <td class="mono" style="color:var(--ink-dim);font-size:12px;">${esc(c.upstream)}</td>
+          <td style="text-align:right;font-weight:700;">${fmt(s.total || 0)}</td>
+          <td style="text-align:right;color:var(--ok);">${fmt(s.verified || 0)}</td>
+          <td style="text-align:right;color:var(--bad);">${fmt(s.blocked || 0)}</td>
+          <td style="text-align:right;color:var(--ink-dim);">${s.bot_types || 0}개</td>
+          <td>${status}</td>
+          <td style="text-align:right;">
+            <div style="display:flex;gap:6px;justify-content:flex-end;">
+              <button class="btn-sm" onclick="toggleChannel('${c.id}',${!c.active})">
+                ${c.active ? '비활성화' : '활성화'}
+              </button>
+              <button class="btn-sm danger" onclick="deleteChannel('${c.id}')">삭제</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--bad);padding:24px;">API 연결 실패</td></tr>`;
+    }
+  }
+
+  function showAddChannel() {
+    document.getElementById('channel-form').style.display = 'block';
+    document.getElementById('ch-name').focus();
+  }
+  function hideAddChannel() {
+    document.getElementById('channel-form').style.display = 'none';
+    ['ch-name','ch-domain','ch-upstream'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+  }
+
+  async function submitChannel() {
+    const name     = document.getElementById('ch-name').value.trim();
+    const domain   = document.getElementById('ch-domain').value.trim();
+    const upstream = document.getElementById('ch-upstream').value.trim();
+    if (!name)     { alert('채널 이름을 입력하세요.'); return; }
+    if (!domain)   { alert('도메인을 입력하세요. (예: news.example.com)'); return; }
+    if (!upstream) { alert('업스트림 URL을 입력하세요. (예: http://origin.example.com)'); return; }
+    // upstream URL 형식 간단 검증
+    if (!/^https?:\/\/.+/.test(upstream)) {
+      alert('업스트림 URL은 http:// 또는 https:// 로 시작해야 해요.');
+      return;
+    }
+    try {
+      const res = await apiFetch(`${API}/admin/channels`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, domain, upstream }),
+      });
+      if (res.status === 409) { alert('이미 등록된 도메인이에요.'); return; }
+      if (!res.ok) throw new Error(res.status);
+      hideAddChannel();
+      loadChannels();
+    } catch(e) { alert('저장 실패: ' + e.message); }
+  }
+
+  async function toggleChannel(id, active) {
+    await apiFetch(`${API}/admin/channels/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active }),
+    });
+    _channelCache = null;
+    loadChannels();
+  }
+
+  async function deleteChannel(id) {
+    if (!confirm('이 채널을 삭제할까요?')) return;
+    await apiFetch(`${API}/admin/channels/${id}`, { method: 'DELETE' });
+    _channelCache = null;
+    loadChannels();
+  }
+
+  /* ─── DOMAINS ──────────────────────────────────────── */
+  async function loadDomains() {
+    const el = document.getElementById('domains-list');
+    if (!el) return;
+    try {
+      const domains = await apiFetch(`${API}/admin/stats/domains`).then(r => r.json());
+      if (!domains.length) {
+        el.innerHTML = '<div style="text-align:center;color:var(--ink-mute);padding:24px;">데이터가 없어요</div>';
+        return;
+      }
+      const max = Math.max(...domains.map(d => d.count), 1);
+      el.innerHTML = domains.map(d => {
+        const pct = Math.round(d.count / max * 100);
+        return `
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:14px;font-weight:600;color:var(--ink);">${esc(d.domain)}</span>
+              <span style="font-size:13px;color:var(--ink-dim);">${fmt(d.count)}건</span>
+            </div>
+            <div class="dbar"><div class="dbar-fill" style="width:${pct}%;"></div></div>
+          </div>`;
+      }).join('');
+    } catch(e) {
+      el.innerHTML = `<div style="text-align:center;color:var(--bad);padding:24px;">API 연결 실패</div>`;
+    }
+  }
+
+  /* ─── PATH RULES ───────────────────────────────────────── */
+  const ACTION_BADGE = {
+    allow: `<span class="badge free">allow</span>`,
+    block: `<span class="badge block">block</span>`,
+    meter: `<span class="badge paid">meter</span>`,
+  };
+
+  async function loadRules() {
+    const tbody = document.getElementById('rules-tbl-body');
+    if (!tbody) return;
+    try {
+      const rules = await apiFetch(`${API}/admin/path-rules`).then(r => r.json());
+      if (!rules.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-mute);padding:24px;">규칙이 없어요</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rules.map(r => `
+        <tr>
+          <td class="mono" style="font-weight:600;">${esc(r.pattern)}</td>
+          <td>${ACTION_BADGE[r.action] || esc(r.action)}</td>
+          <td style="color:var(--ink-dim);font-size:13px;">${esc(r.note || '—')}</td>
+          <td>
+            ${r.active
+              ? '<span class="sdot on" style="font-size:12px;">활성</span>'
+              : '<span class="sdot off" style="font-size:12px;">비활성</span>'}
+          </td>
+          <td style="text-align:right;">
+            <div style="display:flex;gap:6px;justify-content:flex-end;">
+              <button class="btn-sm" onclick="toggleRule('${r.id}',${!r.active})">
+                ${r.active ? '비활성화' : '활성화'}
+              </button>
+              <button class="btn-sm danger" onclick="deleteRule('${r.id}')">삭제</button>
+            </div>
+          </td>
+        </tr>`).join('');
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--bad);padding:24px;">API 연결 실패</td></tr>`;
+    }
+  }
+
+  function showAddRule() {
+    document.getElementById('rule-form').style.display = 'block';
+    document.getElementById('rule-pattern').focus();
+  }
+  function hideAddRule() {
+    document.getElementById('rule-form').style.display = 'none';
+    document.getElementById('rule-pattern').value = '';
+    document.getElementById('rule-note').value = '';
+  }
+
+  async function submitRule() {
+    const pattern = document.getElementById('rule-pattern').value.trim();
+    const action  = document.getElementById('rule-action').value;
+    const note    = document.getElementById('rule-note').value.trim();
+    if (!pattern) { alert('경로 패턴을 입력하세요.'); return; }
+    try {
+      const res = await apiFetch(`${API}/admin/path-rules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pattern, action, note }),
+      });
+      if (res.status === 409) { alert('이미 존재하는 패턴이에요.'); return; }
+      if (!res.ok) throw new Error(res.status);
+      hideAddRule();
+      loadRules();
+    } catch(e) { alert('저장 실패: ' + e.message); }
+  }
+
+  async function toggleRule(id, active) {
+    await apiFetch(`${API}/admin/path-rules/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active }),
+    });
+    loadRules();
+  }
+
+  async function deleteRule(id) {
+    if (!confirm('이 규칙을 삭제할까요?')) return;
+    await apiFetch(`${API}/admin/path-rules/${id}`, { method: 'DELETE' });
+    loadRules();
+  }
+
+  /* ─── INIT ──────────────────────────────────────────── */
+  (async () => {
+    try {
+      await apiFetch(`${API}/admin/tokens`)  // 인증 확인
+      hideLogin()
+      populateSelectors()
+      loadDashboard()
+    } catch(e) {
+      if (e.message !== 'unauthorized') {
+        // ADMIN_KEY 없는 개발 환경: 그냥 진행
+        populateSelectors()
+        loadDashboard()
+      }
+      // unauthorized: showLogin() 은 apiFetch 내부에서 이미 호출됨
+    }
+  })()
 </script>
 
 </body>
