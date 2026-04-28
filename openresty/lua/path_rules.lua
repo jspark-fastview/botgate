@@ -12,6 +12,7 @@ local CACHE_TTL = 60   -- seconds
 local function fetch_rules_from_api()
     local host = os.getenv("TOKEN_API_HOST") or "127.0.0.1"
     local port = tonumber(os.getenv("TOKEN_API_PORT") or "3000")
+    local key  = os.getenv("ADMIN_KEY") or ""
 
     local sock = ngx.socket.tcp()
     sock:settimeout(300)
@@ -22,12 +23,17 @@ local function fetch_rules_from_api()
         return nil
     end
 
-    local req = table.concat({
+    local req_lines = {
         "GET /admin/path-rules HTTP/1.1",
         "Host: " .. host .. ":" .. port,
         "Connection: close",
-        "", "",
-    }, "\r\n")
+    }
+    if key ~= "" then
+        req_lines[#req_lines + 1] = "Authorization: Bearer " .. key
+    end
+    req_lines[#req_lines + 1] = ""
+    req_lines[#req_lines + 1] = ""
+    local req = table.concat(req_lines, "\r\n")
 
     local sent, serr = sock:send(req)
     if not sent then sock:close(); return nil end
