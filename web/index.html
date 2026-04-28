@@ -492,7 +492,7 @@
     </div>
 
     <!-- KPI -->
-    <div class="kpis" style="grid-template-columns:repeat(5,1fr);">
+    <div class="kpis" style="grid-template-columns:repeat(4,1fr);">
       <div class="kpi accent">
         <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2"/></svg></div>
         <div class="l">AI 봇 요청</div>
@@ -504,12 +504,6 @@
         <div class="l">기타 봇</div>
         <div class="v" id="kpi-otherbot">—</div>
         <div class="s">Slackbot · 크롤러 등</div>
-      </div>
-      <div class="kpi">
-        <div class="icon" style="background:var(--pastel-blue);color:#1f4fb8;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-        <div class="l">사용자</div>
-        <div class="v" id="kpi-users">—</div>
-        <div class="s">일반 브라우저 방문</div>
       </div>
       <div class="kpi">
         <div class="icon" style="background:var(--pastel-mint); color:var(--ok);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
@@ -575,8 +569,18 @@
       </div>
     </div>
 
-    <!-- 기타 봇 요청 현황 -->
-    <div class="row">
+    <!-- 사용자 / 기타 봇 요청 현황 -->
+    <div class="row r-6-6">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>사용자 요청 현황</h3>
+          <span class="sub" id="dash-user-sub">누적 · 일반 브라우저</span>
+        </div>
+        <div id="dash-user-list" class="bot-list">
+          <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
+        </div>
+      </div>
+
       <div class="panel">
         <div class="panel-head">
           <h3>기타 봇 요청 현황</h3>
@@ -1053,8 +1057,9 @@
   async function loadDashboard() {
     try {
       const cp = chParam();
-      const [bots, otherBots, daily, tokens, rules, billing, categoryStats] = await Promise.all([
+      const [bots, users, otherBots, daily, tokens, rules, billing, categoryStats] = await Promise.all([
         apiFetch(`${API}/admin/stats/bots?category=bot${cp}`).then(r => r.json()),
+        apiFetch(`${API}/admin/stats/bots?category=user${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/bots?category=other_bot${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/daily?_=1${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/tokens`).then(r => r.json()),
@@ -1072,7 +1077,6 @@
       if (el('kpi-requests'))     el('kpi-requests').textContent = fmt(aiBotTotal);
       if (el('kpi-requests-sub')) el('kpi-requests-sub').textContent = `${bots.length}개 종류`;
       if (el('kpi-otherbot'))     el('kpi-otherbot').textContent = fmt(otherBotTotal);
-      if (el('kpi-users'))        el('kpi-users').textContent = fmt(userTotal);
       if (el('kpi-tokens'))       el('kpi-tokens').textContent = `${activeTokens}개`;
 
       if (el('kpi-billing') && billing) {
@@ -1085,6 +1089,7 @@
       renderDashBotBars(bots);
       renderDashBotList(bots);
       renderDashRules(rules);
+      renderDashUserPanel(users);
       renderDashUaList('dash-otherbot-list', otherBots, '#9d6bff');
       loadRecentEvents();
     } catch(e) {
@@ -1134,7 +1139,7 @@
     }).join('');
   }
 
-  // 사용자/기타 봇 UA 리스트 (TOP 5)
+  // 기타 봇 UA 리스트 (TOP 5)
   function renderDashUaList(elId, list, color) {
     const el = document.getElementById(elId);
     if (!el) return;
@@ -1155,6 +1160,58 @@
         <div class="req"><div class="n">${fmt(b.count)}</div><div class="s">요청</div></div>
       </div>`;
     }).join('');
+  }
+
+  // 사용자 패널 — UA 를 브라우저 패밀리로 그룹핑
+  const BROWSER_COLORS = {
+    'Chrome':  '#4285f4',
+    'Safari':  '#1a73e8',
+    'Firefox': '#ff7139',
+    'Edge':    '#0078d4',
+    '모바일':  '#9d6bff',
+    '기타':    '#9aa1ad',
+  };
+  function classifyBrowser(ua) {
+    if (!ua) return '기타';
+    if (/iPhone|Android|Mobile/i.test(ua)) return '모바일';
+    if (/Edg\//.test(ua)) return 'Edge';
+    if (/Firefox/i.test(ua)) return 'Firefox';
+    if (/Chrome/i.test(ua)) return 'Chrome';
+    if (/Safari/i.test(ua)) return 'Safari';
+    return '기타';
+  }
+  function renderDashUserPanel(list) {
+    const el = document.getElementById('dash-user-list');
+    const subEl = document.getElementById('dash-user-sub');
+    if (!el) return;
+    if (!list || !list.length) {
+      el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>';
+      return;
+    }
+    // 브라우저 패밀리별 합산
+    const buckets = {};
+    let total = 0;
+    for (const r of list) {
+      const fam = classifyBrowser(r.bot_ua);
+      buckets[fam] = (buckets[fam] || 0) + r.count;
+      total += r.count;
+    }
+    const order = ['Chrome','Safari','Firefox','Edge','모바일','기타'];
+    const rows = order.filter(k => buckets[k]).map(k => {
+      const cnt = buckets[k];
+      const pct = total ? Math.round(cnt/total*100) : 0;
+      const color = BROWSER_COLORS[k];
+      return `<div class="bot-row">
+        <div class="bot-avatar" style="background:${color};">${esc(k.slice(0,1).toUpperCase())}</div>
+        <div class="meta">
+          <div class="name">${esc(k)}</div>
+          <div class="ua">${pct}% 비중</div>
+        </div>
+        <div class="req"><div class="n">${fmt(cnt)}</div><div class="s">요청</div></div>
+      </div>`;
+    }).join('');
+    el.innerHTML = rows;
+    if (subEl) subEl.textContent = `누적 ${fmt(total)}건 · 브라우저별`;
   }
 
   function renderDashRules(rules) {
