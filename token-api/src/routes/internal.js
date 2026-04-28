@@ -7,8 +7,8 @@ const validateStmt = db.prepare(`
 `)
 
 const logStmt = db.prepare(`
-  INSERT INTO access_logs (token, bot_ua, domain, ip, path, verified, billed)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO access_logs (token, bot_ua, domain, ip, path, verified, billed, category)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
 export default async function internalRoutes(app) {
@@ -33,7 +33,7 @@ export default async function internalRoutes(app) {
     const row = validateStmt.get(token)
 
     // 무효 토큰은 null 로 기록 (FK 제약 위반 방지)
-    logStmt.run(row ? token : null, bot_ua, domain, ip, path, row ? 1 : 0, billed ? 1 : 0)
+    logStmt.run(row ? token : null, bot_ua, domain, ip, path, row ? 1 : 0, billed ? 1 : 0, 'bot')
 
     if (!row) {
       return reply.code(401).send({ valid: false })
@@ -41,7 +41,7 @@ export default async function internalRoutes(app) {
     return reply.send({ valid: true, plan: row.plan })
   })
 
-  // OpenResty: rDNS 통과한 봇 접근 기록 (토큰 없는 경우)
+  // OpenResty: 접근 기록 (봇 또는 사용자)
   // POST /internal/access
   app.post('/internal/access', {
     schema: {
@@ -55,12 +55,13 @@ export default async function internalRoutes(app) {
           path:     { type: 'string' },
           verified: { type: 'boolean' },
           billed:   { type: 'boolean' },
+          category: { type: 'string', enum: ['bot', 'user'] },
         },
       },
     },
   }, (req, reply) => {
-    const { bot_ua, domain, ip, path = null, verified, billed = false } = req.body
-    logStmt.run(null, bot_ua, domain, ip, path, verified ? 1 : 0, billed ? 1 : 0)
+    const { bot_ua, domain, ip, path = null, verified, billed = false, category = 'bot' } = req.body
+    logStmt.run(null, bot_ua, domain, ip, path, verified ? 1 : 0, billed ? 1 : 0, category)
     return reply.code(204).send()
   })
 }

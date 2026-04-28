@@ -63,18 +63,19 @@ const nullifyLogs = db.prepare(`
   WHERE token = (SELECT token FROM tokens WHERE id = ?)
 `)
 
-// 채널별 요약 (channels 테이블과 LEFT JOIN)
+// 채널별 요약 — 봇 트래픽과 사용자 트래픽 분리 집계
 const statsByChannel = db.prepare(`
   SELECT
     c.id, c.name, c.domain, c.upstream, c.active,
-    COUNT(l.id)               AS total,
-    SUM(CASE WHEN l.verified = 1 THEN 1 ELSE 0 END) AS verified,
-    SUM(CASE WHEN l.verified = 0 THEN 1 ELSE 0 END) AS blocked,
-    COUNT(DISTINCT l.bot_ua)  AS bot_types
+    SUM(CASE WHEN l.category = 'bot'  THEN 1 ELSE 0 END) AS bot_total,
+    SUM(CASE WHEN l.category = 'user' THEN 1 ELSE 0 END) AS user_total,
+    SUM(CASE WHEN l.category = 'bot' AND l.verified = 1 THEN 1 ELSE 0 END) AS verified,
+    SUM(CASE WHEN l.category = 'bot' AND l.verified = 0 THEN 1 ELSE 0 END) AS blocked,
+    COUNT(DISTINCT CASE WHEN l.category = 'bot' THEN l.bot_ua END)  AS bot_types
   FROM channels c
   LEFT JOIN access_logs l ON l.domain = c.domain
   GROUP BY c.id
-  ORDER BY total DESC
+  ORDER BY (bot_total + user_total) DESC
 `)
 
 // ── channels ─────────────────────────────────────────────
@@ -197,13 +198,16 @@ export default async function adminRoutes(app) {
     return reply.send({ id: ch.id, ...result })
   })
 
-  // 봇별 접근 통계 (?domain= 선택)
+  // 봇별 접근 통계 (?domain= 선택, category='bot' 만)
   app.get('/admin/stats/bots', (req, reply) => {
     const { domain } = req.query
-    const where = domain ? `WHERE domain = ?` : ''
+    const conds = [`category = 'bot'`]
+    const params = []
+    if (domain) { conds.push(`domain = ?`); params.push(domain) }
+    const where = `WHERE ` + conds.join(' AND ')
     const rows = db.prepare(
       `SELECT bot_ua, COUNT(*) AS count FROM access_logs ${where} GROUP BY bot_ua ORDER BY count DESC`
-    ).all(...(domain ? [domain] : []))
+    ).all(...params)
     return reply.send(rows)
   })
 
@@ -242,14 +246,19 @@ export default async function adminRoutes(app) {
     return reply.send(result)
   })
 
-  // 최근 로그 (?domain= 선택)
+  // 최근 로그 (?domain=, ?category=bot|user|all 선택, 기본 bot)
   app.get('/admin/logs', (req, reply) => {
     const limit = Math.min(Number(req.query.limit) || 100, 500)
-    const { domain } = req.query
-    const where = domain ? `WHERE domain = ?` : ''
+    const { domain, category = 'bot' } = req.query
+    const conds = []
+    const params = []
+    if (category && category !== 'all') { conds.push(`category = ?`); params.push(category) }
+    if (domain) { conds.push(`domain = ?`); params.push(domain) }
+    const where = conds.length ? `WHERE ` + conds.join(' AND ') : ''
+    params.push(limit)
     const rows = db.prepare(
-      `SELECT id, token, bot_ua, domain, ip, path, verified, billed, ts FROM access_logs ${where} ORDER BY id DESC LIMIT ?`
-    ).all(...(domain ? [domain, limit] : [limit]))
+      `SELECT id, token, bot_ua, domain, ip, path, verified, billed, category, ts FROM access_logs ${where} ORDER BY id DESC LIMIT ?`
+    ).all(...params)
     return reply.send(rows)
   })
 
