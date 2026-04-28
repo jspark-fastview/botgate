@@ -492,7 +492,7 @@
     </div>
 
     <!-- KPI -->
-    <div class="kpis" style="grid-template-columns:repeat(4,1fr);">
+    <div class="kpis" style="grid-template-columns:repeat(5,1fr);">
       <div class="kpi accent">
         <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2"/></svg></div>
         <div class="l">AI 봇 요청</div>
@@ -501,9 +501,15 @@
       </div>
       <div class="kpi">
         <div class="icon" style="background:var(--bg-soft);color:var(--ink-2);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
-        <div class="l">기타 봇 / 사용자</div>
-        <div class="v" id="kpi-other">—</div>
-        <div class="s" id="kpi-other-sub">크롤러·사용자 누적</div>
+        <div class="l">기타 봇</div>
+        <div class="v" id="kpi-otherbot">—</div>
+        <div class="s">Slackbot · 크롤러 등</div>
+      </div>
+      <div class="kpi">
+        <div class="icon" style="background:var(--pastel-blue);color:#1f4fb8;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <div class="l">사용자</div>
+        <div class="v" id="kpi-users">—</div>
+        <div class="s">일반 브라우저 방문</div>
       </div>
       <div class="kpi">
         <div class="icon" style="background:var(--pastel-mint); color:var(--ok);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
@@ -1043,15 +1049,16 @@
         apiFetch(`${API}/admin/stats/category?_=1${cp}`).then(r => r.json()).catch(() => ({bot:0,other_bot:0,user:0})),
       ]);
 
-      const aiBotTotal   = categoryStats.bot || 0;
-      const otherTotal   = (categoryStats.other_bot || 0) + (categoryStats.user || 0);
+      const aiBotTotal   = categoryStats.bot       || 0;
+      const otherBotTotal = categoryStats.other_bot || 0;
+      const userTotal    = categoryStats.user       || 0;
       const activeTokens = tokens.filter(t => t.active).length;
       const el = id => document.getElementById(id);
 
       if (el('kpi-requests'))     el('kpi-requests').textContent = fmt(aiBotTotal);
       if (el('kpi-requests-sub')) el('kpi-requests-sub').textContent = `${bots.length}개 종류`;
-      if (el('kpi-other'))        el('kpi-other').textContent = fmt(otherTotal);
-      if (el('kpi-other-sub'))    el('kpi-other-sub').textContent = `봇 ${fmt(categoryStats.other_bot||0)} · 사용자 ${fmt(categoryStats.user||0)}`;
+      if (el('kpi-otherbot'))     el('kpi-otherbot').textContent = fmt(otherBotTotal);
+      if (el('kpi-users'))        el('kpi-users').textContent = fmt(userTotal);
       if (el('kpi-tokens'))       el('kpi-tokens').textContent = `${activeTokens}개`;
 
       if (el('kpi-billing') && billing) {
