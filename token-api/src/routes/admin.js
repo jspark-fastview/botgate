@@ -1,6 +1,35 @@
 // 어드민 엔드포인트
 import { db } from '../db/schema.js'
 import { nanoid } from 'nanoid'
+import { resolve4, resolveCname } from 'dns/promises'
+
+// 채널 도메인이 우리 ALB(또는 설정된 호스트네임)로 향하는지 확인
+async function checkChannelDns(domain) {
+  const expected = (process.env.ALB_HOSTNAME || '').trim()
+  let cname = null, ips = []
+  try {
+    const list = await resolveCname(domain)
+    cname = list[0] || null
+  } catch (_) {}
+  try {
+    ips = await resolve4(domain)
+  } catch (_) {}
+
+  let status = 'unresolved'                                // 도메인 미응답
+  if (cname || ips.length) status = 'resolved'             // 응답은 옴 (목적지는 모름)
+
+  if (expected && (cname || ips.length)) {
+    let matched = !!(cname && cname.toLowerCase().includes(expected.toLowerCase()))
+    if (!matched && ips.length) {
+      try {
+        const albIps = await resolve4(expected)
+        matched = ips.some(ip => albIps.includes(ip))
+      } catch (_) {}
+    }
+    status = matched ? 'connected' : 'mismatch'
+  }
+  return { domain, status, cname, ips, expected: expected || null }
+}
 
 // OpenResty 캐시 무효화 (채널/경로규칙 변경 직후 호출)
 async function invalidateCache() {
@@ -128,6 +157,23 @@ export default async function adminRoutes(app) {
   // 채널별 요약 통계
   app.get('/admin/stats/channels', (_req, reply) => {
     return reply.send(statsByChannel.all())
+  })
+
+  // 전체 채널 DNS 연결 상태 일괄 조회
+  app.get('/admin/channels/dns-status', async (_req, reply) => {
+    const channels = listChannels.all()
+    const results = await Promise.all(
+      channels.map(c => checkChannelDns(c.domain).then(r => ({ id: c.id, ...r })))
+    )
+    return reply.send(results)
+  })
+
+  // 단일 채널 DNS 연결 상태
+  app.get('/admin/channels/:id/dns-check', async (req, reply) => {
+    const ch = db.prepare('SELECT * FROM channels WHERE id = ?').get(req.params.id)
+    if (!ch) return reply.code(404).send({ error: 'not found' })
+    const result = await checkChannelDns(ch.domain)
+    return reply.send({ id: ch.id, ...result })
   })
 
   // 봇별 접근 통계 (?domain= 선택)

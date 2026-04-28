@@ -22,6 +22,7 @@ services:
       - ADMIN_KEY=${ADMIN_KEY}
       - OPENRESTY_HOST=openresty
       - OPENRESTY_PORT=80
+      - ALB_HOSTNAME=${ALB_HOSTNAME:-}
     volumes:
       - token-data:/app/data
       - ./web:/app/web:ro
