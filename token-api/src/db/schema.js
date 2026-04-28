@@ -63,6 +63,17 @@ db.exec(`
     expires_at TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  -- 전역 설정 (key/value)
+  CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+
+  -- 기본값
+  -- strict_mode = '1' : rDNS 실패 시 토큰 없으면 차단(현재 동작)
+  -- strict_mode = '0' : rDNS 실패해도 통과 (verified=false 로깅만)
+  INSERT OR IGNORE INTO settings (key, value) VALUES ('strict_mode', '1');
   CREATE INDEX IF NOT EXISTS idx_sessions_user    ON sessions(user_id);
   CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 

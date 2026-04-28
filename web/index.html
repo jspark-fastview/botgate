@@ -474,7 +474,17 @@
         <h1>안녕하세요, 패스트뷰 님</h1>
         <div class="greeting">봇 트래픽 현황을 실시간으로 확인하세요.</div>
       </div>
-      <div class="right">
+      <div class="right" style="gap:14px;align-items:center;">
+        <label id="strict-toggle-wrap"
+          style="display:none;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);cursor:pointer;user-select:none;"
+          title="ON: rDNS 검증 실패 시 차단 / OFF: 통과시키되 verified=false 마킹">
+          <span>엄격 모드</span>
+          <span id="strict-toggle"
+            style="position:relative;display:inline-block;width:38px;height:22px;background:var(--ink-mute);border-radius:999px;transition:background 160ms;">
+            <span id="strict-toggle-knob"
+              style="position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform 160ms;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>
+          </span>
+        </label>
         <select id="dash-ch-select" class="ch-select ch-selector" onchange="onChannelChange(this)">
           <option value="">전체 채널</option>
         </select>
@@ -1612,6 +1622,41 @@
     loadRules();
   }
 
+  /* ─── SETTINGS (strict mode 토글) ──────────────────────── */
+  let _strictMode = true;
+
+  function renderStrictToggle() {
+    const wrap = document.getElementById('strict-toggle-wrap');
+    const sw   = document.getElementById('strict-toggle');
+    const knob = document.getElementById('strict-toggle-knob');
+    if (!wrap || !sw || !knob) return;
+    wrap.style.display = 'inline-flex';
+    sw.style.background = _strictMode ? 'var(--brand)' : 'var(--ink-mute)';
+    knob.style.transform = _strictMode ? 'translateX(16px)' : 'translateX(0)';
+    wrap.onclick = toggleStrictMode;
+  }
+
+  async function loadSettings() {
+    try {
+      const s = await apiFetch(`${API}/admin/settings`).then(r => r.json());
+      _strictMode = (s.strict_mode ?? '1') !== '0';
+      renderStrictToggle();
+    } catch(_) {}
+  }
+
+  async function toggleStrictMode() {
+    const newVal = _strictMode ? '0' : '1';
+    try {
+      await apiFetch(`${API}/admin/settings/strict_mode`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: newVal }),
+      });
+      _strictMode = (newVal === '1');
+      renderStrictToggle();
+    } catch(e) { alert('변경 실패: ' + e.message); }
+  }
+
   /* ─── USERS ───────────────────────────────────────────── */
   async function loadUsers() {
     const tbody = document.getElementById('users-tbl-body');
@@ -1667,11 +1712,13 @@
       await apiFetch(`${API}/admin/tokens`)  // 인증 확인
       hideLogin()
       populateSelectors()
+      loadSettings()
       loadDashboard()
     } catch(e) {
       if (e.message !== 'unauthorized') {
         // ADMIN_KEY 없는 개발 환경: 그냥 진행
         populateSelectors()
+        loadSettings()
         loadDashboard()
       }
       // unauthorized: showLogin() 은 apiFetch 내부에서 이미 호출됨

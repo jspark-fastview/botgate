@@ -319,6 +319,32 @@ export default async function adminRoutes(app) {
     return reply.code(204).send()
   })
 
+  // ── settings ──────────────────────────────────────────
+
+  // 모든 설정값 조회
+  app.get('/admin/settings', (_req, reply) => {
+    const rows = db.prepare(`SELECT key, value FROM settings`).all()
+    return reply.send(Object.fromEntries(rows.map(r => [r.key, r.value])))
+  })
+
+  // 단일 설정값 업데이트 (upsert)
+  app.patch('/admin/settings/:key', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['value'],
+        properties: { value: { type: 'string' } },
+      },
+    },
+  }, (req, reply) => {
+    db.prepare(
+      `INSERT INTO settings (key, value) VALUES (?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+    ).run(req.params.key, req.body.value)
+    invalidateCache()
+    return reply.send({ ok: true, key: req.params.key, value: req.body.value })
+  })
+
   // ── users CRUD ────────────────────────────────────────
 
   // 사용자 목록

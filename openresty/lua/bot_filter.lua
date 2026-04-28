@@ -10,6 +10,7 @@
 local rdns       = require "rdns"
 local logger     = require "logger"
 local path_rules = require "path_rules"
+local settings   = require "settings"
 local cjson      = require "cjson.safe"
 
 local _M = {}
@@ -162,6 +163,17 @@ function _M.run()
         local token = ngx.req.get_headers()["X-Bot-Token"]
 
         if not token or token == "" then
+            -- 토큰 없음
+            if not settings.is_strict() then
+                -- 관대 모드: rDNS 실패 + 토큰 없어도 통과 (verified=false 로깅만)
+                json_log({ bot_category = "ai_bot_lenient_pass", action = "pass",
+                           detail = detail, mode = "lenient" })
+                logger.access(raw_ua, host, ip, path, false, billed)
+                ngx.req.set_header("X-Bot-Verified", "lenient")
+                ngx.req.set_header("X-Bot-Billed",   billed and "1" or "0")
+                return
+            end
+            -- strict 모드: 차단
             json_log({ bot_category = "ai_bot_unregistered", action = "block402", detail = detail })
             logger.access(raw_ua, host, ip, path, false, false)
             ngx.header["X-Botgate-Error"]    = "token-required"
