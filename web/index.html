@@ -1375,13 +1375,14 @@
   function dnsBadge(dns) {
     if (!dns) return '<span style="font-size:11px;color:var(--ink-mute);">확인중…</span>';
     const tip = `해석된 CNAME: ${dns.cname || '없음'} / IP: ${(dns.ips||[]).join(', ') || '없음'}` +
-                (dns.expected ? ` / 기대 호스트: ${dns.expected}` : '');
+                (dns.expected ? ` / 기대 호스트: ${dns.expected}` : ' / ALB_HOSTNAME 미설정');
     if (dns.status === 'connected')
       return `<span class="sdot on" title="${esc(tip)}">연결됨</span>`;
     if (dns.status === 'mismatch')
       return `<span style="font-size:12px;font-weight:600;color:var(--warn);" title="${esc(tip)}">⚠ 다른 곳</span>`;
     if (dns.status === 'resolved')
-      return `<span style="font-size:12px;color:var(--ink-dim);" title="${esc(tip)}">응답함</span>`;
+      // ALB_HOSTNAME 미설정 → 비교 불가
+      return `<span style="font-size:12px;color:var(--warn);font-weight:600;" title="${esc(tip)}">검증 불가</span>`;
     return `<span style="font-size:12px;color:var(--bad);" title="${esc(tip)}">미해석</span>`;
   }
 
@@ -1421,7 +1422,7 @@
           status = '<span style="font-size:13px;color:var(--bad);font-weight:600;">❌ DNS 미설정</span>';
         } else {
           // resolved 인데 ALB_HOSTNAME 미설정이라 비교 불가
-          status = '<span style="font-size:13px;color:var(--ink-dim);font-weight:600;">사용 설정됨</span>';
+          status = '<span style="font-size:13px;color:var(--warn);font-weight:600;" title="EC2 .env에 ALB_HOSTNAME 설정이 필요합니다">⚙ 검증 불가</span>';
         }
         return `<tr>
           <td style="font-weight:600;">${esc(c.name)}</td>
