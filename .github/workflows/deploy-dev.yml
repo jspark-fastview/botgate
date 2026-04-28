@@ -24,10 +24,10 @@ jobs:
             git pull origin main
 
             echo "▶ docker compose build"
-            docker compose build token-api
+            docker compose -f docker-compose.prod.yml --env-file .env build token-api
 
             echo "▶ docker compose up"
-            docker compose up -d
+            docker compose -f docker-compose.prod.yml --env-file .env up -d
 
             echo "▶ health check"
             sleep 3
