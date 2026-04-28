@@ -1382,18 +1382,20 @@
   }
 
   /* ─── CHANNELS ─────────────────────────────────────── */
+  // DNS 정보 표시 (직접매칭/간접/CDN 등 — 좋고 나쁨이 아닌 라우팅 방식 정보)
   function dnsBadge(dns) {
     if (!dns) return '<span style="font-size:11px;color:var(--ink-mute);">확인중…</span>';
-    const tip = `해석된 CNAME: ${dns.cname || '없음'} / IP: ${(dns.ips||[]).join(', ') || '없음'}` +
-                (dns.expected ? ` / 기대 호스트: ${dns.expected}` : ' / ALB_HOSTNAME 미설정');
-    if (dns.status === 'connected')
-      return `<span class="sdot on" title="${esc(tip)}">연결됨</span>`;
-    if (dns.status === 'mismatch')
-      return `<span style="font-size:12px;font-weight:600;color:var(--warn);" title="${esc(tip)}">⚠ 다른 곳</span>`;
-    if (dns.status === 'resolved')
-      // ALB_HOSTNAME 미설정 → 비교 불가
-      return `<span style="font-size:12px;color:var(--warn);font-weight:600;" title="${esc(tip)}">검증 불가</span>`;
-    return `<span style="font-size:12px;color:var(--bad);" title="${esc(tip)}">미해석</span>`;
+    const cname = dns.cname || '';
+    const ips   = (dns.ips || []).join(', ');
+    const tip   = `CNAME: ${cname || '없음'} / IP: ${ips || '없음'}`;
+    if (dns.status === 'unresolved')
+      return `<span style="font-size:12px;color:var(--bad);" title="${esc(tip)}">미해석</span>`;
+    // 그 외는 모두 "응답함" (직접/간접/CDN 등은 라우팅 방식의 차이일 뿐)
+    let label = '응답';
+    if (cname.includes('cloudflare') || /104\.|172\.6[4-9]|172\.7\d/.test(ips)) label = 'Cloudflare';
+    else if (dns.status === 'connected') label = 'ALB 직결';
+    else if (cname || ips) label = '응답';
+    return `<span style="font-size:12px;color:var(--ink-dim);" title="${esc(tip)}">${label}</span>`;
   }
 
   async function loadChannels() {
@@ -1418,22 +1420,10 @@
       tbody.innerHTML = channels.map(c => {
         const s   = statsMap[c.id] || {};
         const dns = dnsMap[c.id];
-        // 실제 운영 상태: active toggle + DNS 연결 둘 다 봐야 함
-        let status;
-        if (!c.active) {
-          status = '<span class="sdot off">비활성</span>';
-        } else if (!dns) {
-          status = '<span style="font-size:13px;color:var(--ink-dim);font-weight:600;">확인중…</span>';
-        } else if (dns.status === 'connected') {
-          status = '<span class="sdot on">운영 중</span>';
-        } else if (dns.status === 'mismatch') {
-          status = '<span style="font-size:13px;color:var(--warn);font-weight:600;">⚠ DNS 다른 곳</span>';
-        } else if (dns.status === 'unresolved') {
-          status = '<span style="font-size:13px;color:var(--bad);font-weight:600;">❌ DNS 미설정</span>';
-        } else {
-          // resolved 인데 ALB_HOSTNAME 미설정이라 비교 불가
-          status = '<span style="font-size:13px;color:var(--warn);font-weight:600;" title="EC2 .env에 ALB_HOSTNAME 설정이 필요합니다">⚙ 검증 불가</span>';
-        }
+        // 운영 상태는 active 토글이 결정. DNS 는 별도 정보 컬럼.
+        const status = c.active
+          ? '<span class="sdot on">운영 중</span>'
+          : '<span class="sdot off">비활성</span>';
         return `<tr>
           <td style="font-weight:600;">${esc(c.name)}</td>
           <td class="mono">${esc(c.domain)}</td>

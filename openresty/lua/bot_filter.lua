@@ -154,6 +154,7 @@ function _M.run()
             json_log({ bot_category = "real_ai_bot", action = "pass",
                        path = path, rule = rule_action, detail = detail })
             logger.access(raw_ua, host, ip, path, true, billed)
+            ngx.ctx.access_logged = true
             ngx.req.set_header("X-Bot-Verified", "rdns")
             ngx.req.set_header("X-Bot-Billed",   billed and "1" or "0")
             return
@@ -169,6 +170,7 @@ function _M.run()
                 json_log({ bot_category = "ai_bot_lenient_pass", action = "pass",
                            detail = detail, mode = "lenient" })
                 logger.access(raw_ua, host, ip, path, false, billed)
+                ngx.ctx.access_logged = true
                 ngx.req.set_header("X-Bot-Verified", "lenient")
                 ngx.req.set_header("X-Bot-Billed",   billed and "1" or "0")
                 return
@@ -176,6 +178,7 @@ function _M.run()
             -- strict 모드: 차단
             json_log({ bot_category = "ai_bot_unregistered", action = "block402", detail = detail })
             logger.access(raw_ua, host, ip, path, false, false)
+            ngx.ctx.access_logged = true
             ngx.header["X-Botgate-Error"]    = "token-required"
             ngx.header["X-Botgate-Register"] = "https://botgate.io/register"
             return ngx.exit(402)
