@@ -482,7 +482,7 @@
     </div>
 
     <!-- KPI -->
-    <div class="kpis" style="grid-template-columns:repeat(3,1fr);">
+    <div class="kpis" style="grid-template-columns:repeat(4,1fr);">
       <div class="kpi accent">
         <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2"/></svg></div>
         <div class="l">누적 요청 수</div>
@@ -500,6 +500,12 @@
         <div class="l">활성 토큰</div>
         <div class="v" id="kpi-tokens">—</div>
         <div class="s">화이트리스트 등록</div>
+      </div>
+      <div class="kpi" style="background:var(--pastel-lemon);border-color:transparent;">
+        <div class="icon" style="background:#fff;color:#c4a01a;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <div class="l">임시토큰 <span style="font-size:10px;color:var(--ink-mute);font-weight:600;background:rgba(0,0,0,.06);padding:2px 6px;border-radius:6px;margin-left:4px;">PREVIEW</span></div>
+        <div class="v" id="kpi-billing">—</div>
+        <div class="s" id="kpi-billing-sub">과금 시스템 (임시 ₩2/요청)</div>
       </div>
     </div>
 
@@ -1010,11 +1016,12 @@
   async function loadDashboard() {
     try {
       const cp = chParam();
-      const [bots, daily, tokens, rules] = await Promise.all([
+      const [bots, daily, tokens, rules, billing] = await Promise.all([
         apiFetch(`${API}/admin/stats/bots?_=1${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/daily?_=1${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/tokens`).then(r => r.json()),
         apiFetch(`${API}/admin/path-rules`).then(r => r.json()),
+        apiFetch(`${API}/admin/stats/billing?_=1${cp}`).then(r => r.json()).catch(() => null),
       ]);
 
       const totalReq    = bots.reduce((a, b) => a + b.count, 0);
@@ -1025,6 +1032,12 @@
       if (el('kpi-requests-sub')) el('kpi-requests-sub').textContent = `총 ${bots.length}개 봇 종류`;
       if (el('kpi-vendors'))      el('kpi-vendors').textContent = `${bots.length}개`;
       if (el('kpi-tokens'))       el('kpi-tokens').textContent = `${activeTokens}개`;
+
+      if (el('kpi-billing') && billing) {
+        const amt = billing.estimated_amount || 0;
+        el('kpi-billing').textContent = `₩${amt.toLocaleString()}`;
+        el('kpi-billing-sub').textContent = `과금 ${fmt(billing.billed||0)}건 × ₩${billing.unit_price||0} (임시)`;
+      }
 
       buildChart('chart', 'chartx', daily, 14);
       renderDashBotBars(bots);

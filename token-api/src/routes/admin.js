@@ -159,6 +159,27 @@ export default async function adminRoutes(app) {
     return reply.send(statsByChannel.all())
   })
 
+  // 임시토큰 (과금 시스템 placeholder) — billed 요청 카운트 기반
+  // 실 결제 연동 전 임시 단가(₩2/요청)로 환산
+  app.get('/admin/stats/billing', (req, reply) => {
+    const { domain } = req.query
+    const where = domain ? `WHERE domain = ?` : ''
+    const row = db.prepare(`
+      SELECT
+        COUNT(*)                                       AS total,
+        SUM(CASE WHEN billed = 1 THEN 1 ELSE 0 END)   AS billed
+      FROM access_logs ${where}
+    `).get(...(domain ? [domain] : []))
+    const billed = row.billed || 0
+    const unit   = 2  // 임시 단가 ₩2 / 과금 요청
+    return reply.send({
+      total: row.total || 0,
+      billed,
+      unit_price: unit,
+      estimated_amount: billed * unit,
+    })
+  })
+
   // 전체 채널 DNS 연결 상태 일괄 조회
   app.get('/admin/channels/dns-status', async (_req, reply) => {
     const channels = listChannels.all()
