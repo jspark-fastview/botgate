@@ -199,13 +199,14 @@ export default async function adminRoutes(app) {
     return reply.send({ id: ch.id, ...result })
   })
 
-  // 봇별 접근 통계 (?domain= 선택, category='bot' 만)
+  // UA 별 접근 통계 (?domain= 선택, ?category= 기본 'bot', 'user'/'other_bot' 가능)
   app.get('/admin/stats/bots', (req, reply) => {
-    const { domain } = req.query
-    const conds = [`category = 'bot'`]
+    const { domain, category = 'bot' } = req.query
+    const conds = []
     const params = []
+    if (category && category !== 'all') { conds.push(`category = ?`); params.push(category) }
     if (domain) { conds.push(`domain = ?`); params.push(domain) }
-    const where = `WHERE ` + conds.join(' AND ')
+    const where = conds.length ? `WHERE ` + conds.join(' AND ') : ''
     const rows = db.prepare(
       `SELECT bot_ua, COUNT(*) AS count FROM access_logs ${where} GROUP BY bot_ua ORDER BY count DESC`
     ).all(...params)

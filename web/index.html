@@ -575,6 +575,29 @@
       </div>
     </div>
 
+    <!-- 사용자 / 기타 봇 요청 현황 -->
+    <div class="row r-6-6">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>사용자 요청 현황</h3>
+          <span class="sub">누적 · 일반 브라우저</span>
+        </div>
+        <div id="dash-user-list" class="bot-list">
+          <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>기타 봇 요청 현황</h3>
+          <span class="sub">누적 · Slackbot · 크롤러 등</span>
+        </div>
+        <div id="dash-otherbot-list" class="bot-list">
+          <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
+        </div>
+      </div>
+    </div>
+
     <!-- events -->
     <div class="row r-8-4">
       <div class="panel">
@@ -1040,8 +1063,10 @@
   async function loadDashboard() {
     try {
       const cp = chParam();
-      const [bots, daily, tokens, rules, billing, categoryStats] = await Promise.all([
-        apiFetch(`${API}/admin/stats/bots?_=1${cp}`).then(r => r.json()),
+      const [bots, users, otherBots, daily, tokens, rules, billing, categoryStats] = await Promise.all([
+        apiFetch(`${API}/admin/stats/bots?category=bot${cp}`).then(r => r.json()),
+        apiFetch(`${API}/admin/stats/bots?category=user${cp}`).then(r => r.json()),
+        apiFetch(`${API}/admin/stats/bots?category=other_bot${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/daily?_=1${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/tokens`).then(r => r.json()),
         apiFetch(`${API}/admin/path-rules`).then(r => r.json()),
@@ -1071,6 +1096,8 @@
       renderDashBotBars(bots);
       renderDashBotList(bots);
       renderDashRules(rules);
+      renderDashUaList('dash-user-list', users, '#1f4fb8');
+      renderDashUaList('dash-otherbot-list', otherBots, '#9d6bff');
       loadRecentEvents();
     } catch(e) {
       console.warn('Dashboard API 실패:', e.message);
@@ -1113,6 +1140,29 @@
         <div class="meta">
           <div class="name">${esc(name)}${ver ? ` <span style="font-size:11px;font-weight:400;color:var(--ink-mute);">/${esc(ver)}</span>` : ''}</div>
           <div class="ua">${esc(b.bot_ua)}</div>
+        </div>
+        <div class="req"><div class="n">${fmt(b.count)}</div><div class="s">요청</div></div>
+      </div>`;
+    }).join('');
+  }
+
+  // 사용자/기타 봇 UA 리스트 (TOP 5)
+  function renderDashUaList(elId, list, color) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!list || !list.length) {
+      el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>';
+      return;
+    }
+    el.innerHTML = list.slice(0, 5).map(b => {
+      const ua = b.bot_ua || '—';
+      const [name, ver] = ua.split('/');
+      const initials = (name || '?').slice(0, 1).toUpperCase();
+      return `<div class="bot-row">
+        <div class="bot-avatar" style="background:${color};">${esc(initials)}</div>
+        <div class="meta">
+          <div class="name">${esc(name)}${ver ? ` <span style="font-size:11px;font-weight:400;color:var(--ink-mute);">/${esc(ver)}</span>` : ''}</div>
+          <div class="ua">${esc(ua)}</div>
         </div>
         <div class="req"><div class="n">${fmt(b.count)}</div><div class="s">요청</div></div>
       </div>`;
