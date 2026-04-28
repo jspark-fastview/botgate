@@ -495,15 +495,15 @@
     <div class="kpis" style="grid-template-columns:repeat(4,1fr);">
       <div class="kpi accent">
         <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2"/></svg></div>
-        <div class="l">누적 요청 수</div>
+        <div class="l">AI 봇 요청</div>
         <div class="v" id="kpi-requests">—</div>
-        <div class="s" id="kpi-requests-sub">로딩중…</div>
+        <div class="s" id="kpi-requests-sub">rDNS 검증 대상</div>
       </div>
       <div class="kpi">
-        <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
-        <div class="l">봇 종류</div>
-        <div class="v" id="kpi-vendors">—</div>
-        <div class="s">감지된 고유 봇 UA</div>
+        <div class="icon" style="background:var(--bg-soft);color:var(--ink-2);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
+        <div class="l">기타 봇 / 사용자</div>
+        <div class="v" id="kpi-other">—</div>
+        <div class="s" id="kpi-other-sub">크롤러·사용자 누적</div>
       </div>
       <div class="kpi">
         <div class="icon" style="background:var(--pastel-mint); color:var(--ok);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
@@ -1034,21 +1034,24 @@
   async function loadDashboard() {
     try {
       const cp = chParam();
-      const [bots, daily, tokens, rules, billing] = await Promise.all([
+      const [bots, daily, tokens, rules, billing, categoryStats] = await Promise.all([
         apiFetch(`${API}/admin/stats/bots?_=1${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/daily?_=1${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/tokens`).then(r => r.json()),
         apiFetch(`${API}/admin/path-rules`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/billing?_=1${cp}`).then(r => r.json()).catch(() => null),
+        apiFetch(`${API}/admin/stats/category?_=1${cp}`).then(r => r.json()).catch(() => ({bot:0,other_bot:0,user:0})),
       ]);
 
-      const totalReq    = bots.reduce((a, b) => a + b.count, 0);
+      const aiBotTotal   = categoryStats.bot || 0;
+      const otherTotal   = (categoryStats.other_bot || 0) + (categoryStats.user || 0);
       const activeTokens = tokens.filter(t => t.active).length;
       const el = id => document.getElementById(id);
 
-      if (el('kpi-requests'))     el('kpi-requests').textContent = fmt(totalReq);
-      if (el('kpi-requests-sub')) el('kpi-requests-sub').textContent = `총 ${bots.length}개 봇 종류`;
-      if (el('kpi-vendors'))      el('kpi-vendors').textContent = `${bots.length}개`;
+      if (el('kpi-requests'))     el('kpi-requests').textContent = fmt(aiBotTotal);
+      if (el('kpi-requests-sub')) el('kpi-requests-sub').textContent = `${bots.length}개 종류`;
+      if (el('kpi-other'))        el('kpi-other').textContent = fmt(otherTotal);
+      if (el('kpi-other-sub'))    el('kpi-other-sub').textContent = `봇 ${fmt(categoryStats.other_bot||0)} · 사용자 ${fmt(categoryStats.user||0)}`;
       if (el('kpi-tokens'))       el('kpi-tokens').textContent = `${activeTokens}개`;
 
       if (el('kpi-billing') && billing) {

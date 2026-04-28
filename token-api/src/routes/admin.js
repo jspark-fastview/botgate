@@ -219,31 +219,52 @@ export default async function adminRoutes(app) {
     )
   })
 
-  // 일별 접근량 (?domain= 선택)
+  // 일별 접근량 (?domain= 선택, ?category= 기본 'bot')
   app.get('/admin/stats/daily', (req, reply) => {
-    const { domain } = req.query
-    const where = domain ? `WHERE domain = ? AND ts >= datetime('now', '-30 days')` : `WHERE ts >= datetime('now', '-30 days')`
+    const { domain, category = 'bot' } = req.query
+    const conds = [`ts >= datetime('now', '-30 days')`]
+    const params = []
+    if (category && category !== 'all') { conds.push(`category = ?`); params.push(category) }
+    if (domain) { conds.push(`domain = ?`); params.push(domain) }
+    const where = `WHERE ` + conds.join(' AND ')
     const rows = db.prepare(
       `SELECT DATE(ts) AS date, COUNT(*) AS count FROM access_logs ${where} GROUP BY date ORDER BY date DESC`
-    ).all(...(domain ? [domain] : []))
+    ).all(...params)
     return reply.send(rows)
   })
 
-  // 시간별 접근량 (?date= 필수, ?domain= 선택)
+  // 시간별 접근량 (?date= 필수, ?domain= 선택, ?category= 기본 'bot')
   app.get('/admin/stats/hourly', (req, reply) => {
-    const { date, domain } = req.query
+    const { date, domain, category = 'bot' } = req.query
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return reply.code(400).send({ error: 'date query param required (YYYY-MM-DD)' })
     }
-    const where = domain ? `WHERE DATE(ts) = ? AND domain = ?` : `WHERE DATE(ts) = ?`
+    const conds = [`DATE(ts) = ?`]
+    const params = [date]
+    if (category && category !== 'all') { conds.push(`category = ?`); params.push(category) }
+    if (domain) { conds.push(`domain = ?`); params.push(domain) }
+    const where = `WHERE ` + conds.join(' AND ')
     const rows = db.prepare(
       `SELECT strftime('%H', ts) AS hour, COUNT(*) AS count FROM access_logs ${where} GROUP BY hour ORDER BY hour`
-    ).all(...(domain ? [date, domain] : [date]))
+    ).all(...params)
     const map = Object.fromEntries(rows.map(r => [r.hour, r.count]))
     const result = Array.from({ length: 24 }, (_, i) => {
       const h = String(i).padStart(2, '0')
       return { hour: h, count: map[h] ?? 0 }
     })
+    return reply.send(result)
+  })
+
+  // 카테고리별 누계 (대시보드 KPI 용)
+  app.get('/admin/stats/category', (req, reply) => {
+    const { domain } = req.query
+    const where = domain ? `WHERE domain = ?` : ''
+    const params = domain ? [domain] : []
+    const rows = db.prepare(
+      `SELECT category, COUNT(*) AS count FROM access_logs ${where} GROUP BY category`
+    ).all(...params)
+    const result = { bot: 0, other_bot: 0, user: 0 }
+    for (const r of rows) result[r.category] = r.count
     return reply.send(result)
   })
 
