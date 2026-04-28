@@ -63,19 +63,20 @@ const nullifyLogs = db.prepare(`
   WHERE token = (SELECT token FROM tokens WHERE id = ?)
 `)
 
-// 채널별 요약 — 봇 트래픽과 사용자 트래픽 분리 집계
+// 채널별 요약 — AI 봇 / 기타 봇 / 사용자 3-way 분리 집계
 const statsByChannel = db.prepare(`
   SELECT
     c.id, c.name, c.domain, c.upstream, c.active,
-    SUM(CASE WHEN l.category = 'bot'  THEN 1 ELSE 0 END) AS bot_total,
-    SUM(CASE WHEN l.category = 'user' THEN 1 ELSE 0 END) AS user_total,
+    SUM(CASE WHEN l.category = 'bot'       THEN 1 ELSE 0 END) AS bot_total,
+    SUM(CASE WHEN l.category = 'other_bot' THEN 1 ELSE 0 END) AS other_bot_total,
+    SUM(CASE WHEN l.category = 'user'      THEN 1 ELSE 0 END) AS user_total,
     SUM(CASE WHEN l.category = 'bot' AND l.verified = 1 THEN 1 ELSE 0 END) AS verified,
     SUM(CASE WHEN l.category = 'bot' AND l.verified = 0 THEN 1 ELSE 0 END) AS blocked,
     COUNT(DISTINCT CASE WHEN l.category = 'bot' THEN l.bot_ua END)  AS bot_types
   FROM channels c
   LEFT JOIN access_logs l ON l.domain = c.domain
   GROUP BY c.id
-  ORDER BY (bot_total + user_total) DESC
+  ORDER BY (bot_total + other_bot_total + user_total) DESC
 `)
 
 // ── channels ─────────────────────────────────────────────

@@ -55,7 +55,7 @@ export default async function internalRoutes(app) {
           path:     { type: 'string' },
           verified: { type: 'boolean' },
           billed:   { type: 'boolean' },
-          category: { type: 'string', enum: ['bot', 'user'] },
+          category: { type: 'string', enum: ['bot', 'other_bot', 'user'] },
         },
       },
     },
