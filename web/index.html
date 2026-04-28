@@ -1405,10 +1405,24 @@
       const statsMap = Object.fromEntries(stats.map(s => [s.id, s]));
       const dnsMap   = Object.fromEntries(dnsList.map(d => [d.id, d]));
       tbody.innerHTML = channels.map(c => {
-        const s = statsMap[c.id] || {};
-        const status = c.active
-          ? '<span class="sdot on">활성</span>'
-          : '<span class="sdot off">비활성</span>';
+        const s   = statsMap[c.id] || {};
+        const dns = dnsMap[c.id];
+        // 실제 운영 상태: active toggle + DNS 연결 둘 다 봐야 함
+        let status;
+        if (!c.active) {
+          status = '<span class="sdot off">비활성</span>';
+        } else if (!dns) {
+          status = '<span style="font-size:13px;color:var(--ink-dim);font-weight:600;">확인중…</span>';
+        } else if (dns.status === 'connected') {
+          status = '<span class="sdot on">운영 중</span>';
+        } else if (dns.status === 'mismatch') {
+          status = '<span style="font-size:13px;color:var(--warn);font-weight:600;">⚠ DNS 다른 곳</span>';
+        } else if (dns.status === 'unresolved') {
+          status = '<span style="font-size:13px;color:var(--bad);font-weight:600;">❌ DNS 미설정</span>';
+        } else {
+          // resolved 인데 ALB_HOSTNAME 미설정이라 비교 불가
+          status = '<span style="font-size:13px;color:var(--ink-dim);font-weight:600;">사용 설정됨</span>';
+        }
         return `<tr>
           <td style="font-weight:600;">${esc(c.name)}</td>
           <td class="mono">${esc(c.domain)}</td>
@@ -1417,12 +1431,12 @@
           <td style="text-align:right;color:var(--ok);">${fmt(s.verified || 0)}</td>
           <td style="text-align:right;color:var(--bad);">${fmt(s.blocked || 0)}</td>
           <td style="text-align:right;color:var(--ink-dim);">${s.bot_types || 0}개</td>
-          <td>${dnsBadge(dnsMap[c.id])}</td>
+          <td>${dnsBadge(dns)}</td>
           <td>${status}</td>
           <td style="text-align:right;">
             <div style="display:flex;gap:6px;justify-content:flex-end;">
               <button class="btn-sm" onclick="toggleChannel('${c.id}',${!c.active})">
-                ${c.active ? '비활성화' : '활성화'}
+                ${c.active ? '잠그기' : '풀기'}
               </button>
               <button class="btn-sm danger" onclick="deleteChannel('${c.id}')">삭제</button>
             </div>
