@@ -6,6 +6,7 @@ services:
     environment:
       - TOKEN_API_HOST=token-api
       - TOKEN_API_PORT=3000
+      - BOTGATE_BYPASS_KEY=${BOTGATE_BYPASS_KEY:-}
     volumes:
       - ./openresty/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
       - ./openresty/conf.d/dev:/etc/nginx/conf.d:ro
