@@ -16,8 +16,8 @@ services:
 
   token-api:
     build: ./token-api
-    expose:
-      - "3000"           # 외부 노출 없음 — SSH 터널로만 접근
+    ports:
+      - "3000:3000"      # ALB → admin.botgate.io 라우팅용
     environment:
       - ADMIN_KEY=${ADMIN_KEY}
       - OPENRESTY_HOST=openresty
