@@ -35,10 +35,10 @@ if (ADMIN_KEY) {
   })
 }
 
-// UI 정적 파일 서빙 (/ui → web/)
+// UI 정적 파일 서빙 (/ → web/, 루트는 index.html)
 app.register(static_, {
   root:   join(__dirname, '../web'),
-  prefix: '/ui/',
+  prefix: '/',
 })
 
 app.register(internalRoutes)
