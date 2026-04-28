@@ -575,18 +575,8 @@
       </div>
     </div>
 
-    <!-- 사용자 / 기타 봇 요청 현황 -->
-    <div class="row r-6-6">
-      <div class="panel">
-        <div class="panel-head">
-          <h3>사용자 요청 현황</h3>
-          <span class="sub">누적 · 일반 브라우저</span>
-        </div>
-        <div id="dash-user-list" class="bot-list">
-          <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
-        </div>
-      </div>
-
+    <!-- 기타 봇 요청 현황 -->
+    <div class="row">
       <div class="panel">
         <div class="panel-head">
           <h3>기타 봇 요청 현황</h3>
@@ -1063,9 +1053,8 @@
   async function loadDashboard() {
     try {
       const cp = chParam();
-      const [bots, users, otherBots, daily, tokens, rules, billing, categoryStats] = await Promise.all([
+      const [bots, otherBots, daily, tokens, rules, billing, categoryStats] = await Promise.all([
         apiFetch(`${API}/admin/stats/bots?category=bot${cp}`).then(r => r.json()),
-        apiFetch(`${API}/admin/stats/bots?category=user${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/bots?category=other_bot${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/daily?_=1${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/tokens`).then(r => r.json()),
@@ -1096,7 +1085,6 @@
       renderDashBotBars(bots);
       renderDashBotList(bots);
       renderDashRules(rules);
-      renderDashUaList('dash-user-list', users, '#1f4fb8');
       renderDashUaList('dash-otherbot-list', otherBots, '#9d6bff');
       loadRecentEvents();
     } catch(e) {
