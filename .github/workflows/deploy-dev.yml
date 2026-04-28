@@ -23,6 +23,10 @@ jobs:
             echo "▶ git pull"
             git pull origin main
 
+            echo "▶ 기존 컨테이너/네트워크 정리 (dev/prod 양쪽)"
+            docker compose down --remove-orphans 2>/dev/null || true
+            docker compose -f docker-compose.prod.yml down --remove-orphans 2>/dev/null || true
+
             echo "▶ docker compose build"
             docker compose -f docker-compose.prod.yml --env-file .env build token-api
 
