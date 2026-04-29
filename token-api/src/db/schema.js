@@ -14,7 +14,9 @@ db.pragma('foreign_keys = ON')
 for (const sql of [
   `ALTER TABLE access_logs ADD COLUMN path     TEXT`,
   `ALTER TABLE access_logs ADD COLUMN billed   INTEGER NOT NULL DEFAULT 0`,
-  `ALTER TABLE access_logs ADD COLUMN category TEXT NOT NULL DEFAULT 'bot'`,
+  `ALTER TABLE access_logs ADD COLUMN category    TEXT NOT NULL DEFAULT 'bot'`,
+  `ALTER TABLE access_logs ADD COLUMN bot_purpose TEXT NOT NULL DEFAULT 'generic'`,
+  `ALTER TABLE access_logs ADD COLUMN bot_name    TEXT`,
   `ALTER TABLE channels    ADD COLUMN owner_id TEXT`,
   `ALTER TABLE tokens      ADD COLUMN user_id  TEXT`,
 ]) {

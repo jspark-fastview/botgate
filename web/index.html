@@ -519,7 +519,7 @@
       </div>
     </div>
 
-    <!-- chart + revenue ring -->
+    <!-- chart + 봇 목적별 비중 -->
     <div class="row r-7-5">
       <div class="panel">
         <div class="panel-head">
@@ -535,10 +535,10 @@
 
       <div class="panel">
         <div class="panel-head">
-          <h3>AI 봇 종류별 비중</h3>
-          <span class="sub">누적 · rDNS 검증 대상</span>
+          <h3>봇 목적별 비중</h3>
+          <span class="sub">학습 / 검색 / SEO / 소셜 / 일반</span>
         </div>
-        <div id="dash-bot-bars" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
+        <div id="dash-purpose-bars" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
           <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
         </div>
       </div>
@@ -1057,7 +1057,7 @@
   async function loadDashboard() {
     try {
       const cp = chParam();
-      const [bots, users, otherBots, daily, tokens, rules, billing, categoryStats] = await Promise.all([
+      const [bots, users, otherBots, daily, tokens, rules, billing, categoryStats, purposeStats] = await Promise.all([
         apiFetch(`${API}/admin/stats/bots?category=bot${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/bots?category=user${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/bots?category=other_bot${cp}`).then(r => r.json()),
@@ -1066,6 +1066,7 @@
         apiFetch(`${API}/admin/path-rules`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/billing?_=1${cp}`).then(r => r.json()).catch(() => null),
         apiFetch(`${API}/admin/stats/category?_=1${cp}`).then(r => r.json()).catch(() => ({bot:0,other_bot:0,user:0})),
+        apiFetch(`${API}/admin/stats/purpose?_=1${cp}`).then(r => r.json()).catch(() => []),
       ]);
 
       const aiBotTotal   = categoryStats.bot       || 0;
@@ -1086,7 +1087,7 @@
       }
 
       buildChart('chart', 'chartx', daily, 14);
-      renderDashBotBars(bots);
+      renderDashPurposeBars(purposeStats);
       renderDashBotList(bots);
       renderDashRules(rules);
       renderDashUserPanel(users);
@@ -1096,6 +1097,41 @@
       console.warn('Dashboard API 실패:', e.message);
       buildChart('chart', 'chartx', [], 14);
     }
+  }
+
+  // 봇 목적별 비중 (ai_training/ai_search/seo/social/generic)
+  const PURPOSE_META = {
+    ai_training: { label: 'AI 학습',  color: '#2b6df6', desc: '학습 데이터' },
+    ai_search:   { label: 'AI 검색',  color: '#9d6bff', desc: 'RAG/실시간' },
+    seo:         { label: 'SEO',      color: '#ff7a5c', desc: '분석 크롤러' },
+    social:      { label: '소셜',     color: '#1aa377', desc: '링크 프리뷰' },
+    generic:     { label: '일반 봇',  color: '#9aa1ad', desc: '기타' },
+  };
+  function renderDashPurposeBars(rows) {
+    const el = document.getElementById('dash-purpose-bars');
+    if (!el) return;
+    if (!rows || !rows.length) {
+      el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>';
+      return;
+    }
+    const total = rows.reduce((a,b) => a + b.count, 0);
+    const order = ['ai_training','ai_search','seo','social','generic'];
+    const sorted = order.map(p => rows.find(r => r.bot_purpose === p)).filter(Boolean);
+    el.innerHTML = sorted.map(r => {
+      const meta = PURPOSE_META[r.bot_purpose] || PURPOSE_META.generic;
+      const pct  = total ? Math.round(r.count/total*100) : 0;
+      return `<div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+          <span style="color:var(--ink);font-weight:600;">${esc(meta.label)}
+            <span style="font-size:11px;font-weight:400;color:var(--ink-mute);">· ${esc(meta.desc)} · ${r.unique_bots}개</span>
+          </span>
+          <span style="color:var(--ink-dim);">${fmt(r.count)} · ${pct}%</span>
+        </div>
+        <div style="height:8px;background:var(--bg-soft);border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${meta.color};border-radius:4px;transition:width 400ms;"></div>
+        </div>
+      </div>`;
+    }).join('');
   }
 
   function renderDashBotBars(bots) {
@@ -1409,11 +1445,20 @@
     startTraffic();
   }
 
-  function catBadge(cat) {
+  function catBadge(cat, purpose) {
+    const purposeLabel = {
+      ai_training: '학습',
+      ai_search:   '검색',
+      seo:         'SEO',
+      social:      '소셜',
+      generic:     '일반',
+      user:        '',
+    }[purpose] || '';
+    const tip = purpose ? ` title="목적: ${purposeLabel}"` : '';
     if (cat === 'bot')
-      return '<span style="font-size:10px;font-weight:700;background:var(--brand-soft);color:var(--brand);padding:2px 7px;border-radius:6px;">AI봇</span>';
+      return `<span${tip} style="font-size:10px;font-weight:700;background:var(--brand-soft);color:var(--brand);padding:2px 7px;border-radius:6px;">AI·${esc(purposeLabel)}</span>`;
     if (cat === 'other_bot')
-      return '<span style="font-size:10px;font-weight:700;background:var(--bg-soft);color:var(--ink-2);padding:2px 7px;border-radius:6px;">봇</span>';
+      return `<span${tip} style="font-size:10px;font-weight:700;background:var(--bg-soft);color:var(--ink-2);padding:2px 7px;border-radius:6px;">${esc(purposeLabel || '봇')}</span>`;
     if (cat === 'user')
       return '<span style="font-size:10px;font-weight:700;background:var(--pastel-mint);color:var(--ok);padding:2px 7px;border-radius:6px;">사용자</span>';
     return '<span style="font-size:10px;color:var(--ink-mute);">—</span>';
@@ -1442,9 +1487,9 @@
       const billed = l.billed ? ' <span style="color:var(--brand);font-size:10px;font-weight:700;">●</span>' : '';
       return `<div class="log-row">
         <span class="log-dim">${fmtTime(l.ts)}</span>
-        <span>${catBadge(l.category)}</span>
+        <span>${catBadge(l.category, l.bot_purpose)}</span>
         ${vLabel}
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.bot_ua || '—')}</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.bot_name || (l.bot_ua||'').split('/')[0] || '—')}</span>
         <span style="color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.domain || '—')}</span>
         <span style="color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.path || '—')}${billed}</span>
         <span class="log-dim">${esc(l.ip || '—')}</span>

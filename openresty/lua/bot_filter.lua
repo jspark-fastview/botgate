@@ -7,11 +7,12 @@
 --        c) rDNS 실패 + token 없음 → 402 (등록 필요)
 --   3) 일반 트래픽  → pass
 
-local rdns       = require "rdns"
-local logger     = require "logger"
-local path_rules = require "path_rules"
-local settings   = require "settings"
-local cjson      = require "cjson.safe"
+local rdns           = require "rdns"
+local logger         = require "logger"
+local path_rules     = require "path_rules"
+local settings       = require "settings"
+local bot_classifier = require "bot_classifier"
+local cjson          = require "cjson.safe"
 
 local _M = {}
 
@@ -21,13 +22,6 @@ local BLOCK_UA = {
     "python-requests", "go-http-client", "libwww-perl",
 }
 
--- rDNS 검증 대상 AI 봇 UA
-local AI_BOT_UA = {
-    "GPTBot", "ChatGPT-User", "ClaudeBot", "Claude-Web",
-    "Google-Extended", "Googlebot", "Applebot",
-    "PerplexityBot", "Amazonbot", "CCBot", "Bytespider",
-}
-
 -- ── 헬퍼 ────────────────────────────────────────────────────────────────
 
 local function ua_lower() return (ngx.var.http_user_agent or ""):lower() end
@@ -35,14 +29,6 @@ local function ua_lower() return (ngx.var.http_user_agent or ""):lower() end
 local function is_blocked_ua(ua)
     for _, p in ipairs(BLOCK_UA) do
         if ua:find(p, 1, true) then return true, p end
-    end
-    return false
-end
-
-local function is_ai_bot_ua(ua)
-    local raw = ngx.var.http_user_agent or ""
-    for _, p in ipairs(AI_BOT_UA) do
-        if raw:find(p, 1, true) then return true end
     end
     return false
 end
@@ -132,16 +118,21 @@ function _M.run()
         return ngx.exit(ngx.HTTP_FORBIDDEN)
     end
 
-    -- stage 2: AI 봇 UA
-    if is_ai_bot_ua(ua) then
-        local raw_ua = ngx.var.http_user_agent
-        local ip     = ngx.var.remote_addr
-        local host   = ngx.var.host
+    -- stage 2: AI 봇 분류 (classifier 활용)
+    local raw_ua = ngx.var.http_user_agent
+    local cls    = bot_classifier.classify(raw_ua)
+    -- 컨텍스트에 분류 결과 저장 — bot.conf 의 사용자/기타봇 로깅에서 재사용
+    ngx.ctx.classification = cls
+
+    if cls.category == "bot" then
+        local ip   = ngx.var.remote_addr
+        local host = ngx.var.host
 
         -- stage 2-0: path rule — block 룰은 검증 여부와 무관하게 차단
         local rule_action = path_rules.match(path)
         if rule_action == "block" then
-            json_log({ bot_category = "path_blocked", action = "block", path = path })
+            json_log({ bot_category = "path_blocked", action = "block", path = path,
+                       bot_name = cls.name, bot_purpose = cls.purpose })
             return ngx.exit(ngx.HTTP_FORBIDDEN)
         end
 
@@ -152,10 +143,12 @@ function _M.run()
         if verified then
             -- 2a) rDNS 통과
             json_log({ bot_category = "real_ai_bot", action = "pass",
-                       path = path, rule = rule_action, detail = detail })
-            logger.access(raw_ua, host, ip, path, true, billed)
+                       path = path, rule = rule_action, detail = detail,
+                       bot_name = cls.name, bot_purpose = cls.purpose })
+            logger.access(raw_ua, host, ip, path, true, billed, "bot", cls.purpose, cls.name)
             ngx.ctx.access_logged = true
             ngx.req.set_header("X-Bot-Verified", "rdns")
+            ngx.req.set_header("X-Bot-Purpose",  cls.purpose)
             ngx.req.set_header("X-Bot-Billed",   billed and "1" or "0")
             return
         end
@@ -166,18 +159,20 @@ function _M.run()
         if not token or token == "" then
             -- 토큰 없음
             if not settings.is_strict() then
-                -- 관대 모드: rDNS 실패 + 토큰 없어도 통과 (verified=false 로깅만)
                 json_log({ bot_category = "ai_bot_lenient_pass", action = "pass",
-                           detail = detail, mode = "lenient" })
-                logger.access(raw_ua, host, ip, path, false, billed)
+                           detail = detail, mode = "lenient",
+                           bot_name = cls.name, bot_purpose = cls.purpose })
+                logger.access(raw_ua, host, ip, path, false, billed, "bot", cls.purpose, cls.name)
                 ngx.ctx.access_logged = true
                 ngx.req.set_header("X-Bot-Verified", "lenient")
+                ngx.req.set_header("X-Bot-Purpose",  cls.purpose)
                 ngx.req.set_header("X-Bot-Billed",   billed and "1" or "0")
                 return
             end
             -- strict 모드: 차단
-            json_log({ bot_category = "ai_bot_unregistered", action = "block402", detail = detail })
-            logger.access(raw_ua, host, ip, path, false, false)
+            json_log({ bot_category = "ai_bot_unregistered", action = "block402", detail = detail,
+                       bot_name = cls.name, bot_purpose = cls.purpose })
+            logger.access(raw_ua, host, ip, path, false, false, "bot", cls.purpose, cls.name)
             ngx.ctx.access_logged = true
             ngx.header["X-Botgate-Error"]    = "token-required"
             ngx.header["X-Botgate-Register"] = "https://botgate.io/register"
@@ -188,15 +183,20 @@ function _M.run()
 
         if not valid then
             json_log({ bot_category = "ai_bot_invalid_token", action = "block401",
-                       token_prefix = token:sub(1,8) })
+                       token_prefix = token:sub(1,8),
+                       bot_name = cls.name, bot_purpose = cls.purpose })
             ngx.header["X-Botgate-Error"] = "invalid-token"
             return ngx.exit(401)
         end
 
         -- 토큰 유효 → 통과
         json_log({ bot_category = "ai_bot_token", action = "pass",
-                   plan = plan, path = path, rule = rule_action })
+                   plan = plan, path = path, rule = rule_action,
+                   bot_name = cls.name, bot_purpose = cls.purpose })
+        logger.access(raw_ua, host, ip, path, true, billed, "bot", cls.purpose, cls.name)
+        ngx.ctx.access_logged = true
         ngx.req.set_header("X-Bot-Verified", "token")
+        ngx.req.set_header("X-Bot-Purpose",  cls.purpose)
         ngx.req.set_header("X-Bot-Plan",     plan or "free")
         ngx.req.set_header("X-Bot-Billed",   billed and "1" or "0")
         return

@@ -7,8 +7,8 @@ const validateStmt = db.prepare(`
 `)
 
 const logStmt = db.prepare(`
-  INSERT INTO access_logs (token, bot_ua, domain, ip, path, verified, billed, category)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO access_logs (token, bot_ua, domain, ip, path, verified, billed, category, bot_purpose, bot_name)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
 export default async function internalRoutes(app) {
@@ -29,11 +29,11 @@ export default async function internalRoutes(app) {
       },
     },
   }, (req, reply) => {
-    const { token, bot_ua, domain, ip, path = null, billed = false } = req.body
+    const { token, bot_ua, domain, ip, path = null, billed = false, bot_purpose = 'generic', bot_name = null } = req.body
     const row = validateStmt.get(token)
 
     // 무효 토큰은 null 로 기록 (FK 제약 위반 방지)
-    logStmt.run(row ? token : null, bot_ua, domain, ip, path, row ? 1 : 0, billed ? 1 : 0, 'bot')
+    logStmt.run(row ? token : null, bot_ua, domain, ip, path, row ? 1 : 0, billed ? 1 : 0, 'bot', bot_purpose, bot_name)
 
     if (!row) {
       return reply.code(401).send({ valid: false })
@@ -49,19 +49,22 @@ export default async function internalRoutes(app) {
         type: 'object',
         required: ['bot_ua', 'domain', 'ip', 'verified'],
         properties: {
-          bot_ua:   { type: 'string' },
-          domain:   { type: 'string' },
-          ip:       { type: 'string' },
-          path:     { type: 'string' },
-          verified: { type: 'boolean' },
-          billed:   { type: 'boolean' },
-          category: { type: 'string', enum: ['bot', 'other_bot', 'user'] },
+          bot_ua:      { type: 'string' },
+          domain:      { type: 'string' },
+          ip:          { type: 'string' },
+          path:        { type: 'string' },
+          verified:    { type: 'boolean' },
+          billed:      { type: 'boolean' },
+          category:    { type: 'string', enum: ['bot', 'other_bot', 'user'] },
+          bot_purpose: { type: 'string', enum: ['ai_training','ai_search','seo','social','generic','user'] },
+          bot_name:    { type: 'string' },
         },
       },
     },
   }, (req, reply) => {
-    const { bot_ua, domain, ip, path = null, verified, billed = false, category = 'bot' } = req.body
-    logStmt.run(null, bot_ua, domain, ip, path, verified ? 1 : 0, billed ? 1 : 0, category)
+    const { bot_ua, domain, ip, path = null, verified, billed = false,
+            category = 'bot', bot_purpose = 'generic', bot_name = null } = req.body
+    logStmt.run(null, bot_ua, domain, ip, path, verified ? 1 : 0, billed ? 1 : 0, category, bot_purpose, bot_name)
     return reply.code(204).send()
   })
 }

@@ -269,6 +269,34 @@ export default async function adminRoutes(app) {
     return reply.send(result)
   })
 
+  // 봇 목적(purpose)별 누계 — ai_training/ai_search/seo/social/generic
+  app.get('/admin/stats/purpose', (req, reply) => {
+    const { domain } = req.query
+    const conds = [`category != 'user'`]
+    const params = []
+    if (domain) { conds.push(`domain = ?`); params.push(domain) }
+    const where = `WHERE ` + conds.join(' AND ')
+    const rows = db.prepare(
+      `SELECT bot_purpose, COUNT(*) AS count, COUNT(DISTINCT bot_name) AS unique_bots
+       FROM access_logs ${where} GROUP BY bot_purpose ORDER BY count DESC`
+    ).all(...params)
+    return reply.send(rows)
+  })
+
+  // 봇 이름(bot_name) 별 누계 — purpose 필터 가능
+  app.get('/admin/stats/bot-names', (req, reply) => {
+    const { domain, purpose } = req.query
+    const conds = [`category != 'user'`, `bot_name IS NOT NULL`, `bot_name != ''`]
+    const params = []
+    if (purpose) { conds.push(`bot_purpose = ?`); params.push(purpose) }
+    if (domain)  { conds.push(`domain = ?`);      params.push(domain) }
+    const where = `WHERE ` + conds.join(' AND ')
+    const rows = db.prepare(
+      `SELECT bot_name, bot_purpose, COUNT(*) AS count FROM access_logs ${where} GROUP BY bot_name ORDER BY count DESC`
+    ).all(...params)
+    return reply.send(rows)
+  })
+
   // 최근 로그 (?domain=, ?category=bot|user|all 선택, 기본 bot)
   app.get('/admin/logs', (req, reply) => {
     const limit = Math.min(Number(req.query.limit) || 100, 500)
