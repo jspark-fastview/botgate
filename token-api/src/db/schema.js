@@ -79,6 +79,28 @@ db.exec(`
   -- strict_mode = '1' : rDNS 실패 시 토큰 없으면 차단(현재 동작)
   -- strict_mode = '0' : rDNS 실패해도 통과 (verified=false 로깅만)
   INSERT OR IGNORE INTO settings (key, value) VALUES ('strict_mode', '1');
+
+  -- 봇 목적(purpose)별 정책
+  -- action: pass | meter | verify | token_only | block | gone
+  --   pass       : 그냥 통과
+  --   meter      : 통과 + 과금
+  --   verify     : rDNS 검증 (실패 시 strict_mode 따름) — AI 봇 기본
+  --   token_only : 토큰 있어야만 통과
+  --   block      : 403 차단
+  --   gone       : 410 차단 (SEO 친화 — 색인 회수)
+  CREATE TABLE IF NOT EXISTS purpose_policies (
+    purpose TEXT PRIMARY KEY,
+    action  TEXT NOT NULL DEFAULT 'pass'
+  );
+
+  INSERT OR IGNORE INTO purpose_policies (purpose, action) VALUES
+    ('ai_training',   'verify'),
+    ('ai_search',     'meter'),
+    ('ai_assistant',  'pass'),
+    ('search_engine', 'pass'),
+    ('seo',           'block'),
+    ('social',        'pass'),
+    ('generic',       'pass');
   CREATE INDEX IF NOT EXISTS idx_sessions_user    ON sessions(user_id);
   CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
 

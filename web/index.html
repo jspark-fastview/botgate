@@ -466,6 +466,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         봇 카탈로그
       </a>
+      <a onclick="nav(event,'page-policies')" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        봇 정책
+      </a>
     </div>
 
   </aside>
@@ -880,6 +884,47 @@
   </section>
 
   <!-- ======================================================
+       봇 정책 (목적별)
+  ====================================================== -->
+  <section id="page-policies" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>봇 정책</h1>
+        <div class="greeting">봇 카테고리(목적)별로 어떻게 처리할지 설정해요. 즉시 반영됩니다.</div>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:0;overflow:hidden;">
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>카테고리</th>
+              <th>설명</th>
+              <th style="width:200px;">정책</th>
+              <th>의미</th>
+            </tr>
+          </thead>
+          <tbody id="policies-tbl-body">
+            <tr><td colspan="4" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;padding:14px 16px;background:var(--pastel-blue);border-radius:var(--radius-lg);font-size:13px;color:var(--ink-2);line-height:1.7;">
+      <strong>액션 설명:</strong><br>
+      <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;">pass</code> 그냥 통과 /
+      <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;">meter</code> 통과 + 과금 /
+      <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;">verify</code> rDNS·토큰 검증 (실패 시 엄격모드 따름) /
+      <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;">token_only</code> 토큰만 통과 /
+      <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;">block</code> 403 차단 /
+      <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;">gone</code> 410 (SEO 친화 — 검색엔진 색인 회수)<br>
+      <strong>참고:</strong> 경로 규칙(path_rules) 의 <code>block</code> 은 정책보다 우선합니다. 악성 봇은 정책 무관 항상 차단.
+    </div>
+  </section>
+
+  <!-- ======================================================
        경로 규칙 관리
   ====================================================== -->
   <section id="page-pricing" class="page-section">
@@ -1109,6 +1154,7 @@
     if (pageId === 'page-pricing')   loadRules();
     if (pageId === 'page-users')     loadUsers();
     if (pageId === 'page-catalog')   loadCatalog();
+    if (pageId === 'page-policies')  loadPolicies();
   }
 
   /* ─── CHART helper (shared) ────────────────────────── */
@@ -1923,6 +1969,71 @@
       });
       _strictMode = (newVal === '1');
       renderStrictToggle();
+    } catch(e) { alert('변경 실패: ' + e.message); }
+  }
+
+  /* ─── BOT POLICIES (목적별) ────────────────────────────── */
+  const POLICY_ACTIONS = ['pass','meter','verify','token_only','block','gone'];
+  const POLICY_LABELS  = {
+    pass:       '그냥 통과',
+    meter:      '통과 + 과금',
+    verify:     'rDNS/토큰 검증',
+    token_only: '토큰 필수',
+    block:      '403 차단',
+    gone:       '410 차단 (SEO)',
+  };
+  const POLICY_PURPOSES = [
+    { key: 'ai_training',   label: 'AI Crawler',           desc: '학습 데이터 수집 (GPTBot, ClaudeBot)' },
+    { key: 'ai_search',     label: 'AI Search',            desc: 'RAG 인덱싱 (PerplexityBot, OAI-Search)' },
+    { key: 'ai_assistant',  label: 'AI Assistant',         desc: '사용자 트리거 fetch (ChatGPT-User, Manus)' },
+    { key: 'search_engine', label: 'Search Engine',        desc: '전통 검색엔진 (Googlebot, Bingbot)' },
+    { key: 'seo',           label: 'SEO Crawler',          desc: '분석 도구 (SemrushBot, AhrefsBot)' },
+    { key: 'social',        label: 'Social Preview',       desc: '링크 미리보기 (Slackbot, Twitterbot)' },
+    { key: 'generic',       label: 'Generic Bot',          desc: '미분류 / 알 수 없는 봇' },
+  ];
+
+  async function loadPolicies() {
+    try {
+      const policies = await apiFetch(`${API}/admin/purpose-policies`).then(r => r.json());
+      renderPolicies(policies);
+    } catch(e) {
+      document.getElementById('policies-tbl-body').innerHTML =
+        `<tr><td colspan="4" style="text-align:center;color:var(--bad);padding:24px;">로드 실패</td></tr>`;
+    }
+  }
+
+  function renderPolicies(policies) {
+    const tbody = document.getElementById('policies-tbl-body');
+    tbody.innerHTML = POLICY_PURPOSES.map(p => {
+      const cur = policies[p.key] || 'pass';
+      const opts = POLICY_ACTIONS.map(a =>
+        `<option value="${a}" ${a===cur?'selected':''}>${a}</option>`
+      ).join('');
+      return `<tr>
+        <td style="font-weight:700;">${esc(p.label)}</td>
+        <td style="color:var(--ink-2);">${esc(p.desc)}</td>
+        <td>
+          <select onchange="updatePolicy('${p.key}', this.value)"
+            style="padding:6px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:#fff;width:100%;">
+            ${opts}
+          </select>
+        </td>
+        <td style="font-size:13px;color:var(--ink-dim);" id="policy-meaning-${p.key}">
+          ${esc(POLICY_LABELS[cur])}
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function updatePolicy(purpose, action) {
+    try {
+      await apiFetch(`${API}/admin/purpose-policies/${purpose}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const meaningEl = document.getElementById(`policy-meaning-${purpose}`);
+      if (meaningEl) meaningEl.textContent = POLICY_LABELS[action];
     } catch(e) { alert('변경 실패: ' + e.message); }
   }
 

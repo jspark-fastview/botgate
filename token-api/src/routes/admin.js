@@ -434,6 +434,32 @@ export default async function adminRoutes(app) {
     return reply.code(204).send()
   })
 
+  // ── 봇 목적별 정책 ────────────────────────────────────
+
+  app.get('/admin/purpose-policies', (_req, reply) => {
+    const rows = db.prepare(`SELECT purpose, action FROM purpose_policies`).all()
+    return reply.send(Object.fromEntries(rows.map(r => [r.purpose, r.action])))
+  })
+
+  app.patch('/admin/purpose-policies/:purpose', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['action'],
+        properties: {
+          action: { type: 'string', enum: ['pass','meter','verify','token_only','block','gone'] },
+        },
+      },
+    },
+  }, (req, reply) => {
+    db.prepare(
+      `INSERT INTO purpose_policies (purpose, action) VALUES (?, ?)
+       ON CONFLICT(purpose) DO UPDATE SET action = excluded.action`
+    ).run(req.params.purpose, req.body.action)
+    invalidateCache()
+    return reply.send({ ok: true, purpose: req.params.purpose, action: req.body.action })
+  })
+
   // ── settings ──────────────────────────────────────────
 
   // 모든 설정값 조회
