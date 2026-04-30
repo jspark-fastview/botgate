@@ -1162,37 +1162,39 @@
     if (pageId === 'page-policies')  loadPolicies();
   }
 
-  /* ─── CHART helper (스무스 라인 + 영역) ──────────────── */
-  function buildChart(chartId, chartxId, daily, days) {
+  /* ─── CHART helper (멀티 시리즈 스무스 라인 + 영역) ──── */
+  // series: [{ data: [{date,count},...], color: '#xxx', label: '...' }, ...]
+  function buildChart(chartId, chartxId, series, days) {
     const chart  = document.getElementById(chartId);
     const chartx = document.getElementById(chartxId);
     if (!chart) return;
     chart.innerHTML = ''; chartx.innerHTML = '';
 
-    const today = new Date();
-    const slots = Array.from({length: days}, (_, i) => {
-      const d = new Date(today);
-      d.setDate(today.getDate() - (days - 1 - i));
-      const key = d.toISOString().slice(0, 10);
-      const found = daily.find(r => r.date === key);
-      return { count: found ? found.count : 0, label: `${d.getMonth()+1}/${d.getDate()}` };
-    });
+    // 단일 series 도 받게 backward compat
+    if (!Array.isArray(series) || (series[0] && !series[0].data)) {
+      series = [{ data: series, color: '#2b6df6', label: 'AI 봇' }];
+    }
 
-    const max = Math.max(...slots.map(s => s.count), 1);
+    const today = new Date();
+    // 각 series 의 14일치 슬롯 만들기
+    const allSlots = series.map(s =>
+      Array.from({length: days}, (_, i) => {
+        const d = new Date(today);
+        d.setDate(today.getDate() - (days - 1 - i));
+        const key = d.toISOString().slice(0, 10);
+        const found = (s.data || []).find(r => r.date === key);
+        return { count: found ? found.count : 0, label: `${d.getMonth()+1}/${d.getDate()}` };
+      })
+    );
+
+    // 모든 시리즈에서 최댓값 (공유 Y축)
+    const max = Math.max(1, ...allSlots.flat().map(s => s.count));
     const w = chart.clientWidth  || 600;
     const h = chart.clientHeight || 220;
     const pad = { top: 16, right: 10, bottom: 6, left: 10 };
     const innerW = w - pad.left - pad.right;
     const innerH = h - pad.top - pad.bottom;
 
-    // 좌표 계산
-    const pts = slots.map((s, i) => ({
-      x: pad.left + (slots.length === 1 ? innerW/2 : (i / (slots.length - 1)) * innerW),
-      y: pad.top + innerH - (s.count / max) * innerH,
-      count: s.count, label: s.label,
-    }));
-
-    // Catmull-Rom → Bezier 변환으로 스무스 곡선
     function smoothPath(p) {
       if (p.length < 2) return '';
       let d = `M ${p[0].x.toFixed(2)},${p[0].y.toFixed(2)}`;
@@ -1210,37 +1212,61 @@
       return d;
     }
 
-    const linePath = smoothPath(pts);
-    const areaPath = `${linePath} L ${pts[pts.length-1].x.toFixed(2)},${(pad.top+innerH).toFixed(2)} L ${pts[0].x.toFixed(2)},${(pad.top+innerH).toFixed(2)} Z`;
+    // 시리즈별 path 와 점 생성
+    const seriesSvg = series.map((s, idx) => {
+      const slots = allSlots[idx];
+      const pts = slots.map((slot, i) => ({
+        x: pad.left + (slots.length === 1 ? innerW/2 : (i / (slots.length - 1)) * innerW),
+        y: pad.top + innerH - (slot.count / max) * innerH,
+        count: slot.count, label: slot.label,
+      }));
+      const linePath = smoothPath(pts);
+      const areaPath = `${linePath} L ${pts[pts.length-1].x.toFixed(2)},${(pad.top+innerH).toFixed(2)} L ${pts[0].x.toFixed(2)},${(pad.top+innerH).toFixed(2)} Z`;
+      const gradId   = `${chartId}-grad-${idx}`;
+      return `
+        <defs>
+          <linearGradient id="${gradId}" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="${s.color}" stop-opacity="0.22"/>
+            <stop offset="100%" stop-color="${s.color}" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="${areaPath}" fill="url(#${gradId})"/>
+        <path d="${linePath}" fill="none" stroke="${s.color}" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        ${pts.map(p =>
+          `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="3.5"
+                   fill="#fff" stroke="${s.color}" stroke-width="2">
+             <title>${esc(s.label)} · ${p.label} · ${p.count.toLocaleString()}</title>
+           </circle>`
+        ).join('')}
+      `;
+    }).join('');
 
     const grid = [0.25, 0.5, 0.75].map(r => {
       const y = (pad.top + innerH * r).toFixed(2);
       return `<line x1="${pad.left}" y1="${y}" x2="${pad.left + innerW}" y2="${y}" stroke="var(--line)" stroke-dasharray="2,4"/>`;
     }).join('');
 
+    // 범례 (우측 상단)
+    const legend = series.map(s =>
+      `<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);">
+        <span style="width:10px;height:10px;border-radius:2px;background:${s.color};"></span>
+        ${esc(s.label)}
+       </span>`
+    ).join('<span style="margin:0 8px;"></span>');
+
     chart.innerHTML = `
+      <div style="position:absolute;top:6px;right:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,0.85);padding:4px 10px;border-radius:999px;">
+        ${legend}
+      </div>
       <svg width="100%" height="100%" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="overflow:visible;display:block;">
-        <defs>
-          <linearGradient id="${chartId}-grad" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="#2b6df6" stop-opacity="0.28"/>
-            <stop offset="100%" stop-color="#2b6df6" stop-opacity="0"/>
-          </linearGradient>
-        </defs>
         ${grid}
-        <path d="${areaPath}" fill="url(#${chartId}-grad)"/>
-        <path d="${linePath}" fill="none" stroke="#2b6df6" stroke-width="2.5"
-              stroke-linecap="round" stroke-linejoin="round"/>
-        ${pts.map(p =>
-          `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="3.5"
-                   fill="#fff" stroke="#2b6df6" stroke-width="2">
-             <title>${p.label} · ${p.count.toLocaleString()}</title>
-           </circle>`
-        ).join('')}
+        ${seriesSvg}
       </svg>
     `;
 
     // X 축 라벨
-    slots.forEach((s, i) => {
+    allSlots[0].forEach((s, i) => {
       const lbl = document.createElement('div');
       lbl.className = 'l';
       lbl.textContent = (i % 2 === 0) ? s.label : '';
@@ -1254,11 +1280,12 @@
   async function loadDashboard() {
     try {
       const cp = chParam();
-      const [bots, users, otherBots, daily, tokens, rules, billing, categoryStats, purposeStats] = await Promise.all([
+      const [bots, users, otherBots, dailyBot, dailyUser, tokens, rules, billing, categoryStats, purposeStats] = await Promise.all([
         apiFetch(`${API}/admin/stats/bots?category=bot${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/bots?category=user${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/bots?category=other_bot${cp}`).then(r => r.json()),
-        apiFetch(`${API}/admin/stats/daily?_=1${cp}`).then(r => r.json()),
+        apiFetch(`${API}/admin/stats/daily?category=bot${cp}`).then(r => r.json()),
+        apiFetch(`${API}/admin/stats/daily?category=user${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/tokens`).then(r => r.json()),
         apiFetch(`${API}/admin/path-rules`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/billing?_=1${cp}`).then(r => r.json()).catch(() => null),
@@ -1284,7 +1311,10 @@
         el('kpi-billing-sub').textContent = `과금 ${fmt(billing.billed||0)}건 × ₩${billing.unit_price||0} (임시)`;
       }
 
-      buildChart('chart', 'chartx', daily, 14);
+      buildChart('chart', 'chartx', [
+        { data: dailyBot,  color: '#2b6df6', label: 'AI 봇' },
+        { data: dailyUser, color: '#1aa377', label: '사용자' },
+      ], 14);
       renderDashPurposeBars(purposeStats);
       renderDashBotList(bots);
       renderDashRules(rules);
@@ -1293,7 +1323,10 @@
       loadRecentEvents();
     } catch(e) {
       console.warn('Dashboard API 실패:', e.message);
-      buildChart('chart', 'chartx', [], 14);
+      buildChart('chart', 'chartx', [
+        { data: [], color: '#2b6df6', label: 'AI 봇' },
+        { data: [], color: '#1aa377', label: '사용자' },
+      ], 14);
     }
   }
 
