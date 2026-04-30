@@ -82,13 +82,38 @@ end
 
 -- ── Host 헤더 → upstream URL ─────────────────────────────
 -- 반환: upstream 문자열 (예: "http://origin.example.com") 또는 nil
+-- apex(pure-beef.kr) 와 www(www.pure-beef.kr) 는 동일 채널로 자동 매핑
 function _M.get_upstream(host)
+    if not host or host == "" then return nil end
     local channels = load_channels()
+
+    -- 1. 정확 매칭
     for _, ch in ipairs(channels) do
         if ch.domain == host then
             return ch.upstream
         end
     end
+
+    -- 2. www. 접두 제거 후 매칭 (www.pure-beef.kr → pure-beef.kr)
+    local stripped = host:gsub("^www%.", "")
+    if stripped ~= host then
+        for _, ch in ipairs(channels) do
+            if ch.domain == stripped then
+                return ch.upstream
+            end
+        end
+    end
+
+    -- 3. www. 접두 추가 후 매칭 (pure-beef.kr → www.pure-beef.kr 로 등록된 경우)
+    if not host:match("^www%.") then
+        local with_www = "www." .. host
+        for _, ch in ipairs(channels) do
+            if ch.domain == with_www then
+                return ch.upstream
+            end
+        end
+    end
+
     return nil
 end
 

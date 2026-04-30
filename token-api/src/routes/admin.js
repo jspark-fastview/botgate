@@ -32,6 +32,20 @@ async function checkChannelDns(domain) {
   return { domain, status, cname, ips, expected: expected || null }
 }
 
+// 채널 도메인 필터를 apex/www 양쪽 매칭으로 확장
+// 반환: { sql: "(domain = ? OR domain = ?)", params: [...] }
+function domainCondition(domain) {
+  if (!domain) return { sql: '', params: [] }
+  const stripped = domain.replace(/^www\./, '')
+  const withWww  = stripped === domain ? `www.${domain}` : null
+  const variants = [domain, stripped, withWww].filter(Boolean)
+  const uniq = [...new Set(variants)]
+  return {
+    sql:    `(domain IN (${uniq.map(() => '?').join(',')}))`,
+    params: uniq,
+  }
+}
+
 // OpenResty 캐시 무효화 (채널/경로규칙 변경 직후 호출)
 async function invalidateCache() {
   const host = process.env.OPENRESTY_HOST ?? 'openresty'
@@ -64,7 +78,8 @@ const nullifyLogs = db.prepare(`
   WHERE token = (SELECT token FROM tokens WHERE id = ?)
 `)
 
-// 채널별 요약 — AI 봇 / 기타 봇 / 사용자 + 정확한 차단/검증/lenient 구분
+// 채널별 요약 — apex/www 도메인 자동 매핑
+// (pure-beef.kr 채널이면 www.pure-beef.kr 트래픽도 같이 집계)
 const statsByChannel = db.prepare(`
   SELECT
     c.id, c.name, c.domain, c.upstream, c.active,
@@ -77,7 +92,11 @@ const statsByChannel = db.prepare(`
     SUM(CASE WHEN l.category = 'bot' AND l.blocked  = 1                THEN 1 ELSE 0 END) AS blocked,
     COUNT(DISTINCT CASE WHEN l.category = 'bot' THEN l.bot_name END)  AS bot_types
   FROM channels c
-  LEFT JOIN access_logs l ON l.domain = c.domain
+  LEFT JOIN access_logs l ON
+    -- 채널 domain 과 정확 일치 OR www 접두 추가/제거 매칭
+    l.domain = c.domain
+    OR l.domain = 'www.' || c.domain
+    OR l.domain = REPLACE(c.domain, 'www.', '')
   GROUP BY c.id
   ORDER BY (bot_total + other_bot_total + user_total) DESC
 `)
@@ -168,13 +187,14 @@ export default async function adminRoutes(app) {
   // 실 결제 연동 전 임시 단가(₩2/요청)로 환산
   app.get('/admin/stats/billing', (req, reply) => {
     const { domain } = req.query
-    const where = domain ? `WHERE domain = ?` : ''
+    const dc = domainCondition(domain)
+    const where = dc.sql ? `WHERE ${dc.sql}` : ''
     const row = db.prepare(`
       SELECT
         COUNT(*)                                       AS total,
         SUM(CASE WHEN billed = 1 THEN 1 ELSE 0 END)   AS billed
       FROM access_logs ${where}
-    `).get(...(domain ? [domain] : []))
+    `).get(...dc.params)
     const billed = row.billed || 0
     const unit   = 2  // 임시 단가 ₩2 / 과금 요청
     return reply.send({
@@ -209,10 +229,9 @@ export default async function adminRoutes(app) {
     const conds = []
     const params = []
     if (category && category !== 'all') { conds.push(`category = ?`); params.push(category) }
-    if (domain) { conds.push(`domain = ?`); params.push(domain) }
+    const dc = domainCondition(domain)
+    if (dc.sql) { conds.push(dc.sql); params.push(...dc.params) }
 
-    // category='bot' 또는 'other_bot' → bot_name 기준 (정규화된 이름)
-    // 그 외 (user) → bot_ua 그대로
     const useBotName = (category === 'bot' || category === 'other_bot')
     const groupCol   = useBotName ? `COALESCE(NULLIF(bot_name,''), bot_ua)` : `bot_ua`
     if (useBotName) conds.push(`bot_name IS NOT NULL AND bot_name != ''`)
@@ -237,7 +256,7 @@ export default async function adminRoutes(app) {
     const conds = [`ts >= datetime('now', '-30 days')`]
     const params = []
     if (category && category !== 'all') { conds.push(`category = ?`); params.push(category) }
-    if (domain) { conds.push(`domain = ?`); params.push(domain) }
+    const dc = domainCondition(domain); if (dc.sql) { conds.push(dc.sql); params.push(...dc.params) }
     const where = `WHERE ` + conds.join(' AND ')
     const rows = db.prepare(
       `SELECT DATE(ts) AS date, COUNT(*) AS count FROM access_logs ${where} GROUP BY date ORDER BY date DESC`
@@ -254,7 +273,7 @@ export default async function adminRoutes(app) {
     const conds = [`DATE(ts) = ?`]
     const params = [date]
     if (category && category !== 'all') { conds.push(`category = ?`); params.push(category) }
-    if (domain) { conds.push(`domain = ?`); params.push(domain) }
+    const dc = domainCondition(domain); if (dc.sql) { conds.push(dc.sql); params.push(...dc.params) }
     const where = `WHERE ` + conds.join(' AND ')
     const rows = db.prepare(
       `SELECT strftime('%H', ts) AS hour, COUNT(*) AS count FROM access_logs ${where} GROUP BY hour ORDER BY hour`
@@ -270,11 +289,11 @@ export default async function adminRoutes(app) {
   // 카테고리별 누계 (대시보드 KPI 용)
   app.get('/admin/stats/category', (req, reply) => {
     const { domain } = req.query
-    const where = domain ? `WHERE domain = ?` : ''
-    const params = domain ? [domain] : []
+    const dc = domainCondition(domain)
+    const where = dc.sql ? `WHERE ${dc.sql}` : ''
     const rows = db.prepare(
       `SELECT category, COUNT(*) AS count FROM access_logs ${where} GROUP BY category`
-    ).all(...params)
+    ).all(...dc.params)
     const result = { malicious: 0, bot: 0, other_bot: 0, user: 0 }
     for (const r of rows) result[r.category] = r.count
     return reply.send(result)
@@ -285,7 +304,7 @@ export default async function adminRoutes(app) {
     const { domain } = req.query
     const conds = [`category != 'user'`]
     const params = []
-    if (domain) { conds.push(`domain = ?`); params.push(domain) }
+    const dc = domainCondition(domain); if (dc.sql) { conds.push(dc.sql); params.push(...dc.params) }
     const where = `WHERE ` + conds.join(' AND ')
     const rows = db.prepare(
       `SELECT bot_purpose, COUNT(*) AS count, COUNT(DISTINCT bot_name) AS unique_bots
@@ -308,7 +327,7 @@ export default async function adminRoutes(app) {
     const { domain } = req.query
     const conds = [`category = 'malicious'`]
     const params = []
-    if (domain) { conds.push(`domain = ?`); params.push(domain) }
+    const dc = domainCondition(domain); if (dc.sql) { conds.push(dc.sql); params.push(...dc.params) }
     const where = `WHERE ` + conds.join(' AND ')
     const rows = db.prepare(`
       SELECT bot_name, bot_vendor, COUNT(*) AS count, MAX(ts) AS last_seen
@@ -325,7 +344,7 @@ export default async function adminRoutes(app) {
     const conds = [`category != 'user'`, `bot_name IS NOT NULL`, `bot_name != ''`]
     const params = []
     if (purpose) { conds.push(`bot_purpose = ?`); params.push(purpose) }
-    if (domain)  { conds.push(`domain = ?`);      params.push(domain) }
+    const dc = domainCondition(domain); if (dc.sql) { conds.push(dc.sql); params.push(...dc.params) }
     const where = `WHERE ` + conds.join(' AND ')
     const rows = db.prepare(
       `SELECT bot_name, bot_purpose, COUNT(*) AS count FROM access_logs ${where} GROUP BY bot_name ORDER BY count DESC`
@@ -340,11 +359,11 @@ export default async function adminRoutes(app) {
     const conds = []
     const params = []
     if (category && category !== 'all') { conds.push(`category = ?`); params.push(category) }
-    if (domain) { conds.push(`domain = ?`); params.push(domain) }
+    const dc = domainCondition(domain); if (dc.sql) { conds.push(dc.sql); params.push(...dc.params) }
     const where = conds.length ? `WHERE ` + conds.join(' AND ') : ''
     params.push(limit)
     const rows = db.prepare(
-      `SELECT id, token, bot_ua, domain, ip, path, verified, billed, category, ts FROM access_logs ${where} ORDER BY id DESC LIMIT ?`
+      `SELECT id, token, bot_ua, domain, ip, path, verified, billed, category, bot_purpose, bot_name, ts FROM access_logs ${where} ORDER BY id DESC LIMIT ?`
     ).all(...params)
     return reply.send(rows)
   })
