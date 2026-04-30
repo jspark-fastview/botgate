@@ -201,15 +201,23 @@ export default async function adminRoutes(app) {
   })
 
   // UA 별 접근 통계 (?domain= 선택, ?category= 기본 'bot', 'user'/'other_bot' 가능)
+  // category='bot' 일 때는 bot_name 으로 그룹핑 (raw UA 노이즈 제거)
   app.get('/admin/stats/bots', (req, reply) => {
     const { domain, category = 'bot' } = req.query
     const conds = []
     const params = []
     if (category && category !== 'all') { conds.push(`category = ?`); params.push(category) }
     if (domain) { conds.push(`domain = ?`); params.push(domain) }
+
+    // category='bot' 또는 'other_bot' → bot_name 기준 (정규화된 이름)
+    // 그 외 (user) → bot_ua 그대로
+    const useBotName = (category === 'bot' || category === 'other_bot')
+    const groupCol   = useBotName ? `COALESCE(NULLIF(bot_name,''), bot_ua)` : `bot_ua`
+    if (useBotName) conds.push(`bot_name IS NOT NULL AND bot_name != ''`)
+
     const where = conds.length ? `WHERE ` + conds.join(' AND ') : ''
     const rows = db.prepare(
-      `SELECT bot_ua, COUNT(*) AS count FROM access_logs ${where} GROUP BY bot_ua ORDER BY count DESC`
+      `SELECT ${groupCol} AS bot_ua, COUNT(*) AS count FROM access_logs ${where} GROUP BY ${groupCol} ORDER BY count DESC`
     ).all(...params)
     return reply.send(rows)
   })
