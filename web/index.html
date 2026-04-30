@@ -539,7 +539,7 @@
         <div class="panel-head">
           <h3>일별 AI 봇 요청 추이</h3>
           <span class="sub">최근 14일</span>
-          <div class="right"><a>자세히 보기 →</a></div>
+          <div class="right"><a onclick="nav(event,'page-analytics')" href="#">자세히 보기 →</a></div>
         </div>
         <div class="chart" id="chart">
           <!-- bars filled by JS -->
@@ -551,6 +551,7 @@
         <div class="panel-head">
           <h3>봇 목적별 비중</h3>
           <span class="sub">학습 / 검색 / SEO / 소셜 / 일반</span>
+          <div class="right"><a onclick="nav(event,'page-policies')" href="#">정책 설정 →</a></div>
         </div>
         <div id="dash-purpose-bars" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
           <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
@@ -589,6 +590,7 @@
         <div class="panel-head">
           <h3>사용자 요청 현황</h3>
           <span class="sub" id="dash-user-sub">누적 · 일반 브라우저</span>
+          <div class="right"><a onclick="dashboardJumpTrafficUser(event)" href="#">사용자 로그 →</a></div>
         </div>
         <div id="dash-user-list" class="bot-list">
           <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
@@ -599,6 +601,7 @@
         <div class="panel-head">
           <h3>기타 봇 요청 현황</h3>
           <span class="sub">누적 · Slackbot · 크롤러 등</span>
+          <div class="right"><a onclick="dashboardJumpTrafficOtherBot(event)" href="#">기타 봇 로그 →</a></div>
         </div>
         <div id="dash-otherbot-list" class="bot-list">
           <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
@@ -612,7 +615,7 @@
         <div class="panel-head">
           <h3>최근 이벤트</h3>
           <span class="sub">실시간</span>
-          <div class="right"><a>전체 로그 →</a></div>
+          <div class="right"><a onclick="nav(event,'page-traffic')" href="#">전체 로그 →</a></div>
         </div>
         <div class="events" id="dash-events">
           <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:24px;">로딩중…</div>
@@ -1970,6 +1973,20 @@
       _strictMode = (newVal === '1');
       renderStrictToggle();
     } catch(e) { alert('변경 실패: ' + e.message); }
+  }
+
+  /* ─── 대시보드 → 트래픽 로그 카테고리별 점프 ──────────── */
+  function dashboardJumpTrafficUser(e) {
+    _trafficCategory = 'user';
+    nav(e, 'page-traffic');
+    const sel = document.getElementById('traffic-cat-select');
+    if (sel) sel.value = 'user';
+  }
+  function dashboardJumpTrafficOtherBot(e) {
+    _trafficCategory = 'other_bot';
+    nav(e, 'page-traffic');
+    const sel = document.getElementById('traffic-cat-select');
+    if (sel) sel.value = 'other_bot';
   }
 
   /* ─── BOT POLICIES (목적별) ────────────────────────────── */
