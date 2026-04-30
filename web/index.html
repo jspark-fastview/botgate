@@ -847,6 +847,36 @@
         </table>
       </div>
     </div>
+
+    <!-- 악성 패턴 섹션 -->
+    <div style="margin-top:32px;">
+      <div class="page-head">
+        <div>
+          <h1 style="font-size:20px;color:var(--bad);">⛔ 차단되는 악성 패턴</h1>
+          <div class="greeting">아래 UA 패턴이 감지되면 즉시 403 차단됩니다.</div>
+        </div>
+      </div>
+
+      <div class="panel" style="padding:0;overflow:hidden;">
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>이름</th>
+                <th>분류</th>
+                <th>설명</th>
+                <th class="mono">UA 패턴</th>
+                <th style="text-align:right;">차단 누계</th>
+                <th>최근 감지</th>
+              </tr>
+            </thead>
+            <tbody id="malicious-tbl-body">
+              <tr><td colspan="6" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </section>
 
   <!-- ======================================================
@@ -1910,14 +1940,17 @@
     generic:       '#9aa1ad',
   };
 
+  let _maliciousStats = {};   // bot_name → { count, last_seen }
   async function loadCatalog() {
     try {
-      const [catData, statsData] = await Promise.all([
+      const [catData, statsData, malStatsData] = await Promise.all([
         apiFetch(`${API}/admin/bots/catalog`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/bot-names`).then(r => r.json()),
+        apiFetch(`${API}/admin/stats/malicious`).then(r => r.json()),
       ]);
       _catalog = catData;
       _catalogStats = Object.fromEntries(statsData.map(s => [s.bot_name, s.count]));
+      _maliciousStats = Object.fromEntries(malStatsData.map(s => [s.bot_name, s]));
 
       // 필터 옵션 채우기
       const meta = _catalog.purpose_meta || {};
@@ -1930,10 +1963,36 @@
         + vendors.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
 
       renderCatalog();
+      renderMalicious();
     } catch(e) {
       document.getElementById('catalog-tbl-body').innerHTML =
         `<tr><td colspan="4" style="text-align:center;color:var(--bad);padding:24px;">로드 실패</td></tr>`;
     }
+  }
+
+  function renderMalicious() {
+    if (!_catalog || !_catalog.malicious) return;
+    const tbody = document.getElementById('malicious-tbl-body');
+    if (!tbody) return;
+    const VENDOR_COLOR = { Attack: '#dc2626', Scraper: '#ea580c', Library: '#9aa1ad' };
+    tbody.innerHTML = _catalog.malicious.map(m => {
+      const stats = _maliciousStats[m.name] || {};
+      const cnt   = stats.count || 0;
+      const last  = stats.last_seen ? fmtTime(stats.last_seen) : '—';
+      const color = VENDOR_COLOR[m.vendor] || '#9aa1ad';
+      return `<tr>
+        <td style="font-weight:700;">${esc(m.name)}</td>
+        <td>
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;background:#ffe1e1;color:${color};border-radius:999px;font-size:11.5px;font-weight:600;">
+            ${esc(m.vendor)}
+          </span>
+        </td>
+        <td style="color:var(--ink-2);">${esc(m.desc || '')}</td>
+        <td class="mono" style="font-size:12px;color:var(--ink-mute);">${(m.patterns||[]).join(', ')}</td>
+        <td style="text-align:right;font-weight:${cnt ? 700 : 400};color:${cnt ? 'var(--bad)' : 'var(--ink-mute)'};">${cnt ? fmt(cnt) : '—'}</td>
+        <td style="font-size:13px;color:var(--ink-dim);">${last}</td>
+      </tr>`;
+    }).join('');
   }
 
   function renderCatalog() {

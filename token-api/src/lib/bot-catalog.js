@@ -67,6 +67,35 @@ export const BOTS = [
   { name: 'AdsTxtCrawler',         vendor: '(다양)',       purpose: 'generic' },
 ]
 
+// 악성 봇 / 공격 도구 (즉시 403 차단)
+// bot_classifier.lua 의 MALICIOUS 와 동기화
+export const MALICIOUS = [
+  // 취약점 스캐너
+  { name: 'Nikto',         vendor: 'Attack',  patterns: ['nikto'],     desc: '웹 취약점 스캐너' },
+  { name: 'SQLMap',        vendor: 'Attack',  patterns: ['sqlmap'],    desc: 'SQL 인젝션 도구' },
+  { name: 'Acunetix',      vendor: 'Attack',  patterns: ['acunetix'],  desc: '취약점 스캐너' },
+  { name: 'Nessus',        vendor: 'Attack',  patterns: ['nessus'],    desc: '취약점 스캐너' },
+  { name: 'Nuclei',        vendor: 'Attack',  patterns: ['nuclei'],    desc: '템플릿 기반 스캐너' },
+  { name: 'OpenVAS',       vendor: 'Attack',  patterns: ['openvas'],   desc: '오픈소스 스캐너' },
+  { name: 'w3af',          vendor: 'Attack',  patterns: ['w3af'],      desc: '웹앱 공격 프레임워크' },
+  { name: 'WPScan',        vendor: 'Attack',  patterns: ['wpscan'],    desc: 'WordPress 스캐너' },
+  // 포트 / 네트워크 스캐너
+  { name: 'Masscan',       vendor: 'Attack',  patterns: ['masscan'],   desc: '대규모 포트 스캐너' },
+  { name: 'Zgrab',         vendor: 'Attack',  patterns: ['zgrab'],     desc: '인터넷 스캐너' },
+  { name: 'Nmap',          vendor: 'Attack',  patterns: ['nmap scripting','nmap-scan'], desc: '포트/서비스 스캐너' },
+  // 스크래핑
+  { name: 'Scrapy',        vendor: 'Scraper', patterns: ['scrapy'],    desc: '스크래핑 프레임워크' },
+  { name: 'HTTrack',       vendor: 'Scraper', patterns: ['httrack'],   desc: '사이트 통째 미러링' },
+  { name: 'Wget',          vendor: 'Scraper', patterns: ['wget/'],     desc: 'CLI 다운로드 도구' },
+  { name: 'LibWWW-Perl',   vendor: 'Scraper', patterns: ['libwww-perl'], desc: 'Perl HTTP 라이브러리' },
+  // 자동화 라이브러리 (콘텐츠 사이트 정책상 차단)
+  { name: 'Python-Requests',  vendor: 'Library', patterns: ['python-requests'], desc: 'Python HTTP 라이브러리' },
+  { name: 'Python-urllib',    vendor: 'Library', patterns: ['python-urllib'],   desc: 'Python 표준 HTTP' },
+  { name: 'Go-Http-Client',   vendor: 'Library', patterns: ['go-http-client'],  desc: 'Go 표준 HTTP' },
+  { name: 'Java-Http',        vendor: 'Library', patterns: ['java/1.','java/2.'], desc: 'Java URLConnection' },
+  { name: 'Apache-HttpClient',vendor: 'Library', patterns: ['apache-httpclient'], desc: 'Apache Commons HTTP' },
+]
+
 export const PURPOSE_META = {
   ai_training:    { label: 'AI Crawler',           desc: '학습 데이터' },
   ai_search:      { label: 'AI Search',            desc: 'RAG 인덱싱' },

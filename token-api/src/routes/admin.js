@@ -2,7 +2,7 @@
 import { db } from '../db/schema.js'
 import { nanoid } from 'nanoid'
 import { resolve4, resolveCname } from 'dns/promises'
-import { BOTS as BOT_CATALOG, PURPOSE_META } from '../lib/bot-catalog.js'
+import { BOTS as BOT_CATALOG, MALICIOUS as MALICIOUS_CATALOG, PURPOSE_META } from '../lib/bot-catalog.js'
 
 // 채널 도메인이 우리 ALB(또는 설정된 호스트네임)로 향하는지 확인
 async function checkChannelDns(domain) {
@@ -297,9 +297,26 @@ export default async function adminRoutes(app) {
   // 봇 카탈로그 — UI 에서 봇 목록 + 카테고리 표시용
   app.get('/admin/bots/catalog', (_req, reply) => {
     return reply.send({
-      bots:    BOT_CATALOG,
+      bots:         BOT_CATALOG,
+      malicious:    MALICIOUS_CATALOG,
       purpose_meta: PURPOSE_META,
     })
+  })
+
+  // 실제 차단된 악성 봇 통계 (access_logs 기반)
+  app.get('/admin/stats/malicious', (req, reply) => {
+    const { domain } = req.query
+    const conds = [`category = 'malicious'`]
+    const params = []
+    if (domain) { conds.push(`domain = ?`); params.push(domain) }
+    const where = `WHERE ` + conds.join(' AND ')
+    const rows = db.prepare(`
+      SELECT bot_name, bot_vendor, COUNT(*) AS count, MAX(ts) AS last_seen
+      FROM access_logs ${where}
+      GROUP BY bot_name, bot_vendor
+      ORDER BY count DESC
+    `).all(...params)
+    return reply.send(rows)
   })
 
   // 봇 이름(bot_name) 별 누계 — purpose 필터 가능
