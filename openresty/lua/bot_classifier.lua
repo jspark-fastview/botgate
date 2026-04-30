@@ -1,12 +1,41 @@
 -- bot_classifier.lua
 -- UA 문자열 → { category, purpose, name, vendor } 분류
 --
--- category : bot | other_bot | user
--- purpose  : ai_training | ai_search | ai_assistant | search_engine | seo | social | generic | user
+-- category : malicious | bot | other_bot | user
+-- purpose  : malicious | ai_training | ai_search | ai_assistant | search_engine | seo | social | generic | user
 -- name     : 정규화된 봇 이름 (분석 / 그룹핑 용)
 -- vendor   : 운영 회사 (OpenAI, Anthropic, Google 등)
 
 local _M = {}
+
+-- ── 악성 봇 / 공격 도구 패턴 (소문자 substring) ─────────────────
+-- 매칭되면 즉시 403 차단 + 로깅
+local MALICIOUS = {
+    -- 취약점 스캐너
+    { name="Nikto",         vendor="Attack",      patterns={"nikto"} },
+    { name="SQLMap",        vendor="Attack",      patterns={"sqlmap"} },
+    { name="Acunetix",      vendor="Attack",      patterns={"acunetix"} },
+    { name="Nessus",        vendor="Attack",      patterns={"nessus"} },
+    { name="Nuclei",        vendor="Attack",      patterns={"nuclei"} },
+    { name="OpenVAS",       vendor="Attack",      patterns={"openvas"} },
+    { name="w3af",          vendor="Attack",      patterns={"w3af"} },
+    { name="WPScan",        vendor="Attack",      patterns={"wpscan"} },
+    -- 포트 / 네트워크 스캐너
+    { name="Masscan",       vendor="Attack",      patterns={"masscan"} },
+    { name="Zgrab",         vendor="Attack",      patterns={"zgrab"} },
+    { name="Nmap",          vendor="Attack",      patterns={"nmap scripting","nmap-scan"} },
+    -- 스크래핑 / 자동화 (정책상 차단)
+    { name="Scrapy",        vendor="Scraper",     patterns={"scrapy"} },
+    { name="HTTrack",       vendor="Scraper",     patterns={"httrack"} },
+    { name="Wget",          vendor="Scraper",     patterns={"wget/"} },
+    { name="LibWWW-Perl",   vendor="Scraper",     patterns={"libwww-perl"} },
+    -- 자동 / 라이브러리 UA (콘텐츠 사이트 정책상)
+    { name="Python-Requests", vendor="Library",   patterns={"python-requests"} },
+    { name="Python-urllib",   vendor="Library",   patterns={"python-urllib"} },
+    { name="Go-Http-Client",  vendor="Library",   patterns={"go-http-client"} },
+    { name="Java-Http",       vendor="Library",   patterns={"java/1.","java/2."} },
+    { name="Apache-HttpClient", vendor="Library", patterns={"apache-httpclient"} },
+}
 
 -- ── 봇 정의 (가장 위에 매칭된 게 우선) ────────────────────────
 -- patterns 는 substring 매칭 (case-sensitive)
@@ -96,10 +125,23 @@ end
 -- ── classify ─────────────────────────────────────────────────
 function _M.classify(ua)
     if not ua or ua == "" then
-        return { category="user", purpose="user", name="", vendor="" }
+        -- 빈 UA 도 의심 → malicious 처리
+        return { category="malicious", purpose="malicious", name="(empty UA)", vendor="Unknown" }
     end
 
-    -- 알려진 봇
+    local ua_lower = ua:lower()
+
+    -- 1. 악성 봇 / 공격 도구 (즉시 차단 대상)
+    for _, b in ipairs(MALICIOUS) do
+        for _, p in ipairs(b.patterns) do
+            if ua_lower:find(p, 1, true) then
+                return { category="malicious", purpose="malicious",
+                         name=b.name, vendor=b.vendor }
+            end
+        end
+    end
+
+    -- 2. 알려진 봇 (정상 분류)
     for _, b in ipairs(BOTS) do
         for _, p in ipairs(b.patterns) do
             if ua:find(p, 1, true) then
@@ -114,16 +156,19 @@ function _M.classify(ua)
         end
     end
 
-    -- 미등록 봇 패턴
-    local ua_lower = ua:lower()
+    -- 3. 미등록 봇 패턴 (휴리스틱)
     for _, p in ipairs(OTHER_BOT_PATTERNS) do
         if ua_lower:find(p, 1, true) then
             return { category="other_bot", purpose="generic", name="Unknown Bot", vendor="" }
         end
     end
 
-    -- 사용자
+    -- 4. 사용자
     return { category="user", purpose="user", name="", vendor="" }
+end
+
+function _M.is_malicious(ua)
+    return _M.classify(ua).category == "malicious"
 end
 
 function _M.is_ai_bot(ua)

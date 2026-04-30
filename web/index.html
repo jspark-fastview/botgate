@@ -496,7 +496,7 @@
     </div>
 
     <!-- KPI -->
-    <div class="kpis" style="grid-template-columns:repeat(4,1fr);">
+    <div class="kpis" style="grid-template-columns:repeat(5,1fr);">
       <div class="kpi accent">
         <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2"/></svg></div>
         <div class="l">AI 봇 요청</div>
@@ -508,6 +508,12 @@
         <div class="l">기타 봇</div>
         <div class="v" id="kpi-otherbot">—</div>
         <div class="s">Slackbot · 크롤러 등</div>
+      </div>
+      <div class="kpi" style="background:#ffe1e1;border-color:transparent;">
+        <div class="icon" style="background:#fff;color:var(--bad);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg></div>
+        <div class="l">차단된 악성</div>
+        <div class="v" id="kpi-malicious" style="color:var(--bad);">—</div>
+        <div class="s">스캐너 · 자동화 도구</div>
       </div>
       <div class="kpi">
         <div class="icon" style="background:var(--pastel-mint); color:var(--ok);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
@@ -676,6 +682,7 @@
           <option value="all">전체 트래픽</option>
           <option value="bot" selected>AI 봇만</option>
           <option value="other_bot">기타 봇만</option>
+          <option value="malicious">차단된 악성만</option>
           <option value="user">사용자만</option>
         </select>
         <select id="traffic-ch-select" class="ch-select ch-selector" onchange="onChannelChange(this)">
@@ -1130,6 +1137,7 @@
       if (el('kpi-requests'))     el('kpi-requests').textContent = fmt(aiBotTotal);
       if (el('kpi-requests-sub')) el('kpi-requests-sub').textContent = `${bots.length}개 종류`;
       if (el('kpi-otherbot'))     el('kpi-otherbot').textContent = fmt(otherBotTotal);
+      if (el('kpi-malicious'))    el('kpi-malicious').textContent = fmt(categoryStats.malicious || 0);
       if (el('kpi-tokens'))       el('kpi-tokens').textContent = `${activeTokens}개`;
 
       if (el('kpi-billing') && billing) {
@@ -1511,6 +1519,8 @@
       user:          '',
     }[purpose] || '';
     const tip = purpose ? ` title="목적: ${purposeLabel}"` : '';
+    if (cat === 'malicious')
+      return `<span${tip} style="font-size:10px;font-weight:700;background:#ffe1e1;color:var(--bad);padding:2px 7px;border-radius:6px;">⛔ 악성</span>`;
     if (cat === 'bot')
       return `<span${tip} style="font-size:10px;font-weight:700;background:var(--brand-soft);color:var(--brand);padding:2px 7px;border-radius:6px;">AI·${esc(purposeLabel)}</span>`;
     if (cat === 'other_bot')

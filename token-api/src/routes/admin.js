@@ -273,7 +273,7 @@ export default async function adminRoutes(app) {
     const rows = db.prepare(
       `SELECT category, COUNT(*) AS count FROM access_logs ${where} GROUP BY category`
     ).all(...params)
-    const result = { bot: 0, other_bot: 0, user: 0 }
+    const result = { malicious: 0, bot: 0, other_bot: 0, user: 0 }
     for (const r of rows) result[r.category] = r.count
     return reply.send(result)
   })

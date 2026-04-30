@@ -16,22 +16,11 @@ local cjson          = require "cjson.safe"
 
 local _M = {}
 
--- 즉시 차단 UA (소문자 substring)
-local BLOCK_UA = {
-    "masscan", "zgrab", "nikto", "sqlmap", "scrapy",
-    "python-requests", "go-http-client", "libwww-perl",
-}
+-- (악성 패턴은 bot_classifier.lua 의 MALICIOUS 리스트로 통합)
 
 -- ── 헬퍼 ────────────────────────────────────────────────────────────────
 
 local function ua_lower() return (ngx.var.http_user_agent or ""):lower() end
-
-local function is_blocked_ua(ua)
-    for _, p in ipairs(BLOCK_UA) do
-        if ua:find(p, 1, true) then return true, p end
-    end
-    return false
-end
 
 local function json_log(data)
     data.time   = ngx.now()
@@ -108,26 +97,27 @@ end
 -- ── 메인 필터 ─────────────────────────────────────────────────────────
 
 function _M.run()
-    local ua   = ua_lower()
-    local path = ngx.var.request_uri:match("^([^?]*)")  -- query string 제거
+    local raw_ua = ngx.var.http_user_agent
+    local path   = ngx.var.request_uri:match("^([^?]*)")  -- query string 제거
+    local ip     = ngx.var.remote_addr
+    local host   = ngx.var.host
 
-    -- stage 1: 악성 UA → 403
-    local blocked, matched = is_blocked_ua(ua)
-    if blocked then
-        json_log({ bot_category = "malicious", action = "block", matched_ua = matched })
+    -- 분류 (가장 먼저 — 악성 / 봇 / 사용자)
+    local cls = bot_classifier.classify(raw_ua)
+    ngx.ctx.classification = cls
+
+    -- stage 1: 악성 봇 / 공격 도구 → 즉시 403 + 로깅
+    if cls.category == "malicious" then
+        json_log({ bot_category = "malicious", action = "block",
+                   bot_name = cls.name, vendor = cls.vendor })
+        logger.access(raw_ua or "", host, ip, path, false, false,
+                      "malicious", "malicious", cls.name, cls.vendor)
+        ngx.ctx.access_logged = true
+        ngx.header["X-Botgate-Error"] = "malicious-blocked"
         return ngx.exit(ngx.HTTP_FORBIDDEN)
     end
 
-    -- stage 2: AI 봇 분류 (classifier 활용)
-    local raw_ua = ngx.var.http_user_agent
-    local cls    = bot_classifier.classify(raw_ua)
-    -- 컨텍스트에 분류 결과 저장 — bot.conf 의 사용자/기타봇 로깅에서 재사용
-    ngx.ctx.classification = cls
-
     if cls.category == "bot" then
-        local ip   = ngx.var.remote_addr
-        local host = ngx.var.host
-
         -- stage 2-0: path rule — block 룰은 검증 여부와 무관하게 차단
         local rule_action = path_rules.match(path)
         if rule_action == "block" then
