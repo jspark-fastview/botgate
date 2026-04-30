@@ -37,8 +37,8 @@ local function send(premature, payload)
     sock:close()
 end
 
--- bot_ua, domain, ip, path, verified, billed, category, bot_purpose, bot_name, bot_vendor
-function _M.access(bot_ua, domain, ip, path, verified, billed, category, bot_purpose, bot_name, bot_vendor)
+-- bot_ua, domain, ip, path, verified, billed, category, bot_purpose, bot_name, bot_vendor, blocked
+function _M.access(bot_ua, domain, ip, path, verified, billed, category, bot_purpose, bot_name, bot_vendor, blocked)
     local ok, err = ngx.timer.at(0, send, {
         bot_ua      = bot_ua   or "",
         domain      = domain   or "",
@@ -50,6 +50,7 @@ function _M.access(bot_ua, domain, ip, path, verified, billed, category, bot_pur
         bot_purpose = bot_purpose or "generic",
         bot_name    = bot_name or "",
         bot_vendor  = bot_vendor or "",
+        blocked     = blocked  == true,
     })
     if not ok then
         ngx.log(ngx.WARN, "[logger] timer failed: ", err)

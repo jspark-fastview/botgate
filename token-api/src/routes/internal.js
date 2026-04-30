@@ -7,8 +7,8 @@ const validateStmt = db.prepare(`
 `)
 
 const logStmt = db.prepare(`
-  INSERT INTO access_logs (token, bot_ua, domain, ip, path, verified, billed, category, bot_purpose, bot_name, bot_vendor)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO access_logs (token, bot_ua, domain, ip, path, verified, billed, category, bot_purpose, bot_name, bot_vendor, blocked)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
 export default async function internalRoutes(app) {
@@ -33,8 +33,8 @@ export default async function internalRoutes(app) {
             bot_purpose = 'generic', bot_name = null, bot_vendor = null } = req.body
     const row = validateStmt.get(token)
 
-    // 무효 토큰은 null 로 기록 (FK 제약 위반 방지)
-    logStmt.run(row ? token : null, bot_ua, domain, ip, path, row ? 1 : 0, billed ? 1 : 0, 'bot', bot_purpose, bot_name, bot_vendor)
+    // 무효 토큰은 null 로 기록. blocked=1 (검증 실패는 401 차단) / 0 (통과)
+    logStmt.run(row ? token : null, bot_ua, domain, ip, path, row ? 1 : 0, billed ? 1 : 0, 'bot', bot_purpose, bot_name, bot_vendor, row ? 0 : 1)
 
     if (!row) {
       return reply.code(401).send({ valid: false })
@@ -60,13 +60,15 @@ export default async function internalRoutes(app) {
           bot_purpose: { type: 'string', enum: ['malicious','ai_training','ai_search','ai_assistant','search_engine','seo','social','generic','user'] },
           bot_name:    { type: 'string' },
           bot_vendor:  { type: 'string' },
+          blocked:     { type: 'boolean' },
         },
       },
     },
   }, (req, reply) => {
     const { bot_ua, domain, ip, path = null, verified, billed = false,
-            category = 'bot', bot_purpose = 'generic', bot_name = null, bot_vendor = null } = req.body
-    logStmt.run(null, bot_ua, domain, ip, path, verified ? 1 : 0, billed ? 1 : 0, category, bot_purpose, bot_name, bot_vendor)
+            category = 'bot', bot_purpose = 'generic', bot_name = null, bot_vendor = null,
+            blocked = false } = req.body
+    logStmt.run(null, bot_ua, domain, ip, path, verified ? 1 : 0, billed ? 1 : 0, category, bot_purpose, bot_name, bot_vendor, blocked ? 1 : 0)
     return reply.code(204).send()
   })
 }

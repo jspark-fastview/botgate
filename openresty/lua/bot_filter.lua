@@ -106,12 +106,12 @@ function _M.run()
     local cls = bot_classifier.classify(raw_ua)
     ngx.ctx.classification = cls
 
-    -- stage 1: 악성 봇 / 공격 도구 → 즉시 403 + 로깅
+    -- stage 1: 악성 봇 / 공격 도구 → 즉시 403 + 로깅 (blocked=true)
     if cls.category == "malicious" then
         json_log({ bot_category = "malicious", action = "block",
                    bot_name = cls.name, vendor = cls.vendor })
         logger.access(raw_ua or "", host, ip, path, false, false,
-                      "malicious", "malicious", cls.name, cls.vendor)
+                      "malicious", "malicious", cls.name, cls.vendor, true)
         ngx.ctx.access_logged = true
         ngx.header["X-Botgate-Error"] = "malicious-blocked"
         return ngx.exit(ngx.HTTP_FORBIDDEN)
@@ -131,11 +131,11 @@ function _M.run()
         local _, verified, detail = rdns.verify(raw_ua, ip)
 
         if verified then
-            -- 2a) rDNS 통과
+            -- 2a) rDNS 통과 (blocked=false)
             json_log({ bot_category = "real_ai_bot", action = "pass",
                        path = path, rule = rule_action, detail = detail,
                        bot_name = cls.name, bot_purpose = cls.purpose })
-            logger.access(raw_ua, host, ip, path, true, billed, "bot", cls.purpose, cls.name, cls.vendor)
+            logger.access(raw_ua, host, ip, path, true, billed, "bot", cls.purpose, cls.name, cls.vendor, false)
             ngx.ctx.access_logged = true
             ngx.req.set_header("X-Bot-Verified", "rdns")
             ngx.req.set_header("X-Bot-Purpose",  cls.purpose)
@@ -149,20 +149,21 @@ function _M.run()
         if not token or token == "" then
             -- 토큰 없음
             if not settings.is_strict() then
+                -- lenient 통과 (blocked=false, verified=false)
                 json_log({ bot_category = "ai_bot_lenient_pass", action = "pass",
                            detail = detail, mode = "lenient",
                            bot_name = cls.name, bot_purpose = cls.purpose })
-                logger.access(raw_ua, host, ip, path, false, billed, "bot", cls.purpose, cls.name, cls.vendor)
+                logger.access(raw_ua, host, ip, path, false, billed, "bot", cls.purpose, cls.name, cls.vendor, false)
                 ngx.ctx.access_logged = true
                 ngx.req.set_header("X-Bot-Verified", "lenient")
                 ngx.req.set_header("X-Bot-Purpose",  cls.purpose)
                 ngx.req.set_header("X-Bot-Billed",   billed and "1" or "0")
                 return
             end
-            -- strict 모드: 차단
+            -- strict 모드: 차단 (blocked=true)
             json_log({ bot_category = "ai_bot_unregistered", action = "block402", detail = detail,
                        bot_name = cls.name, bot_purpose = cls.purpose })
-            logger.access(raw_ua, host, ip, path, false, false, "bot", cls.purpose, cls.name, cls.vendor)
+            logger.access(raw_ua, host, ip, path, false, false, "bot", cls.purpose, cls.name, cls.vendor, true)
             ngx.ctx.access_logged = true
             ngx.header["X-Botgate-Error"]    = "token-required"
             ngx.header["X-Botgate-Register"] = "https://botgate.io/register"
@@ -179,11 +180,11 @@ function _M.run()
             return ngx.exit(401)
         end
 
-        -- 토큰 유효 → 통과
+        -- 토큰 유효 → 통과 (blocked=false)
         json_log({ bot_category = "ai_bot_token", action = "pass",
                    plan = plan, path = path, rule = rule_action,
                    bot_name = cls.name, bot_purpose = cls.purpose })
-        logger.access(raw_ua, host, ip, path, true, billed, "bot", cls.purpose, cls.name, cls.vendor)
+        logger.access(raw_ua, host, ip, path, true, billed, "bot", cls.purpose, cls.name, cls.vendor, false)
         ngx.ctx.access_logged = true
         ngx.req.set_header("X-Bot-Verified", "token")
         ngx.req.set_header("X-Bot-Purpose",  cls.purpose)

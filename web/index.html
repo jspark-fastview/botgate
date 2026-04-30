@@ -777,8 +777,9 @@
               <th style="text-align:right;">사용자</th>
               <th style="text-align:right;">기타 봇</th>
               <th style="text-align:right;">AI 봇</th>
-              <th style="text-align:right;">검증</th>
-              <th style="text-align:right;">차단</th>
+              <th style="text-align:right;" title="rDNS 또는 토큰 통과">검증</th>
+              <th style="text-align:right;" title="검증 실패했지만 lenient 모드로 통과">미검증 통과</th>
+              <th style="text-align:right;" title="실제 차단된 요청">차단</th>
               <th style="text-align:right;">봇 종류</th>
               <th>DNS</th>
               <th>상태</th>
@@ -1657,7 +1658,7 @@
       populateSelectors();
 
       if (!channels.length) {
-        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--ink-mute);padding:24px;">등록된 채널이 없어요. 채널을 추가해보세요.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:var(--ink-mute);padding:24px;">등록된 채널이 없어요. 채널을 추가해보세요.</td></tr>';
         return;
       }
       const statsMap = Object.fromEntries(stats.map(s => [s.id, s]));
@@ -1677,6 +1678,7 @@
           <td style="text-align:right;color:var(--ink-2);">${fmt(s.other_bot_total || 0)}</td>
           <td style="text-align:right;font-weight:700;">${fmt(s.bot_total || 0)}</td>
           <td style="text-align:right;color:var(--ok);">${fmt(s.verified || 0)}</td>
+          <td style="text-align:right;color:var(--ink-dim);">${fmt(s.lenient_pass || 0)}</td>
           <td style="text-align:right;color:var(--bad);">${fmt(s.blocked || 0)}</td>
           <td style="text-align:right;color:var(--ink-dim);">${s.bot_types || 0}개</td>
           <td>${dnsBadge(dns)}</td>
@@ -1692,7 +1694,7 @@
         </tr>`;
       }).join('');
     } catch(e) {
-      tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--bad);padding:24px;">API 연결 실패</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;color:var(--bad);padding:24px;">API 연결 실패</td></tr>`;
     }
   }
 
