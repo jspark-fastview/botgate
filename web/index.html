@@ -158,9 +158,11 @@
 
   /* ============ CHART ============ */
   .chart {
-    height: 220px; display: flex; align-items: flex-end; gap: 6px;
+    height: 220px;
     padding: 12px 0;
+    position: relative;
   }
+  .chart svg { display: block; width: 100%; height: 100%; }
   .chart .col {
     flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
     gap: 2px; position: relative; cursor: pointer;
@@ -1160,12 +1162,13 @@
     if (pageId === 'page-policies')  loadPolicies();
   }
 
-  /* ─── CHART helper (shared) ────────────────────────── */
+  /* ─── CHART helper (스무스 라인 + 영역) ──────────────── */
   function buildChart(chartId, chartxId, daily, days) {
     const chart  = document.getElementById(chartId);
     const chartx = document.getElementById(chartxId);
     if (!chart) return;
     chart.innerHTML = ''; chartx.innerHTML = '';
+
     const today = new Date();
     const slots = Array.from({length: days}, (_, i) => {
       const d = new Date(today);
@@ -1174,15 +1177,70 @@
       const found = daily.find(r => r.date === key);
       return { count: found ? found.count : 0, label: `${d.getMonth()+1}/${d.getDate()}` };
     });
+
     const max = Math.max(...slots.map(s => s.count), 1);
-    const chartH = chart.clientHeight || 200;
+    const w = chart.clientWidth  || 600;
+    const h = chart.clientHeight || 220;
+    const pad = { top: 16, right: 10, bottom: 6, left: 10 };
+    const innerW = w - pad.left - pad.right;
+    const innerH = h - pad.top - pad.bottom;
+
+    // 좌표 계산
+    const pts = slots.map((s, i) => ({
+      x: pad.left + (slots.length === 1 ? innerW/2 : (i / (slots.length - 1)) * innerW),
+      y: pad.top + innerH - (s.count / max) * innerH,
+      count: s.count, label: s.label,
+    }));
+
+    // Catmull-Rom → Bezier 변환으로 스무스 곡선
+    function smoothPath(p) {
+      if (p.length < 2) return '';
+      let d = `M ${p[0].x.toFixed(2)},${p[0].y.toFixed(2)}`;
+      for (let i = 0; i < p.length - 1; i++) {
+        const p0 = p[i - 1] || p[i];
+        const p1 = p[i];
+        const p2 = p[i + 1];
+        const p3 = p[i + 2] || p2;
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+        d += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)}`;
+      }
+      return d;
+    }
+
+    const linePath = smoothPath(pts);
+    const areaPath = `${linePath} L ${pts[pts.length-1].x.toFixed(2)},${(pad.top+innerH).toFixed(2)} L ${pts[0].x.toFixed(2)},${(pad.top+innerH).toFixed(2)} Z`;
+
+    const grid = [0.25, 0.5, 0.75].map(r => {
+      const y = (pad.top + innerH * r).toFixed(2);
+      return `<line x1="${pad.left}" y1="${y}" x2="${pad.left + innerW}" y2="${y}" stroke="var(--line)" stroke-dasharray="2,4"/>`;
+    }).join('');
+
+    chart.innerHTML = `
+      <svg width="100%" height="100%" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="overflow:visible;display:block;">
+        <defs>
+          <linearGradient id="${chartId}-grad" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#2b6df6" stop-opacity="0.28"/>
+            <stop offset="100%" stop-color="#2b6df6" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        ${grid}
+        <path d="${areaPath}" fill="url(#${chartId}-grad)"/>
+        <path d="${linePath}" fill="none" stroke="#2b6df6" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        ${pts.map(p =>
+          `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="3.5"
+                   fill="#fff" stroke="#2b6df6" stroke-width="2">
+             <title>${p.label} · ${p.count.toLocaleString()}</title>
+           </circle>`
+        ).join('')}
+      </svg>
+    `;
+
+    // X 축 라벨
     slots.forEach((s, i) => {
-      const h = Math.max(Math.round((s.count / max) * (chartH - 20)), s.count ? 2 : 0);
-      const col = document.createElement('div');
-      col.className = 'col';
-      col.title = `${s.label} · ${s.count.toLocaleString()}`;
-      col.innerHTML = `<div class="bar b1" style="height:${h}px;"></div>`;
-      chart.appendChild(col);
       const lbl = document.createElement('div');
       lbl.className = 'l';
       lbl.textContent = (i % 2 === 0) ? s.label : '';
