@@ -145,7 +145,7 @@ function _M.run()
             json_log({ bot_category = "real_ai_bot", action = "pass",
                        path = path, rule = rule_action, detail = detail,
                        bot_name = cls.name, bot_purpose = cls.purpose })
-            logger.access(raw_ua, host, ip, path, true, billed, "bot", cls.purpose, cls.name)
+            logger.access(raw_ua, host, ip, path, true, billed, "bot", cls.purpose, cls.name, cls.vendor)
             ngx.ctx.access_logged = true
             ngx.req.set_header("X-Bot-Verified", "rdns")
             ngx.req.set_header("X-Bot-Purpose",  cls.purpose)
@@ -162,7 +162,7 @@ function _M.run()
                 json_log({ bot_category = "ai_bot_lenient_pass", action = "pass",
                            detail = detail, mode = "lenient",
                            bot_name = cls.name, bot_purpose = cls.purpose })
-                logger.access(raw_ua, host, ip, path, false, billed, "bot", cls.purpose, cls.name)
+                logger.access(raw_ua, host, ip, path, false, billed, "bot", cls.purpose, cls.name, cls.vendor)
                 ngx.ctx.access_logged = true
                 ngx.req.set_header("X-Bot-Verified", "lenient")
                 ngx.req.set_header("X-Bot-Purpose",  cls.purpose)
@@ -172,7 +172,7 @@ function _M.run()
             -- strict 모드: 차단
             json_log({ bot_category = "ai_bot_unregistered", action = "block402", detail = detail,
                        bot_name = cls.name, bot_purpose = cls.purpose })
-            logger.access(raw_ua, host, ip, path, false, false, "bot", cls.purpose, cls.name)
+            logger.access(raw_ua, host, ip, path, false, false, "bot", cls.purpose, cls.name, cls.vendor)
             ngx.ctx.access_logged = true
             ngx.header["X-Botgate-Error"]    = "token-required"
             ngx.header["X-Botgate-Register"] = "https://botgate.io/register"
@@ -193,7 +193,7 @@ function _M.run()
         json_log({ bot_category = "ai_bot_token", action = "pass",
                    plan = plan, path = path, rule = rule_action,
                    bot_name = cls.name, bot_purpose = cls.purpose })
-        logger.access(raw_ua, host, ip, path, true, billed, "bot", cls.purpose, cls.name)
+        logger.access(raw_ua, host, ip, path, true, billed, "bot", cls.purpose, cls.name, cls.vendor)
         ngx.ctx.access_logged = true
         ngx.req.set_header("X-Bot-Verified", "token")
         ngx.req.set_header("X-Bot-Purpose",  cls.purpose)

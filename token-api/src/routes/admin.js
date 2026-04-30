@@ -2,6 +2,7 @@
 import { db } from '../db/schema.js'
 import { nanoid } from 'nanoid'
 import { resolve4, resolveCname } from 'dns/promises'
+import { BOTS as BOT_CATALOG, PURPOSE_META } from '../lib/bot-catalog.js'
 
 // 채널 도메인이 우리 ALB(또는 설정된 호스트네임)로 향하는지 확인
 async function checkChannelDns(domain) {
@@ -281,6 +282,14 @@ export default async function adminRoutes(app) {
        FROM access_logs ${where} GROUP BY bot_purpose ORDER BY count DESC`
     ).all(...params)
     return reply.send(rows)
+  })
+
+  // 봇 카탈로그 — UI 에서 봇 목록 + 카테고리 표시용
+  app.get('/admin/bots/catalog', (_req, reply) => {
+    return reply.send({
+      bots:    BOT_CATALOG,
+      purpose_meta: PURPOSE_META,
+    })
   })
 
   // 봇 이름(bot_name) 별 누계 — purpose 필터 가능

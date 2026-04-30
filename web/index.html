@@ -462,6 +462,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
         채널 관리
       </a>
+      <a onclick="nav(event,'page-catalog')" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        봇 카탈로그
+      </a>
     </div>
 
   </aside>
@@ -791,6 +795,53 @@
   </section>
 
   <!-- ======================================================
+       봇 카탈로그
+  ====================================================== -->
+  <section id="page-catalog" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>봇 카탈로그</h1>
+        <div class="greeting">botgate가 인식하는 모든 봇 목록과 카테고리.</div>
+      </div>
+      <div class="right" style="gap:8px;">
+        <select id="catalog-purpose-filter" class="ch-select" onchange="renderCatalog()">
+          <option value="">모든 카테고리</option>
+        </select>
+        <select id="catalog-vendor-filter" class="ch-select" onchange="renderCatalog()">
+          <option value="">모든 벤더</option>
+        </select>
+        <input id="catalog-search" type="text" placeholder="검색..."
+          oninput="renderCatalog()"
+          style="padding:6px 12px;border:1px solid var(--line);border-radius:var(--radius-pill);font-size:13px;min-width:160px;">
+      </div>
+    </div>
+
+    <!-- 카테고리별 칩 -->
+    <div id="catalog-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;">
+      <div style="color:var(--ink-mute);font-size:13px;">로딩중…</div>
+    </div>
+
+    <!-- 봇 테이블 -->
+    <div class="panel" style="padding:0;overflow:hidden;">
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>크롤러</th>
+              <th>벤더</th>
+              <th>카테고리</th>
+              <th style="text-align:right;">최근 누계</th>
+            </tr>
+          </thead>
+          <tbody id="catalog-tbl-body">
+            <tr><td colspan="4" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================
        경로 규칙 관리
   ====================================================== -->
   <section id="page-pricing" class="page-section">
@@ -1019,6 +1070,7 @@
     if (pageId === 'page-domains')   { loadChannels(); loadDomains(); }
     if (pageId === 'page-pricing')   loadRules();
     if (pageId === 'page-users')     loadUsers();
+    if (pageId === 'page-catalog')   loadCatalog();
   }
 
   /* ─── CHART helper (shared) ────────────────────────── */
@@ -1099,13 +1151,15 @@
     }
   }
 
-  // 봇 목적별 비중 (ai_training/ai_search/seo/social/generic)
+  // 봇 목적별 메타 (bot_classifier 와 동기화)
   const PURPOSE_META = {
-    ai_training: { label: 'AI 학습',  color: '#2b6df6', desc: '학습 데이터' },
-    ai_search:   { label: 'AI 검색',  color: '#9d6bff', desc: 'RAG/실시간' },
-    seo:         { label: 'SEO',      color: '#ff7a5c', desc: '분석 크롤러' },
-    social:      { label: '소셜',     color: '#1aa377', desc: '링크 프리뷰' },
-    generic:     { label: '일반 봇',  color: '#9aa1ad', desc: '기타' },
+    ai_training:   { label: 'AI Crawler',           color: '#2b6df6', desc: '학습용' },
+    ai_search:     { label: 'AI Search',            color: '#9d6bff', desc: 'RAG 인덱싱' },
+    ai_assistant:  { label: 'AI Assistant',         color: '#1aa377', desc: '사용자 트리거' },
+    search_engine: { label: 'Search Engine',        color: '#0078d4', desc: '검색엔진' },
+    seo:           { label: 'SEO',                  color: '#ff7a5c', desc: '분석 도구' },
+    social:        { label: 'Social Preview',       color: '#c4a01a', desc: '링크 미리보기' },
+    generic:       { label: 'Generic Bot',          color: '#9aa1ad', desc: '기타' },
   };
   function renderDashPurposeBars(rows) {
     const el = document.getElementById('dash-purpose-bars');
@@ -1115,7 +1169,7 @@
       return;
     }
     const total = rows.reduce((a,b) => a + b.count, 0);
-    const order = ['ai_training','ai_search','seo','social','generic'];
+    const order = ['ai_training','ai_search','ai_assistant','search_engine','seo','social','generic'];
     const sorted = order.map(p => rows.find(r => r.bot_purpose === p)).filter(Boolean);
     el.innerHTML = sorted.map(r => {
       const meta = PURPOSE_META[r.bot_purpose] || PURPOSE_META.generic;
@@ -1447,12 +1501,14 @@
 
   function catBadge(cat, purpose) {
     const purposeLabel = {
-      ai_training: '학습',
-      ai_search:   '검색',
-      seo:         'SEO',
-      social:      '소셜',
-      generic:     '일반',
-      user:        '',
+      ai_training:   'Crawler',
+      ai_search:     'Search',
+      ai_assistant:  'Assistant',
+      search_engine: 'SE',
+      seo:           'SEO',
+      social:        'Social',
+      generic:       '일반',
+      user:          '',
     }[purpose] || '';
     const tip = purpose ? ` title="목적: ${purposeLabel}"` : '';
     if (cat === 'bot')
@@ -1826,6 +1882,105 @@
       _strictMode = (newVal === '1');
       renderStrictToggle();
     } catch(e) { alert('변경 실패: ' + e.message); }
+  }
+
+  /* ─── BOT CATALOG ─────────────────────────────────────── */
+  let _catalog = null;       // { bots: [...], purpose_meta: {...} }
+  let _catalogStats = {};    // { "GPTBot": 123, ... }
+
+  const PURPOSE_COLORS = {
+    ai_training:   '#2b6df6',
+    ai_search:     '#9d6bff',
+    ai_assistant:  '#1aa377',
+    search_engine: '#0078d4',
+    seo:           '#ff7a5c',
+    social:        '#c4a01a',
+    generic:       '#9aa1ad',
+  };
+
+  async function loadCatalog() {
+    try {
+      const [catData, statsData] = await Promise.all([
+        apiFetch(`${API}/admin/bots/catalog`).then(r => r.json()),
+        apiFetch(`${API}/admin/stats/bot-names`).then(r => r.json()),
+      ]);
+      _catalog = catData;
+      _catalogStats = Object.fromEntries(statsData.map(s => [s.bot_name, s.count]));
+
+      // 필터 옵션 채우기
+      const meta = _catalog.purpose_meta || {};
+      const purposeSel = document.getElementById('catalog-purpose-filter');
+      const vendorSel  = document.getElementById('catalog-vendor-filter');
+      purposeSel.innerHTML = '<option value="">모든 카테고리</option>'
+        + Object.entries(meta).map(([k,v]) => `<option value="${k}">${esc(v.label)}</option>`).join('');
+      const vendors = [...new Set(_catalog.bots.map(b => b.vendor))].filter(Boolean).sort();
+      vendorSel.innerHTML = '<option value="">모든 벤더</option>'
+        + vendors.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+
+      renderCatalog();
+    } catch(e) {
+      document.getElementById('catalog-tbl-body').innerHTML =
+        `<tr><td colspan="4" style="text-align:center;color:var(--bad);padding:24px;">로드 실패</td></tr>`;
+    }
+  }
+
+  function renderCatalog() {
+    if (!_catalog) return;
+    const purpose = document.getElementById('catalog-purpose-filter').value;
+    const vendor  = document.getElementById('catalog-vendor-filter').value;
+    const search  = document.getElementById('catalog-search').value.toLowerCase();
+
+    let bots = _catalog.bots;
+    if (purpose) bots = bots.filter(b => b.purpose === purpose);
+    if (vendor)  bots = bots.filter(b => b.vendor === vendor);
+    if (search)  bots = bots.filter(b =>
+      b.name.toLowerCase().includes(search) || b.vendor.toLowerCase().includes(search)
+    );
+
+    // 카테고리별 카운트 (필터 적용 후)
+    const counts = {};
+    bots.forEach(b => counts[b.purpose] = (counts[b.purpose]||0) + 1);
+
+    // 상단 칩 — 카테고리별 봇 종류 수
+    const meta = _catalog.purpose_meta || {};
+    const summaryEl = document.getElementById('catalog-summary');
+    summaryEl.innerHTML = Object.entries(meta).map(([k, m]) => {
+      const cnt = counts[k] || 0;
+      if (!cnt) return '';
+      const color = PURPOSE_COLORS[k] || '#9aa1ad';
+      return `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:#fff;border:1px solid var(--line);border-radius:999px;font-size:13px;cursor:pointer;"
+        onclick="document.getElementById('catalog-purpose-filter').value='${k}';renderCatalog();">
+        <span style="width:8px;height:8px;border-radius:50%;background:${color};"></span>
+        <span style="font-weight:600;">${esc(m.label)}</span>
+        <span style="color:var(--ink-dim);">${cnt}</span>
+      </span>`;
+    }).join('');
+
+    // 테이블
+    const tbody = document.getElementById('catalog-tbl-body');
+    if (!bots.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-mute);padding:24px;">매칭 봇 없음</td></tr>';
+      return;
+    }
+    tbody.innerHTML = bots.map(b => {
+      const m = meta[b.purpose] || { label: b.purpose, desc: '' };
+      const color = PURPOSE_COLORS[b.purpose] || '#9aa1ad';
+      const seen = _catalogStats[b.name] || 0;
+      return `<tr>
+        <td>
+          <div style="font-weight:700;color:var(--ink);">${esc(b.name)}</div>
+          <div style="font-size:11.5px;color:var(--ink-mute);font-family:var(--mono);">${(b.patterns||[b.name]).join(', ')}</div>
+        </td>
+        <td style="color:var(--ink-2);">${esc(b.vendor)}</td>
+        <td>
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;background:var(--bg-soft);border-radius:999px;font-size:11.5px;font-weight:600;">
+            <span style="width:7px;height:7px;border-radius:50%;background:${color};"></span>
+            ${esc(m.label)}
+          </span>
+        </td>
+        <td style="text-align:right;font-weight:${seen ? 700 : 400};color:${seen ? 'var(--ink)' : 'var(--ink-mute)'};">${seen ? fmt(seen) : '—'}</td>
+      </tr>`;
+    }).join('');
   }
 
   /* ─── USERS ───────────────────────────────────────────── */
