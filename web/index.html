@@ -1162,21 +1162,20 @@
     if (pageId === 'page-policies')  loadPolicies();
   }
 
-  /* ─── CHART helper (멀티 시리즈 스무스 라인 + 영역) ──── */
+  /* ─── CHART helper (스택 영역 차트) ────────────────── */
   // series: [{ data: [{date,count},...], color: '#xxx', label: '...' }, ...]
+  // 아래에서 위로 누적되는 스택 영역. 총 높이 = sum 모든 시리즈
   function buildChart(chartId, chartxId, series, days) {
     const chart  = document.getElementById(chartId);
     const chartx = document.getElementById(chartxId);
     if (!chart) return;
     chart.innerHTML = ''; chartx.innerHTML = '';
 
-    // 단일 series 도 받게 backward compat
     if (!Array.isArray(series) || (series[0] && !series[0].data)) {
       series = [{ data: series, color: '#2b6df6', label: 'AI 봇' }];
     }
 
     const today = new Date();
-    // 각 series 의 14일치 슬롯 만들기
     const allSlots = series.map(s =>
       Array.from({length: days}, (_, i) => {
         const d = new Date(today);
@@ -1187,13 +1186,25 @@
       })
     );
 
-    // 모든 시리즈에서 최댓값 (공유 Y축)
-    const max = Math.max(1, ...allSlots.flat().map(s => s.count));
+    // 누적값 계산 — stackedSlots[i] = [{count, cumulative}, ...] (i 일자, 시리즈 순서)
+    const stackedTotals = [];
+    for (let i = 0; i < days; i++) {
+      let cum = 0;
+      stackedTotals.push(allSlots.map(slots => {
+        cum += slots[i].count;
+        return cum;
+      }));
+    }
+    const max = Math.max(1, ...stackedTotals.map(t => t[t.length - 1]));
+
     const w = chart.clientWidth  || 600;
     const h = chart.clientHeight || 220;
     const pad = { top: 16, right: 10, bottom: 6, left: 10 };
     const innerW = w - pad.left - pad.right;
     const innerH = h - pad.top - pad.bottom;
+
+    const xAt = i => pad.left + (days === 1 ? innerW/2 : (i / (days - 1)) * innerW);
+    const yAt = v => pad.top + innerH - (v / max) * innerH;
 
     function smoothPath(p) {
       if (p.length < 2) return '';
@@ -1212,30 +1223,43 @@
       return d;
     }
 
-    // 시리즈별 path 와 점 생성
+    function smoothPathReverse(p) {
+      // 같은 점 reverse 후 path
+      const r = p.slice().reverse();
+      return smoothPath(r).replace(/^M /, 'L ');
+    }
+
+    // 시리즈별 path (스택 누적)
     const seriesSvg = series.map((s, idx) => {
-      const slots = allSlots[idx];
-      const pts = slots.map((slot, i) => ({
-        x: pad.left + (slots.length === 1 ? innerW/2 : (i / (slots.length - 1)) * innerW),
-        y: pad.top + innerH - (slot.count / max) * innerH,
-        count: slot.count, label: slot.label,
+      // 위 경계 점 (현재 시리즈 누적)
+      const topPts = stackedTotals.map((t, i) => ({
+        x: xAt(i), y: yAt(t[idx]),
+        count: allSlots[idx][i].count, label: allSlots[idx][i].label,
       }));
-      const linePath = smoothPath(pts);
-      const areaPath = `${linePath} L ${pts[pts.length-1].x.toFixed(2)},${(pad.top+innerH).toFixed(2)} L ${pts[0].x.toFixed(2)},${(pad.top+innerH).toFixed(2)} Z`;
-      const gradId   = `${chartId}-grad-${idx}`;
+      // 아래 경계 점 (이전 시리즈까지 누적, 없으면 baseline)
+      const bottomPts = stackedTotals.map((t, i) => ({
+        x: xAt(i),
+        y: idx === 0 ? pad.top + innerH : yAt(t[idx - 1]),
+      }));
+
+      const topLine = smoothPath(topPts);
+      const bottomLineReverse = smoothPathReverse(bottomPts);
+      const areaPath = `${topLine} ${bottomLineReverse} Z`;
+
+      const gradId = `${chartId}-grad-${idx}`;
       return `
         <defs>
           <linearGradient id="${gradId}" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="${s.color}" stop-opacity="0.22"/>
-            <stop offset="100%" stop-color="${s.color}" stop-opacity="0"/>
+            <stop offset="0%"  stop-color="${s.color}" stop-opacity="0.55"/>
+            <stop offset="100%" stop-color="${s.color}" stop-opacity="0.15"/>
           </linearGradient>
         </defs>
         <path d="${areaPath}" fill="url(#${gradId})"/>
-        <path d="${linePath}" fill="none" stroke="${s.color}" stroke-width="2.5"
+        <path d="${topLine}" fill="none" stroke="${s.color}" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round"/>
-        ${pts.map(p =>
-          `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="3.5"
-                   fill="#fff" stroke="${s.color}" stroke-width="2">
+        ${topPts.map(p =>
+          `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="3"
+                   fill="#fff" stroke="${s.color}" stroke-width="1.8">
              <title>${esc(s.label)} · ${p.label} · ${p.count.toLocaleString()}</title>
            </circle>`
         ).join('')}
