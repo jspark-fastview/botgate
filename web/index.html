@@ -124,9 +124,10 @@
   /* ============ GRID ============ */
   .row { display: grid; gap: 16px; margin-bottom: 16px; }
   .row.r-7-5 { grid-template-columns: 7fr 5fr; }
+  .row.r-5-7 { grid-template-columns: 5fr 7fr; }
   .row.r-6-6 { grid-template-columns: 1fr 1fr; }
   .row.r-8-4 { grid-template-columns: 8fr 4fr; }
-  @media (max-width: 1100px) { .row.r-7-5, .row.r-6-6, .row.r-8-4 { grid-template-columns: 1fr; } }
+  @media (max-width: 1100px) { .row.r-7-5, .row.r-5-7, .row.r-6-6, .row.r-8-4 { grid-template-columns: 1fr; } }
 
   .panel {
     background: #fff;
@@ -435,6 +436,13 @@
       <span>botgate</span>
     </a>
 
+    <!-- 파트너 모드 배너 (URL ?partner= 시 표시) -->
+    <div id="partner-mode-banner" style="display:none;background:var(--brand-soft);border-radius:10px;padding:10px 12px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--brand);margin-bottom:3px;">파트너 모드</div>
+      <div id="partner-mode-domain" style="font-size:12px;color:var(--ink-2);font-family:var(--mono);word-break:break-all;"></div>
+      <a href="index.html" style="font-size:11px;color:var(--ink-mute);text-decoration:none;display:inline-block;margin-top:5px;">← 전체 보기</a>
+    </div>
+
     <div class="side-section">
       <span class="h">메인</span>
       <a class="active" onclick="nav(event,'page-dashboard')" href="#">
@@ -503,7 +511,7 @@
     </div>
 
     <!-- KPI -->
-    <div class="kpis" style="grid-template-columns:repeat(5,1fr);">
+    <div class="kpis" style="grid-template-columns:repeat(4,1fr);">
       <div class="kpi accent">
         <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2"/></svg></div>
         <div class="l">AI 봇 요청</div>
@@ -528,26 +536,45 @@
         <div class="v" id="kpi-tokens">—</div>
         <div class="s">화이트리스트 등록</div>
       </div>
-      <div class="kpi" style="background:var(--pastel-lemon);border-color:transparent;">
-        <div class="icon" style="background:#fff;color:#c4a01a;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-        <div class="l">임시토큰 <span style="font-size:10px;color:var(--ink-mute);font-weight:600;background:rgba(0,0,0,.06);padding:2px 6px;border-radius:6px;margin-left:4px;">PREVIEW</span></div>
-        <div class="v" id="kpi-billing">—</div>
-        <div class="s" id="kpi-billing-sub">과금 시스템 (임시 ₩2/요청)</div>
-      </div>
     </div>
 
-    <!-- chart + 봇 목적별 비중 -->
-    <div class="row r-7-5">
-      <div class="panel">
-        <div class="panel-head">
-          <h3>일별 AI 봇 요청 추이</h3>
-          <span class="sub">최근 14일</span>
-          <div class="right"><a onclick="nav(event,'page-analytics')" href="#">자세히 보기 →</a></div>
+    <!-- Pricing card + 봇 목적별 비중 -->
+    <div class="row r-5-7" style="margin-bottom:14px;">
+      <!-- Pricing card (Tollbit 스타일) -->
+      <div style="background:var(--pastel-lemon);border:1px solid transparent;border-radius:var(--radius-lg);padding:20px 22px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+          <span style="font-size:11px;font-weight:700;background:rgba(0,0,0,.07);padding:3px 8px;border-radius:6px;color:var(--ink-2);">임시토큰</span>
+          <span style="font-size:11px;font-weight:700;background:rgba(26,163,119,.15);color:var(--ok);padding:3px 8px;border-radius:6px;">PREVIEW</span>
+          <span style="margin-left:auto;font-size:22px;color:#c4a01a;font-weight:800;">$</span>
         </div>
-        <div class="chart" id="chart">
-          <!-- bars filled by JS -->
+        <div style="font-size:12px;color:var(--ink-dim);margin-bottom:6px;">Price per 1,000 pages</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+          <span style="font-size:14px;font-weight:600;color:var(--ink-2);">$</span>
+          <input id="pricing-rate" type="number" step="0.01" min="0" value="0.00"
+            oninput="updatePricingPreview()"
+            style="background:#1c1c2e;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:22px;font-weight:700;font-family:var(--mono);width:130px;outline:none;"/>
+          <span style="font-size:12px;color:var(--ink-dim);">/1,000 pages</span>
         </div>
-        <div class="chart-x" id="chartx"></div>
+        <div id="pricing-amount-display" style="font-size:34px;font-weight:800;color:#c4a01a;letter-spacing:-0.02em;line-height:1.1;margin-bottom:4px;">₩0</div>
+        <div id="pricing-sub-display" style="font-size:12px;color:var(--ink-dim);margin-bottom:14px;">과금 0건 × ₩0 (임시)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">예상 월 수익</div>
+            <div id="pricing-krw-val" style="font-size:18px;font-weight:700;color:#1aa377;font-family:var(--mono);">₩0</div>
+          </div>
+          <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">건당 단가</div>
+            <div id="pricing-per-val" style="font-size:18px;font-weight:700;color:#fff;font-family:var(--mono);">₩0</div>
+          </div>
+          <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">예상 월 수익 (USD)</div>
+            <div id="pricing-usd-val" style="font-size:18px;font-weight:700;color:#fff;font-family:var(--mono);">$0.00</div>
+          </div>
+          <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">총 요청 수</div>
+            <div id="pricing-total-val" style="font-size:18px;font-weight:700;color:#fff;font-family:var(--mono);">—</div>
+          </div>
+        </div>
       </div>
 
       <div class="panel">
@@ -562,7 +589,20 @@
       </div>
     </div>
 
-    <!-- bot list + rules -->
+    <!-- chart (일별 추이 — 전체 너비) -->
+    <div class="panel" style="margin-bottom:14px;">
+      <div class="panel-head">
+        <h3>일별 AI 봇 요청 추이</h3>
+        <span class="sub">최근 14일</span>
+        <div class="right"><a onclick="nav(event,'page-analytics')" href="#">자세히 보기 →</a></div>
+      </div>
+      <div class="chart" id="chart" style="height:200px;">
+        <!-- bars filled by JS -->
+      </div>
+      <div class="chart-x" id="chartx"></div>
+    </div>
+
+    <!-- AI 봇별 + 기타 봇 요청 현황 -->
     <div class="row r-6-6">
       <div class="panel">
         <div class="panel-head">
@@ -571,31 +611,6 @@
           <div class="right"><a onclick="nav(event,'page-analytics')" href="#">자세히 →</a></div>
         </div>
         <div id="dash-bot-list" class="bot-list">
-          <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-head">
-          <h3>경로 규칙</h3>
-          <span class="sub">현재 설정</span>
-          <div class="right"><a onclick="nav(event,'page-pricing')" href="#">편집 →</a></div>
-        </div>
-        <div id="dash-rules">
-          <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 사용자 / 기타 봇 요청 현황 -->
-    <div class="row r-6-6">
-      <div class="panel">
-        <div class="panel-head">
-          <h3>사용자 요청 현황</h3>
-          <span class="sub" id="dash-user-sub">누적 · 일반 브라우저</span>
-          <div class="right"><a onclick="dashboardJumpTrafficUser(event)" href="#">사용자 로그 →</a></div>
-        </div>
-        <div id="dash-user-list" class="bot-list">
           <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
         </div>
       </div>
@@ -634,46 +649,122 @@
     <div class="page-head">
       <div>
         <h1>분석 리포트</h1>
-        <div class="greeting">봇 종류별 요청 현황과 일별 추이를 확인하세요.</div>
+        <div class="greeting" id="analytics-greeting">봇 종류별 요청 현황과 일별 추이를 확인하세요.</div>
       </div>
-      <div class="right">
+      <div class="right" style="gap:10px;">
         <select id="analytics-ch-select" class="ch-select ch-selector" onchange="onChannelChange(this)">
           <option value="">전체 채널</option>
         </select>
       </div>
     </div>
 
-    <div class="row r-7-5" style="margin-bottom:16px;">
-      <div class="panel">
-        <div class="panel-head">
-          <h3 id="analytics-chart-title">일별 요청 추이</h3>
-          <span class="sub" id="analytics-chart-sub">최근 30일</span>
-          <div class="right">
-            <button id="analytics-back-btn"
-              onclick="analyticsBackToDaily()"
-              style="display:none;font-size:12px;font-weight:600;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink-2);cursor:pointer;">
-              ← 30일 보기
-            </button>
+    <!-- Tab switcher -->
+    <div class="range-pill" style="margin-bottom:20px;">
+      <button id="atab-btn-bots" class="active" onclick="switchAnalyticsTab('bots')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;margin-right:5px;"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>Bots
+      </button>
+      <button id="atab-btn-pages" onclick="switchAnalyticsTab('pages')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;margin-right:5px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Pages
+      </button>
+      <button id="atab-btn-platforms" onclick="switchAnalyticsTab('platforms')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;margin-right:5px;"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Platforms
+      </button>
+    </div>
+
+    <!-- ── BOTS TAB ── -->
+    <div id="analytics-tab-bots">
+      <div class="row r-7-5" style="margin-bottom:16px;">
+        <div class="panel">
+          <div class="panel-head">
+            <h3 id="analytics-chart-title">일별 요청 추이</h3>
+            <span class="sub" id="analytics-chart-sub">최근 30일</span>
+            <div class="right">
+              <button id="analytics-back-btn"
+                onclick="analyticsBackToDaily()"
+                style="display:none;font-size:12px;font-weight:600;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink-2);cursor:pointer;">
+                ← 30일 보기
+              </button>
+            </div>
           </div>
+          <div class="chart" id="analytics-chart" style="height:240px;"></div>
+          <div class="chart-x" id="analytics-chartx"></div>
         </div>
-        <div class="chart" id="analytics-chart" style="height:240px;"></div>
-        <div class="chart-x" id="analytics-chartx"></div>
+        <div class="panel">
+          <div class="panel-head"><h3>봇 종류별 요청 수</h3><span class="sub">누적</span></div>
+          <div id="analytics-bot-bars" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;"></div>
+        </div>
       </div>
       <div class="panel">
-        <div class="panel-head"><h3>봇 종류별 요청 수</h3><span class="sub">누적</span></div>
-        <div id="analytics-bot-bars" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;"></div>
+        <div class="panel-head"><h3>봇 상세 테이블</h3></div>
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead><tr><th>Bot UA</th><th>요청 수</th><th>비율</th></tr></thead>
+            <tbody id="analytics-tbl-body">
+              <tr><td colspan="3" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
-    <div class="panel">
-      <div class="panel-head"><h3>봇 상세 테이블</h3></div>
-      <div style="overflow-x:auto;">
-        <table class="tbl">
-          <thead><tr><th>Bot UA</th><th>요청 수</th><th>비율</th></tr></thead>
-          <tbody id="analytics-tbl-body">
-            <tr><td colspan="3" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>
-          </tbody>
-        </table>
+    <!-- ── PAGES TAB ── -->
+    <div id="analytics-tab-pages" style="display:none;">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>경로별 요청 현황</h3>
+          <span class="sub">AI 봇 기준 · 상위 50개 경로</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>경로</th>
+                <th style="text-align:right;">요청 수</th>
+                <th>비율</th>
+              </tr>
+            </thead>
+            <tbody id="analytics-pages-tbl-body">
+              <tr><td colspan="3" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PLATFORMS TAB ── -->
+    <div id="analytics-tab-platforms" style="display:none;">
+      <div class="row r-6-6" style="margin-bottom:16px;">
+        <div class="panel">
+          <div class="panel-head"><h3>플랫폼(Purpose)별 비중</h3><span class="sub">전체 봇 트래픽</span></div>
+          <div id="analytics-platforms-bars" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
+            <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>플랫폼별 봇 목록</h3><span class="sub">purpose 기준 상위 봇</span></div>
+          <div id="analytics-platforms-bot-list" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
+            <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>플랫폼 상세 테이블</h3></div>
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>플랫폼</th>
+                <th>Purpose</th>
+                <th style="text-align:right;">봇 종류</th>
+                <th style="text-align:right;">요청 수</th>
+                <th>비율</th>
+              </tr>
+            </thead>
+            <tbody id="analytics-platforms-tbl-body">
+              <tr><td colspan="5" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </section>
@@ -1314,26 +1405,44 @@
   /* ─── DASHBOARD ────────────────────────────────────── */
   const BOT_COLORS = ['#2b6df6','#9d6bff','#ff7a5c','#1aa377','#c4a01a','#e95c99','#00bcd4'];
 
+  /* ─── PRICING PREVIEW ──────────────────────────────── */
+  let _pricingBilledCount = 0;
+  const KRW_PER_USD = 1380;
+
+  function updatePricingPreview() {
+    const rateUsd   = parseFloat(document.getElementById('pricing-rate')?.value) || 0;
+    const billed    = _pricingBilledCount;
+    const krwPer1000 = rateUsd * KRW_PER_USD;
+    const krwPerReq  = krwPer1000 / 1000;
+    const totalKrw   = Math.round(billed * krwPerReq);
+    const totalUsd   = (billed * rateUsd / 1000).toFixed(2);
+
+    const $ = id => document.getElementById(id);
+    if ($('pricing-amount-display')) $('pricing-amount-display').textContent = `₩${totalKrw.toLocaleString()}`;
+    if ($('pricing-sub-display'))    $('pricing-sub-display').textContent    = `과금 ${fmt(billed)}건 × ₩${Math.round(krwPerReq)} (임시)`;
+    if ($('pricing-krw-val'))        $('pricing-krw-val').textContent        = `₩${totalKrw.toLocaleString()}`;
+    if ($('pricing-per-val'))        $('pricing-per-val').textContent        = `₩${Math.round(krwPerReq).toLocaleString()}`;
+    if ($('pricing-usd-val'))        $('pricing-usd-val').textContent        = `$${totalUsd}`;
+    if ($('pricing-total-val'))      $('pricing-total-val').textContent      = billed ? fmt(billed) : '—';
+  }
+
   async function loadDashboard() {
     try {
       const cp = chParam();
-      const [bots, users, otherBots, dailyBot, dailyUser, tokens, rules, billing, categoryStats, purposeStats] = await Promise.all([
+      const [bots, otherBots, dailyBot, dailyUser, tokens, billing, categoryStats, purposeStats] = await Promise.all([
         apiFetch(`${API}/admin/stats/bots?category=bot${cp}`).then(r => r.json()),
-        apiFetch(`${API}/admin/stats/bots?category=user${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/bots?category=other_bot${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/daily?category=bot${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/daily?category=user${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/tokens`).then(r => r.json()),
-        apiFetch(`${API}/admin/path-rules`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/billing?_=1${cp}`).then(r => r.json()).catch(() => null),
         apiFetch(`${API}/admin/stats/category?_=1${cp}`).then(r => r.json()).catch(() => ({bot:0,other_bot:0,user:0})),
         apiFetch(`${API}/admin/stats/purpose?_=1${cp}`).then(r => r.json()).catch(() => []),
       ]);
 
-      const aiBotTotal   = categoryStats.bot       || 0;
+      const aiBotTotal    = categoryStats.bot       || 0;
       const otherBotTotal = categoryStats.other_bot || 0;
-      const userTotal    = categoryStats.user       || 0;
-      const activeTokens = tokens.filter(t => t.active).length;
+      const activeTokens  = tokens.filter(t => t.active).length;
       const el = id => document.getElementById(id);
 
       if (el('kpi-requests'))     el('kpi-requests').textContent = fmt(aiBotTotal);
@@ -1342,10 +1451,10 @@
       if (el('kpi-malicious'))    el('kpi-malicious').textContent = fmt(categoryStats.malicious || 0);
       if (el('kpi-tokens'))       el('kpi-tokens').textContent = `${activeTokens}개`;
 
-      if (el('kpi-billing') && billing) {
-        const amt = billing.estimated_amount || 0;
-        el('kpi-billing').textContent = `₩${amt.toLocaleString()}`;
-        el('kpi-billing-sub').textContent = `과금 ${fmt(billing.billed||0)}건 × ₩${billing.unit_price||0} (임시)`;
+      // Pricing 카드 업데이트
+      if (billing) {
+        _pricingBilledCount = billing.billed || 0;
+        updatePricingPreview();
       }
 
       buildChart('chart', 'chartx', [
@@ -1354,8 +1463,6 @@
       ], 14);
       renderDashPurposeBars(purposeStats);
       renderDashBotList(bots);
-      renderDashRules(rules);
-      renderDashUserPanel(users);
       renderDashUaList('dash-otherbot-list', otherBots, '#9d6bff');
       loadRecentEvents();
     } catch(e) {
@@ -1563,8 +1670,26 @@
 
   /* ─── ANALYTICS ────────────────────────────────────── */
   let _analyticsDailyCache = null;
+  let _analyticsActiveTab  = 'bots';
+
+  function switchAnalyticsTab(tab) {
+    _analyticsActiveTab = tab;
+    ['bots','pages','platforms'].forEach(t => {
+      const el  = document.getElementById(`analytics-tab-${t}`);
+      const btn = document.getElementById(`atab-btn-${t}`);
+      if (el)  el.style.display  = (t === tab) ? '' : 'none';
+      if (btn) btn.classList.toggle('active', t === tab);
+    });
+    if (tab === 'bots')      loadAnalyticsBots();
+    if (tab === 'pages')     loadAnalyticsPages();
+    if (tab === 'platforms') loadAnalyticsPlatforms();
+  }
 
   async function loadAnalytics() {
+    switchAnalyticsTab(_analyticsActiveTab);
+  }
+
+  async function loadAnalyticsBots() {
     try {
       const cp = chParam();
       const [bots, daily] = await Promise.all([
@@ -1576,7 +1701,137 @@
       renderBotBars(bots);
       renderBotTable(bots);
     } catch(e) {
-      console.warn('Analytics 로드 실패:', e.message);
+      console.warn('Analytics Bots 로드 실패:', e.message);
+    }
+  }
+
+  async function loadAnalyticsPages() {
+    const tbody = document.getElementById('analytics-pages-tbl-body');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="3" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>';
+    try {
+      const cp = chParam();
+      const pages = await apiFetch(`${API}/admin/stats/pages?category=bot${cp}`).then(r => r.json());
+      if (!tbody) return;
+      if (!pages.length) {
+        tbody.innerHTML = '<tr><td colspan="3" style="color:var(--ink-mute);text-align:center;padding:24px;">데이터 없음</td></tr>';
+        return;
+      }
+      const total  = pages.reduce((a, p) => a + p.count, 0);
+      const colors = ['#2b6df6','#9d6bff','#ff7a5c','#1aa377','#c4a01a','#e95c99','#00bcd4'];
+      tbody.innerHTML = pages.map((p, i) => {
+        const pct = total ? (p.count / total * 100).toFixed(1) : 0;
+        return `<tr>
+          <td class="mono" style="max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.path || '/')}</td>
+          <td style="text-align:right;font-weight:700;">${fmt(p.count)}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:100px;height:6px;background:var(--bg-soft);border-radius:3px;overflow:hidden;">
+                <div style="height:100%;width:${pct}%;background:${colors[i % colors.length]};border-radius:3px;"></div>
+              </div>
+              <span style="font-size:12px;color:var(--ink-dim);">${pct}%</span>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="3" style="color:var(--bad);text-align:center;padding:24px;">로드 실패</td></tr>`;
+    }
+  }
+
+  async function loadAnalyticsPlatforms() {
+    const barsEl  = document.getElementById('analytics-platforms-bars');
+    const botEl   = document.getElementById('analytics-platforms-bot-list');
+    const tbody   = document.getElementById('analytics-platforms-tbl-body');
+    try {
+      const cp = chParam();
+      const [purpose, botNames] = await Promise.all([
+        apiFetch(`${API}/admin/stats/purpose?_=1${cp}`).then(r => r.json()),
+        apiFetch(`${API}/admin/stats/bot-names${cp ? '?_=1'+cp : '?_=1'}`).then(r => r.json()),
+      ]);
+
+      // purpose 바
+      if (barsEl) {
+        if (!purpose.length) {
+          barsEl.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>';
+        } else {
+          const total = purpose.reduce((a, b) => a + b.count, 0);
+          const order = ['ai_training','ai_search','ai_assistant','search_engine','seo','social','generic'];
+          const sorted = order.map(p => purpose.find(r => r.bot_purpose === p)).filter(Boolean);
+          barsEl.innerHTML = sorted.map(r => {
+            const meta = PURPOSE_META[r.bot_purpose] || PURPOSE_META.generic;
+            const pct  = total ? Math.round(r.count / total * 100) : 0;
+            return `<div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+                <span style="color:var(--ink);font-weight:600;">${esc(meta.label)}
+                  <span style="font-size:11px;font-weight:400;color:var(--ink-mute);">· ${esc(meta.desc)}</span>
+                </span>
+                <span style="color:var(--ink-dim);">${fmt(r.count)} · ${pct}%</span>
+              </div>
+              <div style="height:8px;background:var(--bg-soft);border-radius:4px;overflow:hidden;">
+                <div style="height:100%;width:${pct}%;background:${meta.color};border-radius:4px;transition:width 400ms;"></div>
+              </div>
+            </div>`;
+          }).join('');
+        }
+      }
+
+      // purpose 별 상위 봇
+      if (botEl) {
+        const top = botNames.slice(0, 7);
+        if (!top.length) {
+          botEl.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>';
+        } else {
+          botEl.innerHTML = top.map(b => {
+            const meta  = PURPOSE_META[b.bot_purpose] || PURPOSE_META.generic;
+            const color = meta.color || '#9aa1ad';
+            return `<div class="bot-row">
+              <div class="bot-avatar" style="background:${color};">${esc((b.bot_name||'?').slice(0,1).toUpperCase())}</div>
+              <div class="meta">
+                <div class="name">${esc(b.bot_name)}</div>
+                <div class="ua">${esc(meta.label)}</div>
+              </div>
+              <div class="req"><div class="n">${fmt(b.count)}</div><div class="s">요청</div></div>
+            </div>`;
+          }).join('');
+        }
+      }
+
+      // 상세 테이블
+      if (tbody) {
+        if (!purpose.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="color:var(--ink-mute);text-align:center;padding:24px;">데이터 없음</td></tr>';
+        } else {
+          const total = purpose.reduce((a, b) => a + b.count, 0);
+          const order = ['ai_training','ai_search','ai_assistant','search_engine','seo','social','generic'];
+          tbody.innerHTML = order.map(p => {
+            const r = purpose.find(x => x.bot_purpose === p);
+            if (!r) return '';
+            const meta = PURPOSE_META[p] || PURPOSE_META.generic;
+            const pct  = total ? (r.count / total * 100).toFixed(1) : 0;
+            return `<tr>
+              <td>
+                <span style="display:inline-flex;align-items:center;gap:7px;">
+                  <span style="width:10px;height:10px;border-radius:50%;background:${meta.color};"></span>
+                  <span style="font-weight:700;">${esc(meta.label)}</span>
+                </span>
+              </td>
+              <td style="color:var(--ink-dim);">${esc(meta.desc)}</td>
+              <td style="text-align:right;">${r.unique_bots}개</td>
+              <td style="text-align:right;font-weight:700;">${fmt(r.count)}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="width:80px;height:6px;background:var(--bg-soft);border-radius:3px;overflow:hidden;">
+                    <div style="height:100%;width:${pct}%;background:${meta.color};border-radius:3px;"></div>
+                  </div>
+                  <span style="font-size:12px;color:var(--ink-dim);">${pct}%</span>
+                </div>
+              </td>
+            </tr>`;
+          }).filter(Boolean).join('');
+        }
+      }
+    } catch(e) {
+      console.warn('Analytics Platforms 로드 실패:', e.message);
     }
   }
 
@@ -2359,8 +2614,20 @@
     loadUsers();
   }
 
+  /* ─── 파트너 모드 초기화 ─────────────────────────── */
+  function initPartnerMode() {
+    const partnerDomain = new URLSearchParams(window.location.search).get('partner');
+    if (!partnerDomain) return;
+    _selectedChannel = partnerDomain;
+    const banner   = document.getElementById('partner-mode-banner');
+    const domainEl = document.getElementById('partner-mode-domain');
+    if (banner)   banner.style.display = 'block';
+    if (domainEl) domainEl.textContent = partnerDomain;
+  }
+
   /* ─── INIT ──────────────────────────────────────────── */
   (async () => {
+    initPartnerMode();
     try {
       await apiFetch(`${API}/admin/tokens`)  // 인증 확인
       hideLogin()

@@ -352,6 +352,21 @@ export default async function adminRoutes(app) {
     return reply.send(rows)
   })
 
+  // 경로별 접근 통계 (?domain=, ?category=, ?limit=50)
+  app.get('/admin/stats/pages', (req, reply) => {
+    const { domain, category, limit = 50 } = req.query
+    const conds = []
+    const params = []
+    if (category && category !== 'all') { conds.push(`category = ?`); params.push(category) }
+    const dc = domainCondition(domain); if (dc.sql) { conds.push(dc.sql); params.push(...dc.params) }
+    const where = conds.length ? `WHERE ` + conds.join(' AND ') : ''
+    params.push(Math.min(Number(limit) || 50, 200))
+    const rows = db.prepare(
+      `SELECT path, COUNT(*) AS count FROM access_logs ${where} GROUP BY path ORDER BY count DESC LIMIT ?`
+    ).all(...params)
+    return reply.send(rows)
+  })
+
   // 최근 로그 (?domain=, ?category=bot|user|all 선택, 기본 bot)
   app.get('/admin/logs', (req, reply) => {
     const limit = Math.min(Number(req.query.limit) || 100, 500)
