@@ -264,6 +264,21 @@ export default async function adminRoutes(app) {
     return reply.send(rows)
   })
 
+  // 일별 × 봇별 요청 (최근 30일, 봇 카테고리)
+  app.get('/admin/stats/daily/bots', (req, reply) => {
+    const { domain, category = 'bot' } = req.query
+    const conds = [`ts >= datetime('now', '-30 days')`]
+    const params = []
+    if (category && category !== 'all') { conds.push(`category = ?`); params.push(category) }
+    const dc = domainCondition(domain); if (dc.sql) { conds.push(dc.sql); params.push(...dc.params) }
+    const where = `WHERE ` + conds.join(' AND ')
+    const rows = db.prepare(
+      `SELECT DATE(ts) AS date, COALESCE(NULLIF(bot_name,''), bot_ua) AS bot_name, COUNT(*) AS count
+       FROM access_logs ${where} GROUP BY date, bot_name ORDER BY date, count DESC`
+    ).all(...params)
+    return reply.send(rows)
+  })
+
   // 시간별 접근량 (?date= 필수, ?domain= 선택, ?category= 기본 'bot')
   app.get('/admin/stats/hourly', (req, reply) => {
     const { date, domain, category = 'bot' } = req.query

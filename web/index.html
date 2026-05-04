@@ -663,6 +663,7 @@
           </div>
           <div class="chart" id="analytics-chart" style="height:240px;"></div>
           <div class="chart-x" id="analytics-chartx"></div>
+          <div id="analytics-chart-legend" style="display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:10px;"></div>
         </div>
         <div class="panel">
           <div class="panel-head"><h3>봇 종류별 요청 수</h3><span class="sub">누적</span></div>
@@ -1272,7 +1273,7 @@
     // 현재 페이지 데이터 재로드
     const activeId = document.querySelector('.page-section.active')?.id;
     if (activeId === 'page-dashboard') loadDashboard();
-    if (activeId === 'page-analytics') { _analyticsDailyCache = null; loadAnalytics(); }
+    if (activeId === 'page-analytics') { _analyticsDailyBotsCache = null; loadAnalytics(); }
     if (activeId === 'page-traffic')   { if (trafficTimer) { clearInterval(trafficTimer); trafficTimer = null; } startTraffic(); }
   }
 
@@ -1891,7 +1892,7 @@
   }
 
   /* ─── ANALYTICS ────────────────────────────────────── */
-  let _analyticsDailyCache = null;
+  let _analyticsDailyBotsCache = null;
   let _analyticsActiveTab  = 'bots';
   let _analyticsPagePaths  = [];
 
@@ -1916,12 +1917,12 @@
   async function loadAnalyticsBots() {
     try {
       const cp = chParam();
-      const [bots, daily] = await Promise.all([
+      const [bots, dailyBots] = await Promise.all([
         apiFetch(`${API}/admin/stats/bots?_=1${cp}`).then(r => r.json()),
-        apiFetch(`${API}/admin/stats/daily?_=1${cp}`).then(r => r.json()),
+        apiFetch(`${API}/admin/stats/daily/bots?_=1${cp}`).then(r => r.json()),
       ]);
-      _analyticsDailyCache = daily;
-      renderDailyChart(daily);
+      _analyticsDailyBotsCache = dailyBots;
+      renderDailyChart(dailyBots);
       renderBotBars(bots);
       renderBotTable(bots);
     } catch(e) {
@@ -2081,41 +2082,102 @@
   }
 
   // 30일 차트 렌더 (클릭 시 시간별 드릴다운)
-  function renderDailyChart(daily) {
-    const chart  = document.getElementById('analytics-chart');
-    const chartx = document.getElementById('analytics-chartx');
+  function renderDailyChart(dailyBots) {
+    const chart   = document.getElementById('analytics-chart');
+    const chartx  = document.getElementById('analytics-chartx');
+    const legendEl= document.getElementById('analytics-chart-legend');
     document.getElementById('analytics-chart-title').textContent = '일별 요청 추이';
-    document.getElementById('analytics-chart-sub').textContent   = '최근 30일 · 막대 클릭 시 시간별 상세';
+    document.getElementById('analytics-chart-sub').textContent   = '최근 30일 · AI 회사별 · 막대 클릭 시 시간별 상세';
     document.getElementById('analytics-back-btn').style.display  = 'none';
     chart.innerHTML = ''; chartx.innerHTML = '';
+    if (legendEl) legendEl.innerHTML = '';
 
     const today = new Date();
-    const slots = Array.from({ length: 30 }, (_, i) => {
+    const dates = Array.from({ length: 30 }, (_, i) => {
       const d = new Date(today);
       d.setDate(today.getDate() - (29 - i));
-      const key = d.toISOString().slice(0, 10);
-      const found = daily.find(r => r.date === key);
-      return { date: key, count: found ? found.count : 0, label: `${d.getMonth()+1}/${d.getDate()}` };
+      return { key: d.toISOString().slice(0, 10), label: `${d.getMonth()+1}/${d.getDate()}` };
     });
 
-    const max = Math.max(...slots.map(s => s.count), 1);
+    // 날짜별 봇 rows 인덱싱
+    const byDate = {};
+    for (const r of dailyBots) {
+      if (!byDate[r.date]) byDate[r.date] = [];
+      byDate[r.date].push(r);
+    }
+
+    // 전체 기간 벤더 총합 → 상위 6개
+    const vendorTotals = {};
+    for (const r of dailyBots) {
+      const v = VENDOR_MAP[r.bot_name] || r.bot_name || '알 수 없음';
+      vendorTotals[v] = (vendorTotals[v] || 0) + r.count;
+    }
+    const topVendors = Object.entries(vendorTotals)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([v]) => v);
+
+    const dayTotals = dates.map(d =>
+      (byDate[d.key] || []).reduce((a, r) => a + r.count, 0)
+    );
+    const max    = Math.max(...dayTotals, 1);
     const chartH = chart.clientHeight || 220;
 
-    slots.forEach((s, i) => {
-      const h = Math.max(Math.round((s.count / max) * (chartH - 20)), s.count ? 2 : 0);
+    dates.forEach((d, i) => {
+      const rows    = byDate[d.key] || [];
+      const vendors = groupByVendor(rows, 'bot_name');
+      const total   = dayTotals[i];
+      const barH    = Math.max(Math.round((total / max) * (chartH - 20)), total ? 2 : 0);
+
       const col = document.createElement('div');
       col.className = 'col';
-      col.title = `${s.label} · ${s.count.toLocaleString()}건 (클릭해서 시간별 보기)`;
+      col.title = `${d.label} · ${total.toLocaleString()}건`;
       col.style.cursor = 'pointer';
-      col.innerHTML = `<div class="bar b1" style="height:${h}px;"></div>`;
-      col.addEventListener('click', () => drillToHourly(s.date, s.label));
+      col.addEventListener('click', () => drillToHourly(d.key, d.label));
+
+      const barWrap = document.createElement('div');
+      barWrap.style.cssText = `height:${barH}px;display:flex;flex-direction:column-reverse;overflow:hidden;border-radius:3px 3px 0 0;`;
+
+      let used = 0;
+      for (const vName of topVendors) {
+        const entry = vendors.find(v => v.vendor === vName);
+        if (!entry || !entry.count) continue;
+        const segH = total ? Math.round((entry.count / total) * barH) : 0;
+        if (!segH) continue;
+        const seg = document.createElement('div');
+        seg.style.cssText = `height:${segH}px;background:${vendorColor(vName)};flex-shrink:0;`;
+        barWrap.appendChild(seg);
+        used += entry.count;
+      }
+      const remaining = total - used;
+      if (remaining > 0 && barH) {
+        const segH = Math.max(1, Math.round((remaining / total) * barH));
+        const seg  = document.createElement('div');
+        seg.style.cssText = `height:${segH}px;background:#c8cdd5;flex-shrink:0;`;
+        barWrap.appendChild(seg);
+      }
+
+      col.appendChild(barWrap);
       chart.appendChild(col);
 
       const lbl = document.createElement('div');
       lbl.className = 'l';
-      lbl.textContent = (i % 3 === 0) ? s.label : '';
+      lbl.textContent = (i % 3 === 0) ? d.label : '';
       chartx.appendChild(lbl);
     });
+
+    // 범례
+    if (legendEl) {
+      legendEl.innerHTML = topVendors.map(v =>
+        `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-dim);">
+          <span style="width:10px;height:10px;border-radius:2px;background:${vendorColor(v)};flex-shrink:0;"></span>
+          ${esc(v)}
+        </span>`
+      ).join('') +
+      `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-dim);">
+        <span style="width:10px;height:10px;border-radius:2px;background:#c8cdd5;flex-shrink:0;"></span>기타
+      </span>`;
+    }
   }
 
   // 시간별 드릴다운
@@ -2155,7 +2217,7 @@
   }
 
   function analyticsBackToDaily() {
-    if (_analyticsDailyCache) renderDailyChart(_analyticsDailyCache);
+    if (_analyticsDailyBotsCache) renderDailyChart(_analyticsDailyBotsCache);
   }
 
   function renderBotBars(bots) {
