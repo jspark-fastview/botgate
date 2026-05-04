@@ -1455,6 +1455,65 @@
     });
   }
 
+  /* ─── VENDOR 매핑 ──────────────────────────────────── */
+  const VENDOR_MAP = {
+    'GPTBot':'OpenAI','OAI-SearchBot':'OpenAI','ChatGPT-User':'OpenAI',
+    'ClaudeBot':'Anthropic','Claude-Web':'Anthropic','Anthropic-AI':'Anthropic',
+    'Googlebot':'Google','Google-Extended':'Google',
+    'Meta-ExternalAgent':'Meta','Meta-ExternalFetcher':'Meta','FacebookBot':'Meta','FacebookExternalHit':'Meta','WhatsApp':'Meta',
+    'BingBot':'Microsoft',
+    'PerplexityBot':'Perplexity','Perplexity-User':'Perplexity',
+    'Bytespider':'ByteDance','TikTokSpider':'ByteDance',
+    'Amazonbot':'Amazon',
+    'Applebot':'Apple','Applebot-Extended':'Apple',
+    'Baiduspider':'Baidu',
+    'YandexBot':'Yandex',
+    'DuckDuckBot':'DuckDuckGo','DuckAssistBot':'DuckDuckGo',
+    'Yeti':'Naver',
+    'CCBot':'CommonCrawl',
+    'Cohere-AI':'Cohere',
+    'SemrushBot':'Semrush','AhrefsBot':'Ahrefs','MJ12bot':'Majestic','DotBot':'Moz',
+    'BLEXBot':'WebMeUp','DataForSEOBot':'DataForSEO','serpstatbot':'Serpstat',
+    'Slackbot':'Slack','Twitterbot':'Twitter/X','LinkedInBot':'LinkedIn',
+    'TelegramBot':'Telegram','Discordbot':'Discord','KakaoTalk-scrap':'Kakao',
+    'PetalBot':'Huawei','Diffbot':'Diffbot','Omgili':'Webz.io',
+    'YouBot':'You.com','Manus Bot':'Manus',
+  };
+  const VENDOR_META = {
+    'OpenAI':     { color:'#10a37f' },
+    'Anthropic':  { color:'#c96a2e' },
+    'Google':     { color:'#4285f4' },
+    'Meta':       { color:'#1877f2' },
+    'Microsoft':  { color:'#00a4ef' },
+    'Perplexity': { color:'#20808d' },
+    'ByteDance':  { color:'#000000' },
+    'Amazon':     { color:'#ff9900' },
+    'Apple':      { color:'#555555' },
+    'Baidu':      { color:'#2932e1' },
+    'Yandex':     { color:'#f94e3c' },
+    'DuckDuckGo': { color:'#de5833' },
+    'Naver':      { color:'#03c75a' },
+    'CommonCrawl':{ color:'#666666' },
+    'Cohere':     { color:'#39594a' },
+    'Semrush':    { color:'#ff6347' },
+    'Ahrefs':     { color:'#f5a623' },
+    'Slack':      { color:'#4a154b' },
+    'Twitter/X':  { color:'#000000' },
+    'Kakao':      { color:'#fee500' },
+  };
+  function vendorColor(v) { return (VENDOR_META[v] || {}).color || '#9aa1ad'; }
+  function groupByVendor(rows, nameField) {
+    const map = {};
+    for (const r of rows) {
+      const botName = r[nameField] || r.bot_name || r.bot_ua || '알 수 없음';
+      const v = VENDOR_MAP[botName] || botName;
+      if (!map[v]) map[v] = { vendor: v, count: 0, bots: [] };
+      map[v].count += r.count;
+      map[v].bots.push({ name: botName, count: r.count });
+    }
+    return Object.values(map).sort((a, b) => b.count - a.count);
+  }
+
   /* ─── DASHBOARD ────────────────────────────────────── */
   const BOT_COLORS = ['#2b6df6','#9d6bff','#ff7a5c','#1aa377','#c4a01a','#e95c99','#00bcd4'];
 
@@ -1493,25 +1552,27 @@
       tbody.innerHTML = '<tr><td colspan="4" style="color:var(--ink-mute);text-align:center;padding:24px;">데이터 없음</td></tr>';
       return;
     }
-    const total = rows.reduce((a, b) => a + b.count, 0);
-    tbody.innerHTML = rows.map(b => {
-      const meta = PURPOSE_META[b.bot_purpose] || PURPOSE_META.generic;
-      const pct  = total ? (b.count / total * 100).toFixed(1) : 0;
+    const vendors = groupByVendor(rows, 'bot_name');
+    const total = vendors.reduce((a, v) => a + v.count, 0);
+    tbody.innerHTML = vendors.map(v => {
+      const color = vendorColor(v.vendor);
+      const pct   = total ? (v.count / total * 100).toFixed(1) : 0;
+      const subtitle = v.bots.map(b => b.name).join(' · ');
       return `<tr>
         <td>
-          <span style="display:inline-flex;align-items:center;gap:7px;">
-            <span style="width:8px;height:8px;border-radius:50%;background:${meta.color};flex-shrink:0;"></span>
-            <span style="font-weight:700;">${esc(b.bot_name)}</span>
-          </span>
+          <div style="display:flex;align-items:center;gap:7px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></span>
+            <div>
+              <div style="font-weight:700;">${esc(v.vendor)}</div>
+              <div style="font-size:11px;color:var(--ink-mute);">${esc(subtitle)}</div>
+            </div>
+          </div>
         </td>
-        <td>
-          <span style="font-size:11px;background:${meta.color}22;color:${meta.color};padding:2px 7px;border-radius:4px;font-weight:600;">${esc(meta.label)}</span>
-        </td>
-        <td style="text-align:right;font-weight:700;">${fmt(b.count)}</td>
+        <td style="text-align:right;font-weight:700;">${fmt(v.count)}</td>
         <td>
           <div style="display:flex;align-items:center;gap:8px;">
             <div style="width:80px;height:6px;background:var(--bg-soft);border-radius:3px;overflow:hidden;">
-              <div style="height:100%;width:${pct}%;background:${meta.color};border-radius:3px;"></div>
+              <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;"></div>
             </div>
             <span style="font-size:12px;color:var(--ink-dim);">${pct}%</span>
           </div>
@@ -1697,16 +1758,18 @@
     const el = document.getElementById('dash-bot-list');
     if (!el) return;
     if (!bots.length) { el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>'; return; }
-    el.innerHTML = bots.slice(0, 5).map((b, i) => {
-      const [name, ver] = b.bot_ua.split('/');
-      const initials = name.slice(0, 1).toUpperCase();
+    const vendors = groupByVendor(bots, 'bot_ua');
+    el.innerHTML = vendors.slice(0, 5).map((v) => {
+      const color = vendorColor(v.vendor);
+      const initials = v.vendor.slice(0, 1).toUpperCase();
+      const subtitle = v.bots.map(b => b.name.split('/')[0]).join(' · ');
       return `<div class="bot-row">
-        <div class="bot-avatar" style="background:${BOT_COLORS[i%BOT_COLORS.length]};">${initials}</div>
+        <div class="bot-avatar" style="background:${color};">${esc(initials)}</div>
         <div class="meta">
-          <div class="name">${esc(name)}${ver ? ` <span style="font-size:11px;font-weight:400;color:var(--ink-mute);">/${esc(ver)}</span>` : ''}</div>
-          <div class="ua">${esc(b.bot_ua)}</div>
+          <div class="name">${esc(v.vendor)}</div>
+          <div class="ua">${esc(subtitle)}</div>
         </div>
-        <div class="req"><div class="n">${fmt(b.count)}</div><div class="s">요청</div></div>
+        <div class="req"><div class="n">${fmt(v.count)}</div><div class="s">요청</div></div>
       </div>`;
     }).join('');
   }
@@ -1978,22 +2041,22 @@
         }
       }
 
-      // purpose 별 상위 봇
+      // 회사별 상위 봇
       if (botEl) {
-        const top = botNames.slice(0, 7);
-        if (!top.length) {
+        const vendors = groupByVendor(botNames, 'bot_name');
+        if (!vendors.length) {
           botEl.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>';
         } else {
-          botEl.innerHTML = top.map(b => {
-            const meta  = PURPOSE_META[b.bot_purpose] || PURPOSE_META.generic;
-            const color = meta.color || '#9aa1ad';
+          botEl.innerHTML = vendors.slice(0, 7).map(v => {
+            const color = vendorColor(v.vendor);
+            const subtitle = v.bots.map(b => b.name).join(' · ');
             return `<div class="bot-row">
-              <div class="bot-avatar" style="background:${color};">${esc((b.bot_name||'?').slice(0,1).toUpperCase())}</div>
+              <div class="bot-avatar" style="background:${color};">${esc(v.vendor.slice(0,1).toUpperCase())}</div>
               <div class="meta">
-                <div class="name">${esc(b.bot_name)}</div>
-                <div class="ua">${esc(meta.label)}</div>
+                <div class="name">${esc(v.vendor)}</div>
+                <div class="ua">${esc(subtitle)}</div>
               </div>
-              <div class="req"><div class="n">${fmt(b.count)}</div><div class="s">요청</div></div>
+              <div class="req"><div class="n">${fmt(v.count)}</div><div class="s">요청</div></div>
             </div>`;
           }).join('');
         }
@@ -2087,43 +2150,47 @@
   }
 
   function renderBotBars(bots) {
-    const total  = bots.reduce((a, b) => a + b.count, 0);
-    const colors = ['#2b6df6','#9d6bff','#ff7a5c','#1aa377','#c4a01a','#e95c99','#00bcd4'];
     const el = document.getElementById('analytics-bot-bars');
     if (!el) return;
-    el.innerHTML = bots.slice(0, 8).map((b, i) => {
-      const pct = total ? Math.round(b.count / total * 100) : 0;
-      const [name, ver] = b.bot_ua.split('/');
-      const label = ver
-        ? `${esc(name)} <span style="font-weight:400;color:var(--ink-mute);font-size:11px;">/${esc(ver)}</span>`
-        : esc(name);
+    const vendors = groupByVendor(bots, 'bot_ua');
+    const total = vendors.reduce((a, v) => a + v.count, 0);
+    el.innerHTML = vendors.slice(0, 8).map((v) => {
+      const pct = total ? Math.round(v.count / total * 100) : 0;
+      const color = vendorColor(v.vendor);
+      const subtitle = v.bots.map(b => b.name.split('/')[0]).join(' · ');
       return `
         <div>
-          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
-            <span style="color:var(--ink);font-weight:600;">${label}</span>
-            <span style="color:var(--ink-dim);">${fmt(b.count)}</span>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:2px;">
+            <span style="color:var(--ink);font-weight:600;">${esc(v.vendor)}</span>
+            <span style="color:var(--ink-dim);">${fmt(v.count)}</span>
           </div>
+          <div style="font-size:11px;color:var(--ink-mute);margin-bottom:4px;">${esc(subtitle)}</div>
           <div style="height:8px;background:var(--bg-soft);border-radius:4px;overflow:hidden;">
-            <div style="height:100%;width:${pct}%;background:${colors[i % colors.length]};border-radius:4px;transition:width 400ms;"></div>
+            <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width 400ms;"></div>
           </div>
         </div>`;
     }).join('');
   }
 
   function renderBotTable(bots) {
-    const total  = bots.reduce((a, b) => a + b.count, 0);
-    const colors = ['#2b6df6','#9d6bff','#ff7a5c','#1aa377','#c4a01a','#e95c99','#00bcd4'];
     const tbody = document.getElementById('analytics-tbl-body');
     if (!tbody) return;
-    tbody.innerHTML = bots.map((b, i) => {
-      const pct = total ? (b.count / total * 100).toFixed(1) : 0;
+    const vendors = groupByVendor(bots, 'bot_ua');
+    const total = vendors.reduce((a, v) => a + v.count, 0);
+    tbody.innerHTML = vendors.map((v) => {
+      const pct = total ? (v.count / total * 100).toFixed(1) : 0;
+      const color = vendorColor(v.vendor);
+      const subtitle = v.bots.map(b => b.name.split('/')[0]).join(' · ');
       return `<tr>
-        <td class="mono">${esc(b.bot_ua)}</td>
-        <td style="font-weight:700;">${fmt(b.count)}</td>
+        <td>
+          <div style="font-weight:700;">${esc(v.vendor)}</div>
+          <div style="font-size:11px;color:var(--ink-mute);">${esc(subtitle)}</div>
+        </td>
+        <td style="font-weight:700;">${fmt(v.count)}</td>
         <td>
           <div style="display:flex;align-items:center;gap:8px;">
             <div style="width:80px;height:6px;background:var(--bg-soft);border-radius:3px;overflow:hidden;">
-              <div style="height:100%;width:${pct}%;background:${colors[i % colors.length]};border-radius:3px;"></div>
+              <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;"></div>
             </div>
             <span style="font-size:12px;color:var(--ink-dim);">${pct}%</span>
           </div>
