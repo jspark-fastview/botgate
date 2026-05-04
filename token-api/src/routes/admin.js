@@ -187,8 +187,10 @@ export default async function adminRoutes(app) {
   // 실 결제 연동 전 임시 단가(₩2/요청)로 환산
   app.get('/admin/stats/billing', (req, reply) => {
     const { domain } = req.query
+    const conds = [`category = 'bot'`]
     const dc = domainCondition(domain)
-    const where = dc.sql ? `WHERE ${dc.sql}` : ''
+    if (dc.sql) conds.push(dc.sql)
+    const where = `WHERE ` + conds.join(' AND ')
     const row = db.prepare(`
       SELECT
         COUNT(*)                                       AS total,
