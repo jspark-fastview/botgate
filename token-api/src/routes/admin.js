@@ -367,6 +367,22 @@ export default async function adminRoutes(app) {
     return reply.send(rows)
   })
 
+  // 특정 경로에 접근한 봇 목록 (?path=, ?domain=, ?category=bot)
+  app.get('/admin/stats/pages/bots', (req, reply) => {
+    const { domain, category = 'bot', path } = req.query
+    if (!path) return reply.code(400).send({ error: 'path required' })
+    const conds = [`path = ?`]
+    const params = [path]
+    if (category && category !== 'all') { conds.push(`category = ?`); params.push(category) }
+    const dc = domainCondition(domain); if (dc.sql) { conds.push(dc.sql); params.push(...dc.params) }
+    const where = `WHERE ` + conds.join(' AND ')
+    const rows = db.prepare(
+      `SELECT COALESCE(NULLIF(bot_name,''), bot_ua) AS bot_name, COUNT(*) AS count
+       FROM access_logs ${where} GROUP BY bot_name ORDER BY count DESC LIMIT 10`
+    ).all(...params)
+    return reply.send(rows)
+  })
+
   // 최근 로그 (?domain=, ?category=bot|user|all 선택, 기본 bot)
   app.get('/admin/logs', (req, reply) => {
     const limit = Math.min(Number(req.query.limit) || 100, 500)

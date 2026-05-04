@@ -749,19 +749,20 @@
       <div class="panel">
         <div class="panel-head">
           <h3>경로별 요청 현황</h3>
-          <span class="sub">AI 봇 기준 · 상위 50개 경로</span>
+          <span class="sub">AI 봇 기준 · 상위 50개 경로 · 클릭하면 세부 봇 목록</span>
         </div>
         <div style="overflow-x:auto;">
           <table class="tbl">
             <thead>
               <tr>
+                <th style="width:24px;"></th>
                 <th>경로</th>
                 <th style="text-align:right;">요청 수</th>
                 <th>비율</th>
               </tr>
             </thead>
             <tbody id="analytics-pages-tbl-body">
-              <tr><td colspan="3" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>
+              <tr><td colspan="4" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>
             </tbody>
           </table>
         </div>
@@ -785,20 +786,19 @@
         </div>
       </div>
       <div class="panel">
-        <div class="panel-head"><h3>플랫폼 상세 테이블</h3></div>
+        <div class="panel-head"><h3>AI 회사별 요청 현황</h3><span class="sub">bot_name 기준 누적</span></div>
         <div style="overflow-x:auto;">
           <table class="tbl">
             <thead>
               <tr>
-                <th>플랫폼</th>
+                <th>AI 회사 / 봇</th>
                 <th>Purpose</th>
-                <th style="text-align:right;">봇 종류</th>
                 <th style="text-align:right;">요청 수</th>
                 <th>비율</th>
               </tr>
             </thead>
             <tbody id="analytics-platforms-tbl-body">
-              <tr><td colspan="5" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>
+              <tr><td colspan="4" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>
             </tbody>
           </table>
         </div>
@@ -1796,21 +1796,23 @@
 
   async function loadAnalyticsPages() {
     const tbody = document.getElementById('analytics-pages-tbl-body');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="3" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>';
     try {
       const cp = chParam();
       const pages = await apiFetch(`${API}/admin/stats/pages?category=bot${cp}`).then(r => r.json());
       if (!tbody) return;
       if (!pages.length) {
-        tbody.innerHTML = '<tr><td colspan="3" style="color:var(--ink-mute);text-align:center;padding:24px;">데이터 없음</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--ink-mute);text-align:center;padding:24px;">데이터 없음</td></tr>';
         return;
       }
       const total  = pages.reduce((a, p) => a + p.count, 0);
       const colors = ['#2b6df6','#9d6bff','#ff7a5c','#1aa377','#c4a01a','#e95c99','#00bcd4'];
       tbody.innerHTML = pages.map((p, i) => {
         const pct = total ? (p.count / total * 100).toFixed(1) : 0;
-        return `<tr>
-          <td class="mono" style="max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.path || '/')}</td>
+        const rowId = `page-sub-${i}`;
+        return `<tr style="cursor:pointer;" onclick="togglePageSub(this, ${JSON.stringify(esc(p.path||'/'))}, '${rowId}', '${cp}')">
+          <td style="color:var(--ink-mute);font-size:13px;text-align:center;user-select:none;" id="${rowId}-toggle">▶</td>
+          <td class="mono" style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.path || '/')}</td>
           <td style="text-align:right;font-weight:700;">${fmt(p.count)}</td>
           <td>
             <div style="display:flex;align-items:center;gap:8px;">
@@ -1820,10 +1822,45 @@
               <span style="font-size:12px;color:var(--ink-dim);">${pct}%</span>
             </div>
           </td>
+        </tr>
+        <tr id="${rowId}" style="display:none;">
+          <td></td>
+          <td colspan="3" style="padding:0 0 8px 0;">
+            <div id="${rowId}-content" style="background:var(--bg-soft);border-radius:8px;padding:12px 14px;font-size:13px;">로딩중…</div>
+          </td>
         </tr>`;
       }).join('');
     } catch(e) {
-      if (tbody) tbody.innerHTML = `<tr><td colspan="3" style="color:var(--bad);text-align:center;padding:24px;">로드 실패</td></tr>`;
+      if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="color:var(--bad);text-align:center;padding:24px;">로드 실패</td></tr>`;
+    }
+  }
+
+  async function togglePageSub(row, path, rowId, cp) {
+    const subRow    = document.getElementById(rowId);
+    const toggle    = document.getElementById(`${rowId}-toggle`);
+    const content   = document.getElementById(`${rowId}-content`);
+    if (!subRow) return;
+    const isOpen = subRow.style.display !== 'none';
+    subRow.style.display = isOpen ? 'none' : '';
+    if (toggle) toggle.textContent = isOpen ? '▶' : '▼';
+    if (!isOpen && content && content.textContent === '로딩중…') {
+      try {
+        const bots = await apiFetch(`${API}/admin/stats/pages/bots?path=${encodeURIComponent(path)}&category=bot${cp}`).then(r => r.json());
+        if (!bots.length) { content.textContent = '봇 데이터 없음'; return; }
+        const subTotal = bots.reduce((a, b) => a + b.count, 0);
+        content.innerHTML = bots.map(b => {
+          const pct = subTotal ? Math.round(b.count / subTotal * 100) : 0;
+          return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <span style="min-width:140px;font-weight:600;color:var(--ink);">${esc(b.bot_name || '알 수 없음')}</span>
+            <div style="flex:1;height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:var(--brand);border-radius:3px;"></div>
+            </div>
+            <span style="min-width:60px;text-align:right;color:var(--ink-dim);">${fmt(b.count)} · ${pct}%</span>
+          </div>`;
+        }).join('');
+      } catch(e) {
+        content.textContent = '로드 실패';
+      }
     }
   }
 
@@ -1885,28 +1922,26 @@
         }
       }
 
-      // 상세 테이블
+      // AI 회사별 상세 테이블
       if (tbody) {
-        if (!purpose.length) {
-          tbody.innerHTML = '<tr><td colspan="5" style="color:var(--ink-mute);text-align:center;padding:24px;">데이터 없음</td></tr>';
+        if (!botNames.length) {
+          tbody.innerHTML = '<tr><td colspan="4" style="color:var(--ink-mute);text-align:center;padding:24px;">데이터 없음</td></tr>';
         } else {
-          const total = purpose.reduce((a, b) => a + b.count, 0);
-          const order = ['ai_training','ai_search','ai_assistant','search_engine','seo','social','generic'];
-          tbody.innerHTML = order.map(p => {
-            const r = purpose.find(x => x.bot_purpose === p);
-            if (!r) return '';
-            const meta = PURPOSE_META[p] || PURPOSE_META.generic;
-            const pct  = total ? (r.count / total * 100).toFixed(1) : 0;
+          const total = botNames.reduce((a, b) => a + b.count, 0);
+          tbody.innerHTML = botNames.map(b => {
+            const meta = PURPOSE_META[b.bot_purpose] || PURPOSE_META.generic;
+            const pct  = total ? (b.count / total * 100).toFixed(1) : 0;
             return `<tr>
               <td>
                 <span style="display:inline-flex;align-items:center;gap:7px;">
-                  <span style="width:10px;height:10px;border-radius:50%;background:${meta.color};"></span>
-                  <span style="font-weight:700;">${esc(meta.label)}</span>
+                  <span style="width:8px;height:8px;border-radius:50%;background:${meta.color};flex-shrink:0;"></span>
+                  <span style="font-weight:700;">${esc(b.bot_name)}</span>
                 </span>
               </td>
-              <td style="color:var(--ink-dim);">${esc(meta.desc)}</td>
-              <td style="text-align:right;">${r.unique_bots}개</td>
-              <td style="text-align:right;font-weight:700;">${fmt(r.count)}</td>
+              <td>
+                <span style="font-size:11px;background:${meta.color}22;color:${meta.color};padding:2px 7px;border-radius:4px;font-weight:600;">${esc(meta.label)}</span>
+              </td>
+              <td style="text-align:right;font-weight:700;">${fmt(b.count)}</td>
               <td>
                 <div style="display:flex;align-items:center;gap:8px;">
                   <div style="width:80px;height:6px;background:var(--bg-soft);border-radius:3px;overflow:hidden;">
@@ -1916,7 +1951,7 @@
                 </div>
               </td>
             </tr>`;
-          }).filter(Boolean).join('');
+          }).join('');
         }
       }
     } catch(e) {
