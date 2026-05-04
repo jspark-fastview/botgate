@@ -400,80 +400,9 @@
   }
   .ch-select:focus { outline: none; border-color: var(--brand); }
 
-  /* ============ PRICING DRAWER ============ */
-  #pricing-drawer-backdrop {
-    display: none; position: fixed; inset: 0;
-    background: rgba(15,23,42,.4); backdrop-filter: blur(2px);
-    z-index: 1000;
-  }
-  #pricing-drawer-backdrop.open { display: block; }
-  #pricing-drawer {
-    position: fixed; top: 0; right: 0; bottom: 0; width: 360px;
-    background: #fff; box-shadow: -4px 0 24px rgba(0,0,0,.12);
-    z-index: 1001; transform: translateX(100%);
-    transition: transform 260ms cubic-bezier(.4,0,.2,1);
-    display: flex; flex-direction: column; overflow-y: auto;
-  }
-  #pricing-drawer.open { transform: translateX(0); }
-  #pricing-drawer .drawer-head {
-    display: flex; align-items: center; gap: 10px;
-    padding: 18px 20px 14px; border-bottom: 1px solid var(--line);
-    position: sticky; top: 0; background: #fff; z-index: 1;
-  }
-  #pricing-drawer .drawer-head h3 { font-size: 15px; font-weight: 700; flex: 1; margin: 0; }
-  #pricing-drawer .drawer-body { padding: 20px; flex: 1; }
-  .btn-pricing-toggle {
-    display: flex; align-items: center; gap: 6px;
-    padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line);
-    background: var(--pastel-lemon); color: var(--ink-2);
-    font-size: 13px; font-weight: 600; cursor: pointer;
-    transition: background 150ms;
-  }
-  .btn-pricing-toggle:hover { background: #f0d94a44; }
 </style>
 </head>
 <body>
-
-<!-- ── 토큰 계산기 드로어 ─────────────────────────────────── -->
-<div id="pricing-drawer-backdrop" onclick="closePricingDrawer()"></div>
-<div id="pricing-drawer">
-  <div class="drawer-head">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-    <h3>토큰 계산기</h3>
-    <span style="font-size:10px;font-weight:700;background:rgba(26,163,119,.15);color:var(--ok);padding:3px 8px;border-radius:6px;">PREVIEW</span>
-    <button onclick="closePricingDrawer()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--ink-dim);font-size:18px;line-height:1;padding:2px 4px;">✕</button>
-  </div>
-  <div class="drawer-body" style="background:var(--pastel-lemon);flex:1;">
-    <div style="font-size:12px;color:var(--ink-dim);margin-bottom:6px;">Price per 1,000 pages</div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
-      <span style="font-size:14px;font-weight:600;color:var(--ink-2);">$</span>
-      <input id="pricing-rate" type="number" step="0.01" min="0" value="0.00"
-        oninput="updatePricingPreview()"
-        style="background:#1c1c2e;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:22px;font-weight:700;font-family:var(--mono);width:130px;outline:none;"/>
-      <span style="font-size:12px;color:var(--ink-dim);">/1,000 pages</span>
-    </div>
-    <div id="pricing-amount-display" style="font-size:34px;font-weight:800;color:#c4a01a;letter-spacing:-0.02em;line-height:1.1;margin-bottom:4px;">₩0</div>
-    <div id="pricing-sub-display" style="font-size:12px;color:var(--ink-dim);margin-bottom:16px;">과금 0건 × ₩0 (임시)</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-      <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
-        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">예상 월 수익</div>
-        <div id="pricing-krw-val" style="font-size:18px;font-weight:700;color:#1aa377;font-family:var(--mono);">₩0</div>
-      </div>
-      <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
-        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">건당 단가</div>
-        <div id="pricing-per-val" style="font-size:18px;font-weight:700;color:#fff;font-family:var(--mono);">₩0</div>
-      </div>
-      <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
-        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">예상 월 수익 (USD)</div>
-        <div id="pricing-usd-val" style="font-size:18px;font-weight:700;color:#fff;font-family:var(--mono);">$0.00</div>
-      </div>
-      <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
-        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">총 요청 수</div>
-        <div id="pricing-total-val" style="font-size:18px;font-weight:700;color:#fff;font-family:var(--mono);">—</div>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- ── 로그인 오버레이 ───────────────────────────────────── -->
 <div id="login-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;">
@@ -576,10 +505,6 @@
               style="position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform 160ms;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>
           </span>
         </label>
-        <button class="btn-pricing-toggle" onclick="openPricingDrawer()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          토큰 계산기
-        </button>
         <select id="dash-ch-select" class="ch-select ch-selector" onchange="onChannelChange(this)">
           <option value="">전체 채널</option>
         </select>
@@ -706,6 +631,9 @@
       <button id="atab-btn-platforms" onclick="switchAnalyticsTab('platforms')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;margin-right:5px;"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Platforms
       </button>
+      <button id="atab-btn-pricing" onclick="switchAnalyticsTab('pricing')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;margin-right:5px;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>토큰 계산기
+      </button>
     </div>
 
     <!-- ── BOTS TAB ── -->
@@ -805,44 +733,46 @@
       </div>
     </div>
 
-    <!-- 토큰 계산기 -->
-    <div class="panel" style="margin-top:16px;background:var(--pastel-lemon);border-color:transparent;">
-      <div class="panel-head" style="margin-bottom:14px;">
-        <h3>토큰 계산기</h3>
-        <span class="sub">임시토큰 기준 예상 수익 미리보기</span>
-        <span style="margin-left:8px;font-size:10px;font-weight:700;background:rgba(26,163,119,.15);color:var(--ok);padding:3px 8px;border-radius:6px;">PREVIEW</span>
-      </div>
-      <div style="display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap;">
-        <div>
-          <div style="font-size:12px;color:var(--ink-dim);margin-bottom:6px;">Price per 1,000 pages</div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:14px;font-weight:600;color:var(--ink-2);">$</span>
-            <input id="pricing-rate" type="number" step="0.01" min="0" value="0.00"
-              oninput="updatePricingPreview()"
-              style="background:#1c1c2e;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:22px;font-weight:700;font-family:var(--mono);width:130px;outline:none;"/>
-            <span style="font-size:12px;color:var(--ink-dim);">/1,000 pages</span>
-          </div>
+    <!-- ── PRICING TAB ── -->
+    <div id="analytics-tab-pricing" style="display:none;">
+      <div class="panel" style="background:var(--pastel-lemon);border-color:transparent;">
+        <div class="panel-head" style="margin-bottom:20px;">
+          <h3>토큰 계산기</h3>
+          <span class="sub">임시토큰 기준 예상 수익 미리보기</span>
+          <span style="margin-left:8px;font-size:10px;font-weight:700;background:rgba(26,163,119,.15);color:var(--ok);padding:3px 8px;border-radius:6px;">PREVIEW</span>
         </div>
-        <div>
-          <div id="pricing-amount-display" style="font-size:34px;font-weight:800;color:#c4a01a;letter-spacing:-0.02em;line-height:1.1;">₩0</div>
-          <div id="pricing-sub-display" style="font-size:12px;color:var(--ink-dim);margin-top:2px;">과금 0건 × ₩0 (임시)</div>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;flex:1;min-width:320px;">
-          <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
-            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">예상 월 수익</div>
-            <div id="pricing-krw-val" style="font-size:16px;font-weight:700;color:#1aa377;font-family:var(--mono);">₩0</div>
+        <div style="display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:12px;color:var(--ink-dim);margin-bottom:6px;">Price per 1,000 pages</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:14px;font-weight:600;color:var(--ink-2);">$</span>
+              <input id="pricing-rate" type="number" step="0.01" min="0" value="0.00"
+                oninput="updatePricingPreview()"
+                style="background:#1c1c2e;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:22px;font-weight:700;font-family:var(--mono);width:130px;outline:none;"/>
+              <span style="font-size:12px;color:var(--ink-dim);">/1,000 pages</span>
+            </div>
           </div>
-          <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
-            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">건당 단가</div>
-            <div id="pricing-per-val" style="font-size:16px;font-weight:700;color:#fff;font-family:var(--mono);">₩0</div>
+          <div>
+            <div id="pricing-amount-display" style="font-size:34px;font-weight:800;color:#c4a01a;letter-spacing:-0.02em;line-height:1.1;">₩0</div>
+            <div id="pricing-sub-display" style="font-size:12px;color:var(--ink-dim);margin-top:2px;">과금 0건 × ₩0 (임시)</div>
           </div>
-          <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
-            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">예상 월 수익 (USD)</div>
-            <div id="pricing-usd-val" style="font-size:16px;font-weight:700;color:#fff;font-family:var(--mono);">$0.00</div>
-          </div>
-          <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
-            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">총 요청 수</div>
-            <div id="pricing-total-val" style="font-size:16px;font-weight:700;color:#fff;font-family:var(--mono);">—</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;flex:1;min-width:320px;">
+            <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
+              <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">예상 월 수익</div>
+              <div id="pricing-krw-val" style="font-size:16px;font-weight:700;color:#1aa377;font-family:var(--mono);">₩0</div>
+            </div>
+            <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
+              <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">건당 단가</div>
+              <div id="pricing-per-val" style="font-size:16px;font-weight:700;color:#fff;font-family:var(--mono);">₩0</div>
+            </div>
+            <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
+              <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">예상 월 수익 (USD)</div>
+              <div id="pricing-usd-val" style="font-size:16px;font-weight:700;color:#fff;font-family:var(--mono);">$0.00</div>
+            </div>
+            <div style="background:#1c1c2e;border-radius:10px;padding:12px 14px;">
+              <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.35);margin-bottom:5px;">총 요청 수</div>
+              <div id="pricing-total-val" style="font-size:16px;font-weight:700;color:#fff;font-family:var(--mono);">—</div>
+            </div>
           </div>
         </div>
       </div>
@@ -1489,15 +1419,6 @@
   let _pricingBilledCount = 0;
   const KRW_PER_USD = 1380;
 
-  function openPricingDrawer() {
-    document.getElementById('pricing-drawer').classList.add('open');
-    document.getElementById('pricing-drawer-backdrop').classList.add('open');
-  }
-  function closePricingDrawer() {
-    document.getElementById('pricing-drawer').classList.remove('open');
-    document.getElementById('pricing-drawer-backdrop').classList.remove('open');
-  }
-
   function updatePricingPreview() {
     const rateUsd   = parseFloat(document.getElementById('pricing-rate')?.value) || 0;
     const billed    = _pricingBilledCount;
@@ -1763,7 +1684,7 @@
 
   function switchAnalyticsTab(tab) {
     _analyticsActiveTab = tab;
-    ['bots','pages','platforms'].forEach(t => {
+    ['bots','pages','platforms','pricing'].forEach(t => {
       const el  = document.getElementById(`analytics-tab-${t}`);
       const btn = document.getElementById(`atab-btn-${t}`);
       if (el)  el.style.display  = (t === tab) ? '' : 'none';
