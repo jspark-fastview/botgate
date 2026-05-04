@@ -86,6 +86,13 @@
   .range-pill button.active {
     background: var(--ink); color: #fff; font-weight: 600;
   }
+  .purpose-pill {
+    border: none; border-radius: 20px; padding: 4px 12px;
+    font-family: var(--sans); font-size: 12px; font-weight: 600;
+    cursor: pointer; background: var(--bg-soft); color: var(--ink-2);
+    transition: background 120ms, color 120ms;
+  }
+  .purpose-pill.active { color: #fff; }
 
   /* ============ KPI ROW ============ */
   .kpis {
@@ -715,6 +722,9 @@
       </div>
       <div class="panel">
         <div class="panel-head"><h3>AI 회사별 요청 현황</h3><span class="sub">bot_name 기준 누적</span></div>
+        <div id="platforms-purpose-filter" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+          <button class="purpose-pill active" data-purpose="all" onclick="filterPlatformsByPurpose('all')">전체</button>
+        </div>
         <div style="overflow-x:auto;">
           <table class="tbl">
             <thead>
@@ -1415,6 +1425,68 @@
   /* ─── DASHBOARD ────────────────────────────────────── */
   const BOT_COLORS = ['#2b6df6','#9d6bff','#ff7a5c','#1aa377','#c4a01a','#e95c99','#00bcd4'];
 
+  /* ─── PLATFORMS PURPOSE FILTER ─────────────────────── */
+  let _platformsBotNames = [];
+
+  function _buildPlatformPills() {
+    const container = document.getElementById('platforms-purpose-filter');
+    if (!container) return;
+    const purposes = [...new Set(_platformsBotNames.map(b => b.bot_purpose).filter(Boolean))];
+    const order = ['ai_training','ai_search','ai_assistant','search_engine','seo','social','generic'];
+    const sorted = order.filter(p => purposes.includes(p));
+    container.innerHTML = `<button class="purpose-pill active" data-purpose="all" onclick="filterPlatformsByPurpose('all')" style="background:var(--ink);color:#fff;">전체</button>`
+      + sorted.map(p => {
+          const meta = PURPOSE_META[p] || PURPOSE_META.generic;
+          return `<button class="purpose-pill" data-purpose="${p}" onclick="filterPlatformsByPurpose('${p}')" style="--pill-color:${meta.color};">${esc(meta.label)}</button>`;
+        }).join('');
+  }
+
+  function filterPlatformsByPurpose(purpose) {
+    document.querySelectorAll('.purpose-pill').forEach(btn => {
+      const isActive = btn.dataset.purpose === purpose;
+      btn.classList.toggle('active', isActive);
+      const meta = PURPOSE_META[btn.dataset.purpose] || {};
+      btn.style.background = isActive ? (btn.dataset.purpose === 'all' ? 'var(--ink)' : (meta.color || 'var(--ink)')) : 'var(--bg-soft)';
+      btn.style.color = isActive ? '#fff' : 'var(--ink-2)';
+    });
+    renderPlatformsTbl(purpose);
+  }
+
+  function renderPlatformsTbl(purposeFilter) {
+    const tbody = document.getElementById('analytics-platforms-tbl-body');
+    if (!tbody) return;
+    const rows = purposeFilter === 'all' ? _platformsBotNames : _platformsBotNames.filter(b => b.bot_purpose === purposeFilter);
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="color:var(--ink-mute);text-align:center;padding:24px;">데이터 없음</td></tr>';
+      return;
+    }
+    const total = rows.reduce((a, b) => a + b.count, 0);
+    tbody.innerHTML = rows.map(b => {
+      const meta = PURPOSE_META[b.bot_purpose] || PURPOSE_META.generic;
+      const pct  = total ? (b.count / total * 100).toFixed(1) : 0;
+      return `<tr>
+        <td>
+          <span style="display:inline-flex;align-items:center;gap:7px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:${meta.color};flex-shrink:0;"></span>
+            <span style="font-weight:700;">${esc(b.bot_name)}</span>
+          </span>
+        </td>
+        <td>
+          <span style="font-size:11px;background:${meta.color}22;color:${meta.color};padding:2px 7px;border-radius:4px;font-weight:600;">${esc(meta.label)}</span>
+        </td>
+        <td style="text-align:right;font-weight:700;">${fmt(b.count)}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:80px;height:6px;background:var(--bg-soft);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:${meta.color};border-radius:3px;"></div>
+            </div>
+            <span style="font-size:12px;color:var(--ink-dim);">${pct}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
   /* ─── PRICING PREVIEW ──────────────────────────────── */
   let _pricingBilledCount = 0;
   const KRW_PER_USD = 1380;
@@ -1844,37 +1916,9 @@
       }
 
       // AI 회사별 상세 테이블
-      if (tbody) {
-        if (!botNames.length) {
-          tbody.innerHTML = '<tr><td colspan="4" style="color:var(--ink-mute);text-align:center;padding:24px;">데이터 없음</td></tr>';
-        } else {
-          const total = botNames.reduce((a, b) => a + b.count, 0);
-          tbody.innerHTML = botNames.map(b => {
-            const meta = PURPOSE_META[b.bot_purpose] || PURPOSE_META.generic;
-            const pct  = total ? (b.count / total * 100).toFixed(1) : 0;
-            return `<tr>
-              <td>
-                <span style="display:inline-flex;align-items:center;gap:7px;">
-                  <span style="width:8px;height:8px;border-radius:50%;background:${meta.color};flex-shrink:0;"></span>
-                  <span style="font-weight:700;">${esc(b.bot_name)}</span>
-                </span>
-              </td>
-              <td>
-                <span style="font-size:11px;background:${meta.color}22;color:${meta.color};padding:2px 7px;border-radius:4px;font-weight:600;">${esc(meta.label)}</span>
-              </td>
-              <td style="text-align:right;font-weight:700;">${fmt(b.count)}</td>
-              <td>
-                <div style="display:flex;align-items:center;gap:8px;">
-                  <div style="width:80px;height:6px;background:var(--bg-soft);border-radius:3px;overflow:hidden;">
-                    <div style="height:100%;width:${pct}%;background:${meta.color};border-radius:3px;"></div>
-                  </div>
-                  <span style="font-size:12px;color:var(--ink-dim);">${pct}%</span>
-                </div>
-              </td>
-            </tr>`;
-          }).join('');
-        }
-      }
+      _platformsBotNames = botNames;
+      _buildPlatformPills();
+      renderPlatformsTbl('all');
     } catch(e) {
       console.warn('Analytics Platforms 로드 실패:', e.message);
     }
