@@ -93,4 +93,10 @@ export default async function internalRoutes(app) {
   app.get('/internal/bot-catalog', (_req, reply) => {
     return reply.send(getBotCatalog())
   })
+
+  // OpenResty bypass 상태 (10초 폴링용 — 초경량)
+  app.get('/internal/bypass', (_req, reply) => {
+    const row = db.prepare(`SELECT value FROM settings WHERE key = 'bypass_mode'`).get()
+    return reply.send({ bypass: row?.value === '1' })
+  })
 }

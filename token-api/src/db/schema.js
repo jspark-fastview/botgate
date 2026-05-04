@@ -79,6 +79,7 @@ db.exec(`
   -- strict_mode = '1' : rDNS 실패 시 토큰 없으면 차단(현재 동작)
   -- strict_mode = '0' : rDNS 실패해도 통과 (verified=false 로깅만)
   INSERT OR IGNORE INTO settings (key, value) VALUES ('strict_mode', '1');
+  INSERT OR IGNORE INTO settings (key, value) VALUES ('bypass_mode', '0');
 
   -- 봇 목적(purpose)별 정책
   -- action: pass | meter | verify | token_only | block | gone

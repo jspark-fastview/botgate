@@ -447,6 +447,17 @@
       <span>botgate</span>
     </a>
 
+    <!-- 긴급 바이패스 킬 스위치 -->
+    <div id="bypass-banner" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:10px 12px;margin-bottom:4px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#dc2626;margin-bottom:4px;">⚠ 바이패스 활성</div>
+      <div style="font-size:11px;color:#7f1d1d;line-height:1.4;margin-bottom:8px;">봇 필터링이 중단되었습니다. 모든 트래픽이 그대로 통과 중.</div>
+      <button onclick="toggleBypass(false)" style="width:100%;padding:5px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">필터링 재개</button>
+    </div>
+    <div id="bypass-off-banner" style="background:var(--bg-soft);border-radius:10px;padding:8px 12px;margin-bottom:4px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-mute);margin-bottom:5px;">긴급 킬 스위치</div>
+      <button onclick="toggleBypass(true)" style="width:100%;padding:5px;background:var(--bad);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">필터링 중단</button>
+    </div>
+
     <!-- 파트너 모드 배너 (URL ?partner= 시 표시) -->
     <div id="partner-mode-banner" style="display:none;background:var(--brand-soft);border-radius:10px;padding:10px 12px;">
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--brand);margin-bottom:3px;">파트너 모드</div>
@@ -2716,12 +2727,36 @@
     wrap.onclick = toggleStrictMode;
   }
 
+  let _bypassMode = false;
+
   async function loadSettings() {
     try {
       const s = await apiFetch(`${API}/admin/settings`).then(r => r.json());
       _strictMode = (s.strict_mode ?? '1') !== '0';
       renderStrictToggle();
+      _bypassMode = s.bypass_mode === '1';
+      renderBypassBanner();
     } catch(_) {}
+  }
+
+  function renderBypassBanner() {
+    const on  = document.getElementById('bypass-banner');
+    const off = document.getElementById('bypass-off-banner');
+    if (on)  on.style.display  = _bypassMode ? 'block' : 'none';
+    if (off) off.style.display = _bypassMode ? 'none'  : 'block';
+  }
+
+  async function toggleBypass(enable) {
+    if (enable && !confirm('모든 채널의 봇 필터링이 중단됩니다.\n정말 활성화하시겠습니까?')) return;
+    try {
+      await apiFetch(`${API}/admin/settings/bypass_mode`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: enable ? '1' : '0' }),
+      });
+      _bypassMode = enable;
+      renderBypassBanner();
+    } catch(e) { alert('변경 실패: ' + e.message); }
   }
 
   async function toggleStrictMode() {

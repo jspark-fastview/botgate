@@ -98,6 +98,16 @@ end
 -- ── 메인 필터 ─────────────────────────────────────────────────────────
 
 function _M.run()
+    -- ① 긴급 바이패스 킬 스위치 — 공유 dict에서 읽어 즉시 통과
+    local dict = ngx.shared.bot_catalog
+    if dict and dict:get("bypass") == "1" then
+        ngx.req.set_header("X-Botgate-Mode", "bypass")
+        return
+    end
+
+    -- ② pcall 랩핑 — Lua 내부 오류 시 500 대신 통과 (fail-open)
+    local ok, err = pcall(function()
+
     local raw_ua = ngx.var.http_user_agent
     local path   = ngx.var.request_uri:match("^([^?]*)")  -- query string 제거
     local ip     = ngx.var.remote_addr
@@ -244,6 +254,13 @@ function _M.run()
     end
 
     -- stage 3: 일반 사용자 트래픽 → 통과
+
+    end) -- pcall end
+
+    if not ok then
+        ngx.log(ngx.ERR, "[botgate] filter error (fail-open): ", tostring(err))
+        ngx.req.set_header("X-Botgate-Mode", "error-passthrough")
+    end
 end
 
 return _M
