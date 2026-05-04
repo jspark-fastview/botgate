@@ -653,7 +653,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;margin-right:5px;"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Platforms
       </button>
       <button id="atab-btn-pricing" onclick="switchAnalyticsTab('pricing')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;margin-right:5px;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>토큰 계산기
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;margin-right:5px;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>예상 수익 계산기
       </button>
     </div>
 
@@ -723,14 +723,14 @@
     <div id="analytics-tab-platforms" style="display:none;">
       <div class="row r-6-6" style="margin-bottom:16px;">
         <div class="panel">
-          <div class="panel-head"><h3>플랫폼(Purpose)별 비중</h3><span class="sub">전체 봇 트래픽</span></div>
-          <div id="analytics-platforms-bars" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
+          <div class="panel-head"><h3>플랫폼별 봇 목록</h3><span class="sub">purpose 기준 상위 봇</span></div>
+          <div id="analytics-platforms-bot-list" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
             <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
           </div>
         </div>
         <div class="panel">
-          <div class="panel-head"><h3>플랫폼별 봇 목록</h3><span class="sub">purpose 기준 상위 봇</span></div>
-          <div id="analytics-platforms-bot-list" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
+          <div class="panel-head"><h3>봇 카테고리별 비중</h3><span class="sub">전체 봇 트래픽</span></div>
+          <div id="analytics-platforms-bars" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
             <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
           </div>
         </div>
@@ -762,7 +762,7 @@
     <div id="analytics-tab-pricing" style="display:none;">
       <div class="panel">
         <div class="panel-head" style="margin-bottom:20px;">
-          <h3>토큰 계산기</h3>
+          <h3>예상 수익 계산기</h3>
           <span class="sub">기준 데이터를 선택하고 단가를 입력하세요</span>
           <span style="margin-left:8px;font-size:10px;font-weight:700;background:rgba(26,163,119,.15);color:var(--ok);padding:3px 8px;border-radius:6px;">PREVIEW</span>
         </div>
@@ -773,19 +773,22 @@
           <div id="pricing-base-total" class="pricing-base-card" onclick="applyPricingBase('total')" style="cursor:pointer;border:2px solid var(--line);border-radius:12px;padding:14px 16px;transition:border-color 150ms,background 150ms;">
             <div style="font-size:11px;font-weight:700;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">전체 AI봇 요청</div>
             <div id="pricing-stat-total" style="font-size:26px;font-weight:800;letter-spacing:-.02em;color:var(--ink);margin-bottom:4px;">—</div>
-            <div style="font-size:11px;color:var(--ink-mute);">누적 전체</div>
+            <div style="font-size:11px;color:var(--ink-mute);">누적 전체 · 통과 + 차단 포함</div>
+            <div style="font-size:10px;color:var(--ink-mute);margin-top:4px;">검색봇·기타봇 포함, 일부는 무료 통과</div>
             <div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--ink-dim);">계산에 적용 →</div>
           </div>
           <div id="pricing-base-month" class="pricing-base-card" onclick="applyPricingBase('month')" style="cursor:pointer;border:2px solid var(--line);border-radius:12px;padding:14px 16px;transition:border-color 150ms,background 150ms;">
             <div style="font-size:11px;font-weight:700;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">이번달 요청</div>
             <div id="pricing-stat-month" style="font-size:26px;font-weight:800;letter-spacing:-.02em;color:var(--brand);margin-bottom:4px;">—</div>
-            <div style="font-size:11px;color:var(--ink-mute);">최근 30일</div>
+            <div style="font-size:11px;color:var(--ink-mute);">최근 30일 · 통과 + 차단 포함</div>
+            <div style="font-size:10px;color:var(--ink-mute);margin-top:4px;">월별 트래픽 규모 파악용</div>
             <div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--ink-dim);">계산에 적용 →</div>
           </div>
           <div id="pricing-base-billed" class="pricing-base-card" onclick="applyPricingBase('billed')" style="cursor:pointer;border:2px solid var(--line);border-radius:12px;padding:14px 16px;transition:border-color 150ms,background 150ms;">
             <div style="font-size:11px;font-weight:700;color:var(--ok);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">과금 대상</div>
             <div id="pricing-stat-billed" style="font-size:26px;font-weight:800;letter-spacing:-.02em;color:var(--ok);margin-bottom:4px;">—</div>
-            <div style="font-size:11px;color:var(--ink-mute);">임시토큰 기준</div>
+            <div style="font-size:11px;color:var(--ink-mute);">meter 정책 적용 요청만</div>
+            <div style="font-size:10px;color:var(--ink-mute);margin-top:4px;">실제 수익화 대상 — 전체보다 적음</div>
             <div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--ok);">계산에 적용 →</div>
           </div>
         </div>
@@ -2067,24 +2070,24 @@
         const bots = await apiFetch(`${API}/admin/stats/pages/bots?path=${encodeURIComponent(path)}&category=bot${cp}`).then(r => r.json());
         content.dataset.loaded = '1';
         if (!bots.length) { content.textContent = '봇 데이터 없음'; return; }
-        const vendors  = groupByVendor(bots, 'bot_name');
-        const subTotal = vendors.reduce((a, v) => a + v.count, 0);
-        content.innerHTML = vendors.map(v => {
-          const pct      = subTotal ? Math.round(v.count / subTotal * 100) : 0;
-          const color    = vendorColor(v.vendor);
-          const subtitle = v.bots.map(b => b.name).join(' · ');
+        const subTotal = bots.reduce((a, b) => a + b.count, 0);
+        content.innerHTML = bots.map(b => {
+          const pct    = subTotal ? Math.round(b.count / subTotal * 100) : 0;
+          const botName = b.bot_name || '알 수 없음';
+          const vendor  = VENDOR_MAP[botName] || '';
+          const color   = vendorColor(vendor || botName);
           return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
             <div style="min-width:160px;">
               <div style="font-weight:600;color:var(--ink);display:flex;align-items:center;gap:5px;">
                 <span style="width:7px;height:7px;border-radius:50%;background:${color};flex-shrink:0;"></span>
-                ${esc(v.vendor)}
+                ${esc(botName.split('/')[0])}
               </div>
-              <div style="font-size:11px;color:var(--ink-mute);padding-left:12px;">${esc(subtitle)}</div>
+              ${vendor ? `<div style="font-size:11px;color:var(--ink-mute);padding-left:12px;">${esc(vendor)}</div>` : ''}
             </div>
             <div style="flex:1;height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
               <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;"></div>
             </div>
-            <span style="min-width:60px;text-align:right;color:var(--ink-dim);">${fmt(v.count)} · ${pct}%</span>
+            <span style="min-width:60px;text-align:right;color:var(--ink-dim);">${fmt(b.count)} · ${pct}%</span>
           </div>`;
         }).join('');
       } catch(e) {
@@ -2302,19 +2305,19 @@
   function renderBotBars(bots) {
     const el = document.getElementById('analytics-bot-bars');
     if (!el) return;
-    const vendors = groupByVendor(bots, 'bot_ua');
-    const total = vendors.reduce((a, v) => a + v.count, 0);
-    el.innerHTML = vendors.slice(0, 8).map((v) => {
-      const pct = total ? Math.round(v.count / total * 100) : 0;
-      const color = vendorColor(v.vendor);
-      const subtitle = v.bots.map(b => b.name.split('/')[0]).join(' · ');
+    const total = bots.reduce((a, b) => a + b.count, 0);
+    el.innerHTML = bots.slice(0, 8).map((b) => {
+      const pct = total ? Math.round(b.count / total * 100) : 0;
+      const botName = b.bot_ua || b.name || '알 수 없음';
+      const vendor = VENDOR_MAP[botName] || '';
+      const color = vendorColor(vendor || botName);
       return `
         <div>
           <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:2px;">
-            <span style="color:var(--ink);font-weight:600;">${esc(v.vendor)}</span>
-            <span style="color:var(--ink-dim);">${fmt(v.count)}</span>
+            <span style="color:var(--ink);font-weight:600;">${esc(botName.split('/')[0])}</span>
+            <span style="color:var(--ink-dim);">${fmt(b.count)}</span>
           </div>
-          <div style="font-size:11px;color:var(--ink-mute);margin-bottom:4px;">${esc(subtitle)}</div>
+          ${vendor ? `<div style="font-size:11px;color:var(--ink-mute);margin-bottom:4px;">${esc(vendor)}</div>` : ''}
           <div style="height:8px;background:var(--bg-soft);border-radius:4px;overflow:hidden;">
             <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width 400ms;"></div>
           </div>
@@ -2325,18 +2328,18 @@
   function renderBotTable(bots) {
     const tbody = document.getElementById('analytics-tbl-body');
     if (!tbody) return;
-    const vendors = groupByVendor(bots, 'bot_ua');
-    const total = vendors.reduce((a, v) => a + v.count, 0);
-    tbody.innerHTML = vendors.map((v) => {
-      const pct = total ? (v.count / total * 100).toFixed(1) : 0;
-      const color = vendorColor(v.vendor);
-      const subtitle = v.bots.map(b => b.name.split('/')[0]).join(' · ');
+    const total = bots.reduce((a, b) => a + b.count, 0);
+    tbody.innerHTML = bots.map((b) => {
+      const pct = total ? (b.count / total * 100).toFixed(1) : 0;
+      const botName = b.bot_ua || b.name || '알 수 없음';
+      const vendor = VENDOR_MAP[botName] || '';
+      const color = vendorColor(vendor || botName);
       return `<tr>
         <td>
-          <div style="font-weight:700;">${esc(v.vendor)}</div>
-          <div style="font-size:11px;color:var(--ink-mute);">${esc(subtitle)}</div>
+          <div style="font-weight:700;">${esc(botName.split('/')[0])}</div>
+          ${vendor ? `<div style="font-size:11px;color:var(--ink-mute);">${esc(vendor)}</div>` : ''}
         </td>
-        <td style="font-weight:700;">${fmt(v.count)}</td>
+        <td style="font-weight:700;">${fmt(b.count)}</td>
         <td>
           <div style="display:flex;align-items:center;gap:8px;">
             <div style="width:80px;height:6px;background:var(--bg-soft);border-radius:3px;overflow:hidden;">
