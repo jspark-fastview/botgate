@@ -1809,6 +1809,7 @@
   /* ─── ANALYTICS ────────────────────────────────────── */
   let _analyticsDailyCache = null;
   let _analyticsActiveTab  = 'bots';
+  let _analyticsPagePaths  = [];
 
   function switchAnalyticsTab(tab) {
     _analyticsActiveTab = tab;
@@ -1857,10 +1858,11 @@
       }
       const total  = pages.reduce((a, p) => a + p.count, 0);
       const colors = ['#2b6df6','#9d6bff','#ff7a5c','#1aa377','#c4a01a','#e95c99','#00bcd4'];
+      _analyticsPagePaths = pages.map(p => p.path || '/');
       tbody.innerHTML = pages.map((p, i) => {
         const pct = total ? (p.count / total * 100).toFixed(1) : 0;
         const rowId = `page-sub-${i}`;
-        return `<tr style="cursor:pointer;" data-path="${esc(p.path||'/')}" data-row-id="${rowId}" onclick="togglePageSub(this)">
+        return `<tr style="cursor:pointer;" onclick="togglePageSub(${i})">
           <td style="color:var(--ink-mute);font-size:13px;text-align:center;user-select:none;" id="${rowId}-toggle">▶</td>
           <td class="mono" style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.path || '/')}</td>
           <td style="text-align:right;font-weight:700;">${fmt(p.count)}</td>
@@ -1885,9 +1887,9 @@
     }
   }
 
-  async function togglePageSub(row) {
-    const path   = row.dataset.path;
-    const rowId  = row.dataset.rowId;
+  async function togglePageSub(idx) {
+    const path   = _analyticsPagePaths[idx];
+    const rowId  = `page-sub-${idx}`;
     const subRow = document.getElementById(rowId);
     const toggle = document.getElementById(`${rowId}-toggle`);
     const content= document.getElementById(`${rowId}-content`);
@@ -1895,10 +1897,11 @@
     const isOpen = subRow.style.display !== 'none';
     subRow.style.display = isOpen ? 'none' : '';
     if (toggle) toggle.textContent = isOpen ? '▶' : '▼';
-    if (!isOpen && content && content.textContent === '로딩중…') {
+    if (!isOpen && content && content.dataset.loaded !== '1') {
       try {
         const cp = chParam();
         const bots = await apiFetch(`${API}/admin/stats/pages/bots?path=${encodeURIComponent(path)}&category=bot${cp}`).then(r => r.json());
+        content.dataset.loaded = '1';
         if (!bots.length) { content.textContent = '봇 데이터 없음'; return; }
         const subTotal = bots.reduce((a, b) => a + b.count, 0);
         content.innerHTML = bots.map(b => {
