@@ -254,10 +254,11 @@ export default async function adminRoutes(app) {
 
   // 일별 접근량 (?domain= 선택, ?category= 기본 'bot')
   app.get('/admin/stats/daily', (req, reply) => {
-    const { domain, category = 'bot' } = req.query
+    const { domain, category = 'bot', billed } = req.query
     const conds = [`ts >= datetime('now', '-30 days')`]
     const params = []
     if (category && category !== 'all') { conds.push(`category = ?`); params.push(category) }
+    if (billed === '1') { conds.push(`billed = 1`) }
     const dc = domainCondition(domain); if (dc.sql) { conds.push(dc.sql); params.push(...dc.params) }
     const where = `WHERE ` + conds.join(' AND ')
     const rows = db.prepare(
