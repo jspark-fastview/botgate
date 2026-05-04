@@ -1731,7 +1731,7 @@
       tbody.innerHTML = pages.map((p, i) => {
         const pct = total ? (p.count / total * 100).toFixed(1) : 0;
         const rowId = `page-sub-${i}`;
-        return `<tr style="cursor:pointer;" onclick="togglePageSub(this, ${JSON.stringify(esc(p.path||'/'))}, '${rowId}', '${cp}')">
+        return `<tr style="cursor:pointer;" onclick="togglePageSub(this, ${JSON.stringify(p.path||'/')}, '${rowId}', '${cp}')">
           <td style="color:var(--ink-mute);font-size:13px;text-align:center;user-select:none;" id="${rowId}-toggle">▶</td>
           <td class="mono" style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.path || '/')}</td>
           <td style="text-align:right;font-weight:700;">${fmt(p.count)}</td>
