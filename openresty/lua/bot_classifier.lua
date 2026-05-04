@@ -8,42 +8,6 @@
 
 local _M = {}
 
--- ── 동적 카탈로그 (shared dict → worker-local cache) ─────────
-local cjson = require "cjson.safe"
-local _dyn_bots      = nil
-local _dyn_malicious = nil
-local _dyn_version   = nil
-
-local function get_catalog()
-    -- ngx 컨텍스트 없으면 (모듈 로드 타임) 정적 fallback
-    if not ngx or not ngx.shared then return BOTS, MALICIOUS end
-    local dict    = ngx.shared.bot_catalog
-    local version = dict and dict:get("version")
-    -- worker-local cache hit
-    if version and version == _dyn_version and _dyn_bots then
-        return _dyn_bots, _dyn_malicious
-    end
-    -- dict miss or version changed → parse JSON
-    local json = dict and dict:get("json")
-    if not json then return BOTS, MALICIOUS end
-    local data = cjson.decode(json)
-    if not data or not data.bots then return BOTS, MALICIOUS end
-    -- convert to Lua tables compatible with classify()
-    local function to_lua_bots(arr)
-        local out = {}
-        for _, b in ipairs(arr) do
-            local pats = {}
-            if type(b.patterns) == "table" then pats = b.patterns end
-            out[#out+1] = { name=b.name, vendor=b.vendor or "", purpose=b.purpose or "generic", patterns=pats }
-        end
-        return out
-    end
-    _dyn_bots      = to_lua_bots(data.bots)
-    _dyn_malicious = to_lua_bots(data.malicious or {})
-    _dyn_version   = version
-    return _dyn_bots, _dyn_malicious
-end
-
 -- ── 악성 봇 / 공격 도구 패턴 (소문자 substring) ─────────────────
 -- 매칭되면 즉시 403 차단 + 로깅
 local MALICIOUS = {
@@ -150,6 +114,39 @@ local BOTS = {
 local OTHER_BOT_PATTERNS = {
     "bot/", "bot ", "crawl", "spider", "slurp", "archive.org", "indexer", "scraper",
 }
+
+-- ── 동적 카탈로그 (shared dict → worker-local cache) ─────────
+-- BOTS/MALICIOUS가 선언된 뒤에 위치해야 fallback으로 올바르게 참조됨
+local cjson = require "cjson.safe"
+local _dyn_bots      = nil
+local _dyn_malicious = nil
+local _dyn_version   = nil
+
+local function get_catalog()
+    if not ngx or not ngx.shared then return BOTS, MALICIOUS end
+    local dict    = ngx.shared.bot_catalog
+    local version = dict and dict:get("version")
+    if version and version == _dyn_version and _dyn_bots then
+        return _dyn_bots, _dyn_malicious
+    end
+    local json = dict and dict:get("json")
+    if not json then return BOTS, MALICIOUS end
+    local data = cjson.decode(json)
+    if not data or not data.bots then return BOTS, MALICIOUS end
+    local function to_lua_bots(arr)
+        local out = {}
+        for _, b in ipairs(arr) do
+            local pats = {}
+            if type(b.patterns) == "table" then pats = b.patterns end
+            out[#out+1] = { name=b.name, vendor=b.vendor or "", purpose=b.purpose or "generic", patterns=pats }
+        end
+        return out
+    end
+    _dyn_bots      = to_lua_bots(data.bots)
+    _dyn_malicious = to_lua_bots(data.malicious or {})
+    _dyn_version   = version
+    return _dyn_bots, _dyn_malicious
+end
 
 -- 카탈로그 (UI 에서 봇 목록 표시용) — admin 에서 가져갈 수 있게 export
 function _M.catalog()
