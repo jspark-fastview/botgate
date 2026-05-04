@@ -59,11 +59,15 @@ local BOTS = {
     { name="ImagesiftBot",         vendor="Imagesift",  purpose="ai_training", patterns={"ImagesiftBot"} },
     { name="Omgili",               vendor="Webz.io",    purpose="ai_training", patterns={"Omgili","Omgilibot"} },
     { name="PetalBot",             vendor="Huawei",     purpose="ai_training", patterns={"PetalBot"} },
+    { name="DeepSeekBot",          vendor="DeepSeek",   purpose="ai_training", patterns={"DeepSeekBot"} },
+    { name="Qwenbot",              vendor="Alibaba",    purpose="ai_training", patterns={"Qwenbot","Qwen-Bot"} },
+    { name="MistralBot",           vendor="Mistral",    purpose="ai_training", patterns={"MistralBot"} },
 
     -- ── AI Search (RAG, 인덱싱 후 검색 결과로 활용) ─────────────
     { name="PerplexityBot",        vendor="Perplexity", purpose="ai_search",   patterns={"PerplexityBot"} },
     { name="OAI-SearchBot",        vendor="OpenAI",     purpose="ai_search",   patterns={"OAI-SearchBot"} },
     { name="YouBot",               vendor="You.com",    purpose="ai_search",   patterns={"YouBot"} },
+    { name="xAI-SearchBot",        vendor="xAI",        purpose="ai_search",   patterns={"xAI-SearchBot"} },
 
     -- ── AI Assistant (사용자 트리거로 실시간 fetch) ─────────────
     { name="ChatGPT-User",         vendor="OpenAI",     purpose="ai_assistant", patterns={"ChatGPT-User"} },
@@ -79,6 +83,7 @@ local BOTS = {
     { name="YandexBot",            vendor="Yandex",     purpose="search_engine", patterns={"YandexBot"} },
     { name="DuckDuckBot",          vendor="DuckDuckGo", purpose="search_engine", patterns={"DuckDuckBot"} },
     { name="Yeti",                 vendor="Naver",      purpose="search_engine", patterns={"Yeti"} },
+    { name="Brave SearchBot",      vendor="Brave",      purpose="search_engine", patterns={"Brave SearchBot"} },
 
     -- ── SEO Crawler (분석 도구) ─────────────────────────────────
     { name="SemrushBot",           vendor="Semrush",    purpose="seo",         patterns={"SemrushBot"} },
@@ -88,6 +93,7 @@ local BOTS = {
     { name="BLEXBot",              vendor="WebMeUp",    purpose="seo",         patterns={"BLEXBot"} },
     { name="DataForSEOBot",        vendor="DataForSEO", purpose="seo",         patterns={"DataForSeoBot"} },
     { name="serpstatbot",          vendor="Serpstat",   purpose="seo",         patterns={"serpstatbot"} },
+    { name="Screaming Frog",       vendor="Screaming Frog", purpose="seo",     patterns={"Screaming Frog SEO Spider"} },
 
     -- ── Social Preview (메신저 / SNS 링크 미리보기) ─────────────
     { name="Slackbot",             vendor="Slack",      purpose="social",      patterns={"Slackbot"} },
@@ -98,6 +104,7 @@ local BOTS = {
     { name="TelegramBot",          vendor="Telegram",   purpose="social",      patterns={"TelegramBot"} },
     { name="Discordbot",           vendor="Discord",    purpose="social",      patterns={"Discordbot"} },
     { name="KakaoTalk-scrap",      vendor="Kakao",      purpose="social",      patterns={"kakaotalk-scrap","kakaostory-scrap"} },
+    { name="Pinterestbot",         vendor="Pinterest",  purpose="social",      patterns={"Pinterest"} },
 
     -- ── 광고 / 인프라 크롤러 ───────────────────────────────────
     { name="AdsTxtCrawler",        vendor="(다양)",     purpose="generic",     patterns={"ads.txt","sellers.json"} },

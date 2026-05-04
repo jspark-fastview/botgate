@@ -23,11 +23,15 @@ export const BOTS = [
   { name: 'ImagesiftBot',          vendor: 'Imagesift',    purpose: 'ai_training' },
   { name: 'Omgili',                vendor: 'Webz.io',      purpose: 'ai_training' },
   { name: 'PetalBot',              vendor: 'Huawei',       purpose: 'ai_training' },
+  { name: 'DeepSeekBot',           vendor: 'DeepSeek',     purpose: 'ai_training' },
+  { name: 'Qwenbot',               vendor: 'Alibaba',      purpose: 'ai_training' },
+  { name: 'MistralBot',            vendor: 'Mistral',      purpose: 'ai_training' },
 
   // AI Search
   { name: 'PerplexityBot',         vendor: 'Perplexity',   purpose: 'ai_search' },
   { name: 'OAI-SearchBot',         vendor: 'OpenAI',       purpose: 'ai_search' },
   { name: 'YouBot',                vendor: 'You.com',      purpose: 'ai_search' },
+  { name: 'xAI-SearchBot',         vendor: 'xAI',          purpose: 'ai_search' },
 
   // AI Assistant
   { name: 'ChatGPT-User',          vendor: 'OpenAI',       purpose: 'ai_assistant' },
@@ -43,6 +47,7 @@ export const BOTS = [
   { name: 'YandexBot',             vendor: 'Yandex',       purpose: 'search_engine' },
   { name: 'DuckDuckBot',           vendor: 'DuckDuckGo',   purpose: 'search_engine' },
   { name: 'Yeti',                  vendor: 'Naver',        purpose: 'search_engine' },
+  { name: 'Brave SearchBot',       vendor: 'Brave',        purpose: 'search_engine' },
 
   // SEO Crawler
   { name: 'SemrushBot',            vendor: 'Semrush',      purpose: 'seo' },
@@ -52,6 +57,7 @@ export const BOTS = [
   { name: 'BLEXBot',               vendor: 'WebMeUp',      purpose: 'seo' },
   { name: 'DataForSEOBot',         vendor: 'DataForSEO',   purpose: 'seo' },
   { name: 'serpstatbot',           vendor: 'Serpstat',     purpose: 'seo' },
+  { name: 'Screaming Frog',        vendor: 'Screaming Frog', purpose: 'seo' },
 
   // Social Preview
   { name: 'Slackbot',              vendor: 'Slack',        purpose: 'social' },
@@ -62,6 +68,7 @@ export const BOTS = [
   { name: 'TelegramBot',           vendor: 'Telegram',     purpose: 'social' },
   { name: 'Discordbot',            vendor: 'Discord',      purpose: 'social' },
   { name: 'KakaoTalk-scrap',       vendor: 'Kakao',        purpose: 'social' },
+  { name: 'Pinterestbot',          vendor: 'Pinterest',    purpose: 'social' },
 
   // 광고 / 인프라
   { name: 'AdsTxtCrawler',         vendor: '(다양)',       purpose: 'generic' },
