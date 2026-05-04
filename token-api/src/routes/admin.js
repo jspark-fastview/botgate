@@ -329,12 +329,55 @@ export default async function adminRoutes(app) {
   })
 
   // 봇 카탈로그 — UI 에서 봇 목록 + 카테고리 표시용
+  // ── 봇 카탈로그 (DB 기반) ─────────────────────────────────
+  const parsePats = row => ({ ...row, patterns: JSON.parse(row.patterns || '[]') })
+
+  // 카탈로그 전체 (UI용, purpose_meta 포함)
   app.get('/admin/bots/catalog', (_req, reply) => {
-    return reply.send({
-      bots:         BOT_CATALOG,
-      malicious:    MALICIOUS_CATALOG,
-      purpose_meta: PURPOSE_META,
-    })
+    const rows = db.prepare(`SELECT * FROM bot_catalog ORDER BY is_malicious, purpose, name`).all()
+    const bots      = rows.filter(r => !r.is_malicious).map(parsePats)
+    const malicious = rows.filter(r =>  r.is_malicious).map(parsePats)
+    return reply.send({ bots, malicious, purpose_meta: PURPOSE_META })
+  })
+
+  // 봇 목록 (관리 UI용 — 전체 필드)
+  app.get('/admin/bots', (_req, reply) => {
+    const rows = db.prepare(`SELECT * FROM bot_catalog ORDER BY is_malicious, purpose, name`).all()
+    return reply.send(rows.map(parsePats))
+  })
+
+  // 봇 추가
+  app.post('/admin/bots', (req, reply) => {
+    const { name, vendor, purpose, patterns = [], is_malicious = 0, enabled = 1 } = req.body
+    if (!name || !vendor || !purpose) return reply.code(400).send({ error: 'name, vendor, purpose 필수' })
+    try {
+      const info = db.prepare(
+        `INSERT INTO bot_catalog (name, vendor, purpose, patterns, is_malicious, enabled)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ).run(name, vendor, purpose, JSON.stringify(patterns), is_malicious ? 1 : 0, enabled ? 1 : 0)
+      return reply.code(201).send({ id: info.lastInsertRowid })
+    } catch (e) {
+      if (e.message.includes('UNIQUE')) return reply.code(409).send({ error: '이미 존재하는 봇 이름' })
+      throw e
+    }
+  })
+
+  // 봇 수정
+  app.put('/admin/bots/:id', (req, reply) => {
+    const { name, vendor, purpose, patterns, is_malicious, enabled } = req.body
+    const existing = db.prepare(`SELECT id FROM bot_catalog WHERE id = ?`).get(req.params.id)
+    if (!existing) return reply.code(404).send({ error: '봇 없음' })
+    db.prepare(
+      `UPDATE bot_catalog SET name=?, vendor=?, purpose=?, patterns=?, is_malicious=?, enabled=?,
+       updated_at=datetime('now') WHERE id=?`
+    ).run(name, vendor, purpose, JSON.stringify(patterns ?? []), is_malicious ? 1 : 0, enabled ? 1 : 0, req.params.id)
+    return reply.send({ ok: true })
+  })
+
+  // 봇 삭제
+  app.delete('/admin/bots/:id', (req, reply) => {
+    db.prepare(`DELETE FROM bot_catalog WHERE id = ?`).run(req.params.id)
+    return reply.send({ ok: true })
   })
 
   // 실제 차단된 악성 봇 통계 (access_logs 기반)

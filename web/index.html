@@ -964,7 +964,7 @@
     <div class="page-head">
       <div>
         <h1>봇 카탈로그</h1>
-        <div class="greeting">botgate가 인식하는 모든 봇 목록과 카테고리.</div>
+        <div class="greeting">DB에서 관리 · 변경사항은 OpenResty에 5분 내 자동 반영.</div>
       </div>
       <div class="right" style="gap:8px;">
         <select id="catalog-purpose-filter" class="ch-select" onchange="renderCatalog()">
@@ -976,6 +976,7 @@
         <input id="catalog-search" type="text" placeholder="검색..."
           oninput="renderCatalog()"
           style="padding:6px 12px;border:1px solid var(--line);border-radius:var(--radius-pill);font-size:13px;min-width:160px;">
+        <button class="btn" onclick="openBotModal()">+ 봇 추가</button>
       </div>
     </div>
 
@@ -993,11 +994,13 @@
               <th>크롤러</th>
               <th>벤더</th>
               <th>카테고리</th>
-              <th style="text-align:right;">최근 누계</th>
+              <th style="text-align:right;">누계</th>
+              <th style="text-align:center;">활성</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="catalog-tbl-body">
-            <tr><td colspan="4" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+            <tr><td colspan="6" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
           </tbody>
         </table>
       </div>
@@ -1007,8 +1010,11 @@
     <div style="margin-top:32px;">
       <div class="page-head">
         <div>
-          <h1 style="font-size:20px;color:var(--bad);">⛔ 차단되는 악성 패턴</h1>
-          <div class="greeting">아래 UA 패턴이 감지되면 즉시 403 차단됩니다.</div>
+          <h1 style="font-size:20px;color:var(--bad);">차단되는 악성 패턴</h1>
+          <div class="greeting">UA 패턴이 감지되면 즉시 403 차단됩니다.</div>
+        </div>
+        <div class="right">
+          <button class="btn" style="background:var(--bad);" onclick="openBotModal(null,true)">+ 악성 추가</button>
         </div>
       </div>
 
@@ -1019,10 +1025,10 @@
               <tr>
                 <th>이름</th>
                 <th>분류</th>
-                <th>설명</th>
                 <th class="mono">UA 패턴</th>
                 <th style="text-align:right;">차단 누계</th>
-                <th>최근 감지</th>
+                <th style="text-align:center;">활성</th>
+                <th></th>
               </tr>
             </thead>
             <tbody id="malicious-tbl-body">
@@ -1033,6 +1039,54 @@
       </div>
     </div>
   </section>
+
+  <!-- 봇 추가/수정 모달 -->
+  <div id="bot-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:28px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <h2 id="bot-modal-title" style="font-size:18px;font-weight:700;">봇 추가</h2>
+        <button onclick="closeBotModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-mute);">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--ink-dim);display:block;margin-bottom:4px;">봇 이름 (UA 식별자)</label>
+          <input id="bm-name" type="text" placeholder="예: GrokBot" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--ink-dim);display:block;margin-bottom:4px;">벤더 (회사)</label>
+            <input id="bm-vendor" type="text" placeholder="예: xAI" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--ink-dim);display:block;margin-bottom:4px;">카테고리</label>
+            <select id="bm-purpose" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:#fff;">
+              <option value="ai_training">AI Crawler</option>
+              <option value="ai_search">AI Search</option>
+              <option value="ai_assistant">AI Assistant</option>
+              <option value="search_engine">Search Engine</option>
+              <option value="seo">SEO Crawler</option>
+              <option value="social">Social Preview</option>
+              <option value="generic">Generic Bot</option>
+              <option value="malicious">Malicious (차단)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--ink-dim);display:block;margin-bottom:4px;">UA 매칭 패턴 <span style="font-weight:400;">(쉼표로 구분, 소문자 substring 매칭)</span></label>
+          <input id="bm-patterns" type="text" placeholder="예: GrokBot, grok-bot" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:var(--mono);">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <label style="font-size:13px;font-weight:600;color:var(--ink-dim);">활성</label>
+          <input id="bm-enabled" type="checkbox" checked style="width:16px;height:16px;cursor:pointer;">
+        </div>
+        <div id="bm-error" style="display:none;color:var(--bad);font-size:13px;padding:8px 12px;background:#fff0f0;border-radius:8px;"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;">
+          <button onclick="closeBotModal()" style="padding:9px 20px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:14px;cursor:pointer;">취소</button>
+          <button id="bm-save" onclick="saveBotModal()" class="btn" style="padding:9px 24px;">저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ======================================================
        봇 정책 (목적별)
@@ -2763,8 +2817,10 @@
   }
 
   /* ─── BOT CATALOG ─────────────────────────────────────── */
-  let _catalog = null;       // { bots: [...], purpose_meta: {...} }
-  let _catalogStats = {};    // { "GPTBot": 123, ... }
+  let _catalog = null;
+  let _catalogStats = {};
+  let _maliciousStats = {};
+  let _botModalId = null;
 
   const PURPOSE_COLORS = {
     ai_training:   '#2b6df6',
@@ -2774,9 +2830,9 @@
     seo:           '#ff7a5c',
     social:        '#c4a01a',
     generic:       '#9aa1ad',
+    malicious:     '#dc2626',
   };
 
-  let _maliciousStats = {};   // bot_name → { count, last_seen }
   async function loadCatalog() {
     try {
       const [catData, statsData, malStatsData] = await Promise.all([
@@ -2785,10 +2841,9 @@
         apiFetch(`${API}/admin/stats/malicious`).then(r => r.json()),
       ]);
       _catalog = catData;
-      _catalogStats = Object.fromEntries(statsData.map(s => [s.bot_name, s.count]));
-      _maliciousStats = Object.fromEntries(malStatsData.map(s => [s.bot_name, s]));
+      _catalogStats    = Object.fromEntries(statsData.map(s => [s.bot_name, s.count]));
+      _maliciousStats  = Object.fromEntries(malStatsData.map(s => [s.bot_name, s]));
 
-      // 필터 옵션 채우기
       const meta = _catalog.purpose_meta || {};
       const purposeSel = document.getElementById('catalog-purpose-filter');
       const vendorSel  = document.getElementById('catalog-vendor-filter');
@@ -2802,33 +2857,36 @@
       renderMalicious();
     } catch(e) {
       document.getElementById('catalog-tbl-body').innerHTML =
-        `<tr><td colspan="4" style="text-align:center;color:var(--bad);padding:24px;">로드 실패</td></tr>`;
+        `<tr><td colspan="6" style="text-align:center;color:var(--bad);padding:24px;">로드 실패</td></tr>`;
     }
   }
 
   function renderMalicious() {
-    if (!_catalog || !_catalog.malicious) return;
+    if (!_catalog?.malicious) return;
     const tbody = document.getElementById('malicious-tbl-body');
     if (!tbody) return;
     const VENDOR_COLOR = { Attack: '#dc2626', Scraper: '#ea580c', Library: '#9aa1ad' };
     tbody.innerHTML = _catalog.malicious.map(m => {
       const stats = _maliciousStats[m.name] || {};
       const cnt   = stats.count || 0;
-      const last  = stats.last_seen ? fmtTime(stats.last_seen) : '—';
       const color = VENDOR_COLOR[m.vendor] || '#9aa1ad';
+      const enabledDot = m.enabled !== 0
+        ? `<span style="color:var(--ok);font-size:16px;">●</span>`
+        : `<span style="color:var(--ink-mute);font-size:16px;">○</span>`;
       return `<tr>
         <td style="font-weight:700;">${esc(m.name)}</td>
         <td>
-          <span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;background:#ffe1e1;color:${color};border-radius:999px;font-size:11.5px;font-weight:600;">
-            ${esc(m.vendor)}
-          </span>
+          <span style="padding:3px 10px;background:#ffe1e1;color:${color};border-radius:999px;font-size:11.5px;font-weight:600;">${esc(m.vendor)}</span>
         </td>
-        <td style="color:var(--ink-2);">${esc(m.desc || '')}</td>
         <td class="mono" style="font-size:12px;color:var(--ink-mute);">${(m.patterns||[]).join(', ')}</td>
-        <td style="text-align:right;font-weight:${cnt ? 700 : 400};color:${cnt ? 'var(--bad)' : 'var(--ink-mute)'};">${cnt ? fmt(cnt) : '—'}</td>
-        <td style="font-size:13px;color:var(--ink-dim);">${last}</td>
+        <td style="text-align:right;font-weight:${cnt?700:400};color:${cnt?'var(--bad)':'var(--ink-mute)'};">${cnt?fmt(cnt):'—'}</td>
+        <td style="text-align:center;">${enabledDot}</td>
+        <td style="text-align:right;white-space:nowrap;">
+          <button onclick="openBotModal(${m.id},true)" style="font-size:12px;padding:3px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer;margin-right:4px;">수정</button>
+          <button onclick="deleteBot(${m.id})" style="font-size:12px;padding:3px 10px;border:1px solid #fca5a5;border-radius:6px;background:#fff;color:var(--bad);cursor:pointer;">삭제</button>
+        </td>
       </tr>`;
-    }).join('');
+    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--ink-mute);padding:24px;">없음</td></tr>';
   }
 
   function renderCatalog() {
@@ -2837,18 +2895,16 @@
     const vendor  = document.getElementById('catalog-vendor-filter').value;
     const search  = document.getElementById('catalog-search').value.toLowerCase();
 
-    let bots = _catalog.bots;
+    let bots = _catalog.bots || [];
     if (purpose) bots = bots.filter(b => b.purpose === purpose);
     if (vendor)  bots = bots.filter(b => b.vendor === vendor);
     if (search)  bots = bots.filter(b =>
       b.name.toLowerCase().includes(search) || b.vendor.toLowerCase().includes(search)
     );
 
-    // 카테고리별 카운트 (필터 적용 후)
     const counts = {};
     bots.forEach(b => counts[b.purpose] = (counts[b.purpose]||0) + 1);
 
-    // 상단 칩 — 카테고리별 봇 종류 수
     const meta = _catalog.purpose_meta || {};
     const summaryEl = document.getElementById('catalog-summary');
     summaryEl.innerHTML = Object.entries(meta).map(([k, m]) => {
@@ -2863,31 +2919,112 @@
       </span>`;
     }).join('');
 
-    // 테이블
     const tbody = document.getElementById('catalog-tbl-body');
     if (!bots.length) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-mute);padding:24px;">매칭 봇 없음</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-mute);padding:24px;">매칭 봇 없음</td></tr>';
       return;
     }
     tbody.innerHTML = bots.map(b => {
-      const m = meta[b.purpose] || { label: b.purpose, desc: '' };
+      const m     = meta[b.purpose] || { label: b.purpose };
       const color = PURPOSE_COLORS[b.purpose] || '#9aa1ad';
-      const seen = _catalogStats[b.name] || 0;
+      const seen  = _catalogStats[b.name] || 0;
+      const enabledDot = b.enabled !== 0
+        ? `<span style="color:var(--ok);font-size:16px;">●</span>`
+        : `<span style="color:var(--ink-mute);font-size:16px;">○</span>`;
       return `<tr>
         <td>
           <div style="font-weight:700;color:var(--ink);">${esc(b.name)}</div>
-          <div style="font-size:11.5px;color:var(--ink-mute);font-family:var(--mono);">${(b.patterns||[b.name]).join(', ')}</div>
+          <div style="font-size:11.5px;color:var(--ink-mute);font-family:var(--mono);">${(b.patterns||[]).join(', ')}</div>
         </td>
         <td style="color:var(--ink-2);">${esc(b.vendor)}</td>
         <td>
-          <span style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;background:var(--bg-soft);border-radius:999px;font-size:11.5px;font-weight:600;">
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:var(--bg-soft);border-radius:999px;font-size:11.5px;font-weight:600;">
             <span style="width:7px;height:7px;border-radius:50%;background:${color};"></span>
             ${esc(m.label)}
           </span>
         </td>
-        <td style="text-align:right;font-weight:${seen ? 700 : 400};color:${seen ? 'var(--ink)' : 'var(--ink-mute)'};">${seen ? fmt(seen) : '—'}</td>
+        <td style="text-align:right;font-weight:${seen?700:400};color:${seen?'var(--ink)':'var(--ink-mute)'};">${seen?fmt(seen):'—'}</td>
+        <td style="text-align:center;">${enabledDot}</td>
+        <td style="text-align:right;white-space:nowrap;">
+          <button onclick="openBotModal(${b.id})" style="font-size:12px;padding:3px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer;margin-right:4px;">수정</button>
+          <button onclick="deleteBot(${b.id})" style="font-size:12px;padding:3px 10px;border:1px solid #fca5a5;border-radius:6px;background:#fff;color:var(--bad);cursor:pointer;">삭제</button>
+        </td>
       </tr>`;
     }).join('');
+  }
+
+  function openBotModal(id = null, isMalicious = false) {
+    _botModalId = id;
+    const modal = document.getElementById('bot-modal');
+    document.getElementById('bot-modal-title').textContent = id ? '봇 수정' : (isMalicious ? '악성 봇 추가' : '봇 추가');
+    document.getElementById('bm-error').style.display = 'none';
+
+    if (id) {
+      const all = [...(_catalog?.bots||[]), ...(_catalog?.malicious||[])];
+      const bot = all.find(b => b.id === id);
+      if (bot) {
+        document.getElementById('bm-name').value    = bot.name;
+        document.getElementById('bm-vendor').value  = bot.vendor;
+        document.getElementById('bm-purpose').value = bot.purpose;
+        document.getElementById('bm-patterns').value = (bot.patterns||[]).join(', ');
+        document.getElementById('bm-enabled').checked = bot.enabled !== 0;
+      }
+    } else {
+      document.getElementById('bm-name').value     = '';
+      document.getElementById('bm-vendor').value   = '';
+      document.getElementById('bm-purpose').value  = isMalicious ? 'malicious' : 'ai_training';
+      document.getElementById('bm-patterns').value = '';
+      document.getElementById('bm-enabled').checked = true;
+    }
+    modal.style.display = 'flex';
+  }
+
+  function closeBotModal() {
+    document.getElementById('bot-modal').style.display = 'none';
+    _botModalId = null;
+  }
+
+  async function saveBotModal() {
+    const name     = document.getElementById('bm-name').value.trim();
+    const vendor   = document.getElementById('bm-vendor').value.trim();
+    const purpose  = document.getElementById('bm-purpose').value;
+    const patterns = document.getElementById('bm-patterns').value.split(',').map(s => s.trim()).filter(Boolean);
+    const enabled  = document.getElementById('bm-enabled').checked;
+    const isMal    = purpose === 'malicious';
+
+    if (!name || !vendor) {
+      const el = document.getElementById('bm-error');
+      el.textContent = '이름과 벤더는 필수입니다.';
+      el.style.display = 'block';
+      return;
+    }
+    try {
+      if (_botModalId) {
+        await apiFetch(`${API}/admin/bots/${_botModalId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, vendor, purpose, patterns, is_malicious: isMal ? 1 : 0, enabled: enabled ? 1 : 0 }),
+        });
+      } else {
+        await apiFetch(`${API}/admin/bots`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, vendor, purpose, patterns, is_malicious: isMal ? 1 : 0, enabled: enabled ? 1 : 0 }),
+        });
+      }
+      closeBotModal();
+      loadCatalog();
+    } catch(e) {
+      const el = document.getElementById('bm-error');
+      el.textContent = e.message || '저장 실패';
+      el.style.display = 'block';
+    }
+  }
+
+  async function deleteBot(id) {
+    if (!confirm('이 봇을 삭제하시겠습니까?')) return;
+    await apiFetch(`${API}/admin/bots/${id}`, { method: 'DELETE' });
+    loadCatalog();
   }
 
   /* ─── USERS ───────────────────────────────────────────── */

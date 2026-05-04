@@ -1,6 +1,23 @@
 // OpenResty Lua에서 호출하는 내부 엔드포인트 — 응답 속도 최우선
 import { db } from '../db/schema.js'
 
+// bot_catalog 캐시 (메모리, 30초 TTL)
+let _catalogCache = null
+let _catalogAt    = 0
+
+function getBotCatalog() {
+  const now = Date.now()
+  if (_catalogCache && now - _catalogAt < 30_000) return _catalogCache
+  const rows = db.prepare(`SELECT * FROM bot_catalog WHERE enabled = 1 ORDER BY is_malicious, purpose, name`).all()
+  _catalogCache = {
+    version:   now,
+    bots:      rows.filter(r => !r.is_malicious).map(r => ({ name: r.name, vendor: r.vendor, purpose: r.purpose, patterns: JSON.parse(r.patterns || '[]') })),
+    malicious: rows.filter(r =>  r.is_malicious).map(r => ({ name: r.name, vendor: r.vendor, patterns: JSON.parse(r.patterns || '[]') })),
+  }
+  _catalogAt = now
+  return _catalogCache
+}
+
 const validateStmt = db.prepare(`
   SELECT id, plan, active FROM tokens
   WHERE token = ? AND active = 1 AND (expires_at IS NULL OR expires_at > datetime('now'))
@@ -70,5 +87,10 @@ export default async function internalRoutes(app) {
             blocked = false } = req.body
     logStmt.run(null, bot_ua, domain, ip, path, verified ? 1 : 0, billed ? 1 : 0, category, bot_purpose, bot_name, bot_vendor, blocked ? 1 : 0)
     return reply.code(204).send()
+  })
+
+  // OpenResty init_worker용 — 봇 카탈로그 JSON
+  app.get('/internal/bot-catalog', (_req, reply) => {
+    return reply.send(getBotCatalog())
   })
 }

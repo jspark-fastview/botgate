@@ -8,6 +8,42 @@
 
 local _M = {}
 
+-- ── 동적 카탈로그 (shared dict → worker-local cache) ─────────
+local cjson = require "cjson.safe"
+local _dyn_bots      = nil
+local _dyn_malicious = nil
+local _dyn_version   = nil
+
+local function get_catalog()
+    -- ngx 컨텍스트 없으면 (모듈 로드 타임) 정적 fallback
+    if not ngx or not ngx.shared then return BOTS, MALICIOUS end
+    local dict    = ngx.shared.bot_catalog
+    local version = dict and dict:get("version")
+    -- worker-local cache hit
+    if version and version == _dyn_version and _dyn_bots then
+        return _dyn_bots, _dyn_malicious
+    end
+    -- dict miss or version changed → parse JSON
+    local json = dict and dict:get("json")
+    if not json then return BOTS, MALICIOUS end
+    local data = cjson.decode(json)
+    if not data or not data.bots then return BOTS, MALICIOUS end
+    -- convert to Lua tables compatible with classify()
+    local function to_lua_bots(arr)
+        local out = {}
+        for _, b in ipairs(arr) do
+            local pats = {}
+            if type(b.patterns) == "table" then pats = b.patterns end
+            out[#out+1] = { name=b.name, vendor=b.vendor or "", purpose=b.purpose or "generic", patterns=pats }
+        end
+        return out
+    end
+    _dyn_bots      = to_lua_bots(data.bots)
+    _dyn_malicious = to_lua_bots(data.malicious or {})
+    _dyn_version   = version
+    return _dyn_bots, _dyn_malicious
+end
+
 -- ── 악성 봇 / 공격 도구 패턴 (소문자 substring) ─────────────────
 -- 매칭되면 즉시 403 차단 + 로깅
 local MALICIOUS = {
@@ -132,14 +168,14 @@ end
 -- ── classify ─────────────────────────────────────────────────
 function _M.classify(ua)
     if not ua or ua == "" then
-        -- 빈 UA 도 의심 → malicious 처리
         return { category="malicious", purpose="malicious", name="(empty UA)", vendor="Unknown" }
     end
 
     local ua_lower = ua:lower()
+    local bots, malicious = get_catalog()
 
     -- 1. 악성 봇 / 공격 도구 (즉시 차단 대상)
-    for _, b in ipairs(MALICIOUS) do
+    for _, b in ipairs(malicious) do
         for _, p in ipairs(b.patterns) do
             if ua_lower:find(p, 1, true) then
                 return { category="malicious", purpose="malicious",
@@ -149,12 +185,12 @@ function _M.classify(ua)
     end
 
     -- 2. 알려진 봇 (정상 분류)
-    for _, b in ipairs(BOTS) do
+    for _, b in ipairs(bots) do
         for _, p in ipairs(b.patterns) do
             if ua:find(p, 1, true) then
                 local cat
                 if b.purpose == "ai_training" or b.purpose == "ai_search" or b.purpose == "ai_assistant" then
-                    cat = "bot"  -- rDNS 검증 / 토큰 대상
+                    cat = "bot"
                 else
                     cat = "other_bot"
                 end
