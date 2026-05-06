@@ -565,37 +565,12 @@
       </div>
     </div>
 
-    <!-- 봇 목적별 비중 -->
-    <div class="panel" style="margin-bottom:14px;">
-      <div class="panel-head">
-        <h3>봇 목적별 비중</h3>
-        <span class="sub">학습 / 검색 / SEO / 소셜 / 일반</span>
-        <div class="right"><a onclick="nav(event,'page-analytics')" href="#">자세히 →</a></div>
-      </div>
-      <div id="dash-purpose-bars" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
-        <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
-      </div>
-    </div>
-
-    <!-- chart (일별 추이 — 전체 너비) -->
-    <div class="panel" style="margin-bottom:14px;">
-      <div class="panel-head">
-        <h3>일별 AI 봇 요청 추이</h3>
-        <span class="sub">최근 14일</span>
-        <div class="right"><a onclick="nav(event,'page-analytics')" href="#">자세히 보기 →</a></div>
-      </div>
-      <div class="chart" id="chart" style="height:200px;">
-        <!-- bars filled by JS -->
-      </div>
-      <div class="chart-x" id="chartx"></div>
-    </div>
-
     <!-- AI 봇별 + 기타 봇 요청 현황 -->
-    <div class="row r-6-6">
+    <div class="row r-6-6" style="margin-bottom:14px;">
       <div class="panel">
         <div class="panel-head">
-          <h3>AI 봇별 요청 현황</h3>
-          <span class="sub">누적 · rDNS 검증 대상</span>
+          <h3>AI 회사별 요청 현황</h3>
+          <span class="sub">학습·검색·어시스턴트 봇 누적</span>
           <div class="right"><a onclick="nav(event,'page-analytics')" href="#">자세히 →</a></div>
         </div>
         <div id="dash-bot-list" class="bot-list">
@@ -613,6 +588,19 @@
           <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
         </div>
       </div>
+    </div>
+
+    <!-- chart (일별 추이 — 전체 너비) -->
+    <div class="panel" style="margin-bottom:14px;">
+      <div class="panel-head">
+        <h3>일별 AI 봇 요청 추이</h3>
+        <span class="sub">최근 14일</span>
+        <div class="right"><a onclick="nav(event,'page-analytics')" href="#">자세히 보기 →</a></div>
+      </div>
+      <div class="chart" id="chart" style="height:200px;">
+        <!-- bars filled by JS -->
+      </div>
+      <div class="chart-x" id="chartx"></div>
     </div>
 
     <!-- events -->
@@ -1804,7 +1792,7 @@
   async function loadDashboard() {
     try {
       const cp = chParam();
-      const [bots, otherBots, dailyBot, dailyUser, tokens, billing, categoryStats, purposeStats] = await Promise.all([
+      const [bots, otherBots, dailyBot, dailyUser, tokens, billing, categoryStats] = await Promise.all([
         apiFetch(`${API}/admin/stats/bots?category=bot${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/bots?category=other_bot${cp}`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/daily?category=bot${cp}`).then(r => r.json()),
@@ -1812,7 +1800,6 @@
         apiFetch(`${API}/admin/tokens`).then(r => r.json()),
         apiFetch(`${API}/admin/stats/billing?_=1${cp}`).then(r => r.json()).catch(() => null),
         apiFetch(`${API}/admin/stats/category?_=1${cp}`).then(r => r.json()).catch(() => ({bot:0,other_bot:0,user:0})),
-        apiFetch(`${API}/admin/stats/purpose?_=1${cp}`).then(r => r.json()).catch(() => []),
       ]);
 
       const aiBotTotal    = categoryStats.bot       || 0;
@@ -1836,7 +1823,6 @@
         { data: dailyBot,  color: '#2b6df6', label: 'AI 봇' },
         { data: dailyUser, color: '#1aa377', label: '사용자' },
       ], 14);
-      renderDashPurposeBars(purposeStats);
       renderDashBotList(bots);
       renderDashUaList('dash-otherbot-list', otherBots, '#9d6bff');
       loadRecentEvents();
@@ -1859,33 +1845,6 @@
     social:        { label: 'Social Preview',       color: '#c4a01a', desc: '링크 미리보기' },
     generic:       { label: 'Generic Bot',          color: '#9aa1ad', desc: '기타' },
   };
-  function renderDashPurposeBars(rows) {
-    const el = document.getElementById('dash-purpose-bars');
-    if (!el) return;
-    if (!rows || !rows.length) {
-      el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>';
-      return;
-    }
-    const total = rows.reduce((a,b) => a + b.count, 0);
-    const order = ['ai_training','ai_search','ai_assistant','search_engine','seo','social','generic'];
-    const sorted = order.map(p => rows.find(r => r.bot_purpose === p)).filter(Boolean);
-    el.innerHTML = sorted.map(r => {
-      const meta = PURPOSE_META[r.bot_purpose] || PURPOSE_META.generic;
-      const pct  = total ? Math.round(r.count/total*100) : 0;
-      return `<div>
-        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
-          <span style="color:var(--ink);font-weight:600;">${esc(meta.label)}
-            <span style="font-size:11px;font-weight:400;color:var(--ink-mute);">· ${esc(meta.desc)} · ${r.unique_bots}개</span>
-          </span>
-          <span style="color:var(--ink-dim);">${fmt(r.count)} · ${pct}%</span>
-        </div>
-        <div style="height:8px;background:var(--bg-soft);border-radius:4px;overflow:hidden;">
-          <div style="height:100%;width:${pct}%;background:${meta.color};border-radius:4px;transition:width 400ms;"></div>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
   function renderDashBotBars(bots) {
     const el = document.getElementById('dash-bot-bars');
     if (!el) return;
