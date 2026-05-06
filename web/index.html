@@ -869,7 +869,16 @@
         <select id="traffic-ch-select" class="ch-select ch-selector" onchange="onChannelChange(this)">
           <option value="">전체 채널</option>
         </select>
-        <button class="csv-btn" onclick="downloadTrafficCsv()">↓ CSV</button>
+        <div style="position:relative;display:inline-block;">
+          <button class="csv-btn" onclick="toggleTrafficExportMenu(event)" style="display:flex;align-items:center;gap:5px;">↓ CSV <span style="font-size:9px;opacity:.7;">▾</span></button>
+          <div id="traffic-export-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden;z-index:200;min-width:140px;box-shadow:0 6px 20px rgba(0,0,0,.12);">
+            <button onclick="downloadTrafficCsv()" style="display:block;width:100%;text-align:left;padding:9px 14px;font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;color:var(--ink);" onmouseover="this.style.background='var(--bg-soft)'" onmouseout="this.style.background='none'">실시간 (현재 화면)</button>
+            <div style="height:1px;background:var(--line);margin:0 10px;"></div>
+            <button onclick="exportTrafficByPeriod('day')"   style="display:block;width:100%;text-align:left;padding:9px 14px;font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;color:var(--ink);" onmouseover="this.style.background='var(--bg-soft)'" onmouseout="this.style.background='none'">오늘</button>
+            <button onclick="exportTrafficByPeriod('week')"  style="display:block;width:100%;text-align:left;padding:9px 14px;font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;color:var(--ink);" onmouseover="this.style.background='var(--bg-soft)'" onmouseout="this.style.background='none'">최근 7일</button>
+            <button onclick="exportTrafficByPeriod('month')" style="display:block;width:100%;text-align:left;padding:9px 14px;font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;color:var(--ink);" onmouseover="this.style.background='var(--bg-soft)'" onmouseout="this.style.background='none'">최근 30일</button>
+          </div>
+        </div>
         <span id="traffic-status" style="font-size:13px;color:var(--ok);font-weight:600;">● 라이브</span>
       </div>
     </div>
@@ -2090,8 +2099,8 @@
     })), `platforms_${new Date().toISOString().slice(0,10)}.csv`);
   }
 
-  function downloadTrafficCsv() {
-    downloadCSV(trafficRows.map(l => ({
+  function _trafficRowsToCsv(rows) {
+    return rows.map(l => ({
       ts:          l.ts          || '',
       category:    l.category    || '',
       bot_purpose: l.bot_purpose || '',
@@ -2102,7 +2111,44 @@
       ip:          l.ip          || '',
       verified:    l.verified ? 'Y' : 'N',
       blocked:     l.blocked  ? 'Y' : 'N',
-    })), `traffic_${new Date().toISOString().slice(0,10)}.csv`);
+    }));
+  }
+
+  function downloadTrafficCsv() {
+    downloadCSV(_trafficRowsToCsv(trafficRows), `traffic_live_${new Date().toISOString().slice(0,10)}.csv`);
+  }
+
+  function toggleTrafficExportMenu(e) {
+    e.stopPropagation();
+    const menu = document.getElementById('traffic-export-menu');
+    if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  }
+
+  document.addEventListener('click', () => {
+    const menu = document.getElementById('traffic-export-menu');
+    if (menu) menu.style.display = 'none';
+  });
+
+  async function exportTrafficByPeriod(period) {
+    const menu = document.getElementById('traffic-export-menu');
+    if (menu) menu.style.display = 'none';
+    const cp   = chParam();
+    const cat  = document.getElementById('traffic-cat-select')?.value || 'all';
+    const label = { day: '오늘', week: '7일', month: '30일' }[period];
+    const statusEl = document.getElementById('traffic-status');
+    const prev = statusEl?.innerHTML;
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--brand);">⏳ ${label} 로딩중…</span>`;
+    try {
+      const rows = await apiFetch(
+        `${API}/admin/logs/export?period=${period}&category=${cat}${cp}`
+      ).then(r => r.json());
+      downloadCSV(_trafficRowsToCsv(rows), `traffic_${period}_${new Date().toISOString().slice(0,10)}.csv`);
+      if (statusEl) statusEl.innerHTML = `<span style="color:var(--ok);">✓ ${fmt(rows.length)}건 다운로드</span>`;
+      setTimeout(() => { if (statusEl) statusEl.innerHTML = prev; }, 3000);
+    } catch(e) {
+      if (statusEl) statusEl.innerHTML = prev;
+      alert('다운로드 실패: ' + e.message);
+    }
   }
 
   function switchAnalyticsTab(tab) {

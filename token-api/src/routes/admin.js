@@ -445,6 +445,23 @@ export default async function adminRoutes(app) {
   })
 
   // 최근 로그 (?domain=, ?category=bot|user|all 선택, 기본 bot)
+  // 기간별 로그 전체 내보내기 (CSV 다운로드용 — 건수 제한 없음, 최대 10만)
+  app.get('/admin/logs/export', (req, reply) => {
+    const { period = 'day', domain, category } = req.query
+    const intervalMap = { day: '-1 days', week: '-7 days', month: '-30 days' }
+    const interval = intervalMap[period] || '-1 days'
+    const conds = [`ts >= datetime('now', '${interval}')`]
+    const params = []
+    if (category && category !== 'all') { conds.push(`category = ?`); params.push(category) }
+    const dc = domainCondition(domain); if (dc.sql) { conds.push(dc.sql); params.push(...dc.params) }
+    const where = `WHERE ` + conds.join(' AND ')
+    const rows = db.prepare(
+      `SELECT id, bot_ua, domain, ip, path, verified, billed, category, bot_purpose, bot_name, bot_vendor, blocked, ts
+       FROM access_logs ${where} ORDER BY id DESC LIMIT 100000`
+    ).all(...params)
+    return reply.send(rows)
+  })
+
   app.get('/admin/logs', (req, reply) => {
     const limit = Math.min(Number(req.query.limit) || 100, 500)
     const { domain, category = 'bot' } = req.query
