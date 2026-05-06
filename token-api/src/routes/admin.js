@@ -801,4 +801,181 @@ export default async function adminRoutes(app) {
       channels,
     })
   })
+
+  // ── /admin/stats/operator-view ──────────────────────────────────
+  // 운영팀(전체 채널 비교) 관점 — admin SPA의 publisher 관점과 분리.
+  // ?range=7d | 30d | 90d (기본 7d)
+  // STATS_KEY (read-only) 로도 접근 가능.
+  app.get('/admin/stats/operator-view', (req, reply) => {
+    const range = ['7d', '30d', '90d'].includes(req.query.range) ? req.query.range : '7d'
+    const days = range === '90d' ? 90 : range === '30d' ? 30 : 7
+    const since = new Date(Date.now() - days * 86400000).toISOString()
+    const baseWhere = `WHERE ts >= ?`
+    const baseParams = [since]
+
+    // bot 라벨링: bot_name 없으면 bot_ua 의 첫 토큰('Mozilla/5.0' → 'Mozilla')
+    const botLabelExpr = `COALESCE(
+      NULLIF(bot_name, ''),
+      CASE
+        WHEN bot_ua IS NULL OR bot_ua = '' THEN 'unknown'
+        WHEN instr(bot_ua, '/') > 0 THEN substr(bot_ua, 1, instr(bot_ua, '/') - 1)
+        WHEN instr(bot_ua, ' ') > 0 THEN substr(bot_ua, 1, instr(bot_ua, ' ') - 1)
+        ELSE bot_ua
+      END
+    )`
+
+    // ── 1. 전체 KPI ──────────────────────────────────────────────
+    const totalsRow = db.prepare(
+      `SELECT
+         COUNT(*) AS totalReq,
+         SUM(CASE WHEN category != 'user' THEN 1 ELSE 0 END) AS botReq,
+         SUM(CASE WHEN blocked = 1 THEN 1 ELSE 0 END) AS blockedReq,
+         COUNT(DISTINCT domain) AS channelCount,
+         COUNT(DISTINCT ${botLabelExpr}) AS activeBotCount
+       FROM access_logs ${baseWhere}`
+    ).get(...baseParams)
+    const totals = {
+      totalReq:       totalsRow?.totalReq ?? 0,
+      botReq:         totalsRow?.botReq ?? 0,
+      blockedReq:     totalsRow?.blockedReq ?? 0,
+      botPct:         totalsRow?.totalReq > 0 ? totalsRow.botReq / totalsRow.totalReq : 0,
+      blockPct:       totalsRow?.botReq > 0 ? totalsRow.blockedReq / totalsRow.botReq : 0,
+      channelCount:   totalsRow?.channelCount ?? 0,
+      activeBotCount: totalsRow?.activeBotCount ?? 0,
+    }
+
+    // ── 2. 채널별 비교 ───────────────────────────────────────────
+    const channelRows = db.prepare(
+      `SELECT
+         domain,
+         COUNT(*) AS totalReq,
+         SUM(CASE WHEN category != 'user' THEN 1 ELSE 0 END) AS botReq,
+         SUM(CASE WHEN blocked = 1 THEN 1 ELSE 0 END) AS blockedReq
+       FROM access_logs ${baseWhere}
+       GROUP BY domain ORDER BY totalReq DESC LIMIT 20`
+    ).all(...baseParams)
+
+    const channels = channelRows.map((c) => {
+      // 채널별 top 3 봇
+      const top = db.prepare(
+        `SELECT ${botLabelExpr} AS name, COUNT(*) AS count
+         FROM access_logs WHERE ts >= ? AND domain = ? AND category != 'user'
+         GROUP BY name ORDER BY count DESC LIMIT 3`
+      ).all(since, c.domain)
+      return {
+        domain:     c.domain,
+        totalReq:   c.totalReq,
+        botReq:     c.botReq,
+        blockedReq: c.blockedReq,
+        botPct:     c.totalReq > 0 ? c.botReq / c.totalReq : 0,
+        blockPct:   c.botReq > 0 ? c.blockedReq / c.botReq : 0,
+        topBots:    top.map((t) => ({ name: t.name, count: t.count })),
+      }
+    })
+
+    // ── 3. 봇 × 채널 heatmap (top 10 봇 × top 10 채널) ──────────
+    const topBotNames = db.prepare(
+      `SELECT ${botLabelExpr} AS name, COUNT(*) AS count
+       FROM access_logs ${baseWhere} AND category != 'user'
+       GROUP BY name ORDER BY count DESC LIMIT 10`
+    ).all(...baseParams).map((r) => r.name)
+
+    const topChannelNames = channelRows.slice(0, 10).map((c) => c.domain)
+
+    // 매트릭스 채우기
+    const cells = topBotNames.map((bot) =>
+      topChannelNames.map((ch) => {
+        const row = db.prepare(
+          `SELECT COUNT(*) AS c FROM access_logs WHERE ts >= ? AND ${botLabelExpr} = ? AND domain = ? AND category != 'user'`
+        ).get(since, bot, ch)
+        return row?.c ?? 0
+      })
+    )
+
+    const matrix = { bots: topBotNames, channels: topChannelNames, cells }
+
+    // ── 4. 추이 — 일별 (range 동안) ─────────────────────────────
+    const trendRows = db.prepare(
+      `SELECT DATE(ts) AS date,
+              COUNT(*) AS total,
+              SUM(CASE WHEN category != 'user' THEN 1 ELSE 0 END) AS bot,
+              SUM(CASE WHEN blocked = 1 THEN 1 ELSE 0 END) AS blocked
+       FROM access_logs ${baseWhere}
+       GROUP BY DATE(ts) ORDER BY date ASC`
+    ).all(...baseParams)
+
+    // ── 5. 운영 알림 (간단한 휴리스틱) ───────────────────────────
+    const alerts = []
+
+    // 5-1. 트래픽 급증 채널 (어제 vs 평균)
+    if (days >= 7) {
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+      const avgRow = db.prepare(
+        `SELECT domain, COUNT(*) AS yc FROM access_logs
+         WHERE DATE(ts) = ? GROUP BY domain`
+      ).all(yesterday)
+      for (const yr of avgRow) {
+        const histAvgRow = db.prepare(
+          `SELECT AVG(c) AS avg FROM (
+             SELECT DATE(ts) AS d, COUNT(*) AS c FROM access_logs
+             WHERE ts >= ? AND ts < ? AND domain = ?
+             GROUP BY DATE(ts)
+           )`
+        ).get(since, yesterday, yr.domain)
+        const avg = histAvgRow?.avg ?? 0
+        if (avg > 10 && yr.yc > avg * 2) {
+          alerts.push({
+            severity: yr.yc > avg * 5 ? 'critical' : 'warn',
+            type: 'traffic_spike',
+            channel: yr.domain,
+            message: `${yr.domain}: 어제 ${yr.yc}건, 평균 ${Math.round(avg)}건 (+${Math.round((yr.yc / avg - 1) * 100)}%)`,
+          })
+        }
+      }
+    }
+
+    // 5-2. 차단 누락 의심 (봇 비율 50%+ 인데 차단율 5% 미만)
+    for (const c of channels.slice(0, 10)) {
+      if (c.botReq > 100 && c.botPct > 0.5 && c.blockPct < 0.05) {
+        alerts.push({
+          severity: 'info',
+          type: 'low_block_rate',
+          channel: c.domain,
+          message: `${c.domain}: 봇 비율 ${Math.round(c.botPct * 100)}% 인데 차단율 ${Math.round(c.blockPct * 100)}% (정책 점검 필요?)`,
+        })
+      }
+    }
+
+    // 5-3. 신규 봇 (이번 range 만 출현)
+    if (days <= 30) {
+      const earlierThan = new Date(Date.now() - days * 86400000).toISOString()
+      const newBotsRows = db.prepare(
+        `SELECT ${botLabelExpr} AS name, COUNT(*) AS count
+         FROM access_logs WHERE ts >= ? AND category != 'user'
+         GROUP BY name HAVING COUNT(*) >= 10
+         AND name NOT IN (
+           SELECT DISTINCT ${botLabelExpr} FROM access_logs WHERE ts < ?
+         ) ORDER BY count DESC LIMIT 5`
+      ).all(since, earlierThan)
+      for (const nb of newBotsRows) {
+        alerts.push({
+          severity: 'info',
+          type: 'new_bot',
+          message: `신규 봇 발견: ${nb.name} (${nb.count}건, 최근 ${days}일)`,
+        })
+      }
+    }
+
+    return reply.send({
+      source:      'guardus-operator',
+      range,
+      since,
+      generatedAt: new Date().toISOString(),
+      totals,
+      channels,
+      matrix,
+      trend:       trendRows,
+      alerts,
+    })
+  })
 }
