@@ -675,4 +675,130 @@ export default async function adminRoutes(app) {
     invalidateCache()
     return reply.code(204).send()
   })
+
+  // ── /admin/stats/summary ────────────────────────────────────────
+  // innerops 같은 외부 모니터링 도구용 통합 KPI.
+  // 한 번 호출로 대시보드/crawl 페이지에 필요한 거의 모든 데이터.
+  // STATS_KEY (read-only)로도 접근 가능.
+  //
+  // access_logs 컬럼 기준:
+  //   category: malicious|bot|other_bot|user
+  //   bot_purpose: ai_training|ai_search|ai_assistant|search_engine|seo|social|generic
+  //   blocked: 1|0 (boolean)
+  //   verified: 1|0 (token 인증 통과 여부)
+  app.get('/admin/stats/summary', (req, reply) => {
+    const { domain } = req.query
+    const dc = domainCondition(domain)
+    const baseWhere = dc.sql ? `WHERE ${dc.sql}` : ''
+    const baseParams = dc.params
+
+    // 오늘
+    const todayCondSql = (dc.sql ? `${dc.sql} AND ` : '') + `DATE(ts) = DATE('now')`
+    const todayParams = baseParams
+
+    // 오늘 카테고리별 (4-way)
+    const todayCategory = db.prepare(
+      `SELECT category, COUNT(*) AS count FROM access_logs WHERE ${todayCondSql} GROUP BY category`
+    ).all(...todayParams)
+    const today4way = { user: 0, bot: 0, other_bot: 0, malicious: 0 }
+    for (const r of todayCategory) if (r.category in today4way) today4way[r.category] = r.count
+    const todayTotal = Object.values(today4way).reduce((a, b) => a + b, 0)
+    const botPctToday = todayTotal > 0
+      ? (today4way.bot + today4way.other_bot + today4way.malicious) / todayTotal
+      : 0
+
+    // 오늘 차단
+    const blockedTodayRow = db.prepare(
+      `SELECT COUNT(*) AS c FROM access_logs WHERE ${todayCondSql} AND blocked = 1`
+    ).get(...todayParams)
+    const blockedToday = blockedTodayRow?.c ?? 0
+
+    // 24시간 시간별 (4-way 분류)
+    const hourly = db.prepare(
+      `SELECT strftime('%H', ts) AS h, category, COUNT(*) AS count
+       FROM access_logs WHERE ${todayCondSql} GROUP BY h, category`
+    ).all(...todayParams)
+    const hourlyMap = Array.from({ length: 24 }, (_, i) => ({
+      hour: String(i).padStart(2, '0'),
+      user: 0, bot: 0, other_bot: 0, malicious: 0,
+    }))
+    for (const r of hourly) {
+      const idx = Number(r.h)
+      if (!isNaN(idx) && hourlyMap[idx] && r.category in hourlyMap[idx]) {
+        hourlyMap[idx][r.category] = r.count
+      }
+    }
+
+    // 봇 카탈로그 — 누계 top 10
+    // action 컬럼이 없으므로 blocked 1/0 + verified 로 추정 액션 매핑:
+    //   blocked=1 → block / blocked=0 + verified=1 → meter / 그 외 → pass
+    const botCategoriesRaw = db.prepare(
+      `SELECT bot_name AS name,
+              MAX(bot_purpose) AS purpose,
+              SUM(CASE WHEN blocked = 1 THEN 1 ELSE 0 END) AS blockedCount,
+              SUM(CASE WHEN blocked = 0 AND verified = 1 THEN 1 ELSE 0 END) AS meterCount,
+              SUM(CASE WHEN blocked = 0 AND (verified = 0 OR verified IS NULL) THEN 1 ELSE 0 END) AS passCount,
+              COUNT(*) AS requests
+       FROM access_logs ${baseWhere ? baseWhere + ' AND' : 'WHERE'} category != 'user' AND bot_name IS NOT NULL AND bot_name != ''
+       GROUP BY bot_name ORDER BY requests DESC LIMIT 10`
+    ).all(...baseParams)
+    const botCategories = botCategoriesRaw.map((b) => ({
+      name:     b.name,
+      purpose:  b.purpose ?? 'generic',
+      requests: b.requests,
+      action:   b.blockedCount > b.meterCount && b.blockedCount > b.passCount ? 'block'
+              : b.meterCount > b.passCount ? 'meter'
+              : 'pass',
+    }))
+
+    // 목적별 (전체)
+    const purposeRows = db.prepare(
+      `SELECT bot_purpose AS purpose, COUNT(*) AS count
+       FROM access_logs ${baseWhere ? baseWhere + ' AND' : 'WHERE'} category != 'user' AND bot_purpose IS NOT NULL
+       GROUP BY bot_purpose`
+    ).all(...baseParams)
+    const purposes = {}
+    for (const r of purposeRows) purposes[r.purpose] = r.count
+
+    // 액션별 — blocked + verified 기반 추정 (3-way: pass/meter/block)
+    const actionAggRow = db.prepare(
+      `SELECT
+         SUM(CASE WHEN blocked = 1 THEN 1 ELSE 0 END) AS block,
+         SUM(CASE WHEN blocked = 0 AND verified = 1 THEN 1 ELSE 0 END) AS meter,
+         SUM(CASE WHEN blocked = 0 AND (verified = 0 OR verified IS NULL) THEN 1 ELSE 0 END) AS pass
+       FROM access_logs ${baseWhere}`
+    ).get(...baseParams)
+    const actions = {
+      pass:  actionAggRow?.pass  ?? 0,
+      meter: actionAggRow?.meter ?? 0,
+      verify: 0,        // 현재 스키마에 없음 — innerops 호환성용
+      token_only: 0,    // 현재 스키마에 없음
+      block: actionAggRow?.block ?? 0,
+      gone:  0,         // 현재 스키마에 없음
+    }
+
+    // 채널별
+    const channels = db.prepare(
+      `SELECT domain,
+              COUNT(*) AS totalReq,
+              SUM(CASE WHEN category != 'user' THEN 1 ELSE 0 END) AS botReq,
+              SUM(CASE WHEN blocked = 1 THEN 1 ELSE 0 END) AS blockedReq
+       FROM access_logs ${baseWhere}
+       GROUP BY domain ORDER BY totalReq DESC LIMIT 20`
+    ).all(...baseParams)
+
+    return reply.send({
+      source: 'guardus',
+      generatedAt: new Date().toISOString(),
+      totalToday: todayTotal,
+      botPctToday,
+      blockedToday,
+      today4way,
+      hourly: hourlyMap,
+      botCategories,
+      purposes,
+      actions,
+      channels,
+    })
+  })
 }

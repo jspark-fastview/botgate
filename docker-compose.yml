@@ -20,6 +20,9 @@ services:
     build: ./token-api
     ports:
       - "3000:3000"
+    environment:
+      - ADMIN_KEY=${ADMIN_KEY:-}
+      - STATS_KEY=${STATS_KEY:-}      # innerops read-only 키 (선택)
     volumes:
       - token-data:/app/data
       - ./web:/app/web:ro

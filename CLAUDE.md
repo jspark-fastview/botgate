@@ -50,3 +50,47 @@ git push origin main        # CI/CD → EC2 자동 배포
 - 4-way 분류: `malicious` / `bot` / `other_bot` / `user`
 - 7 purpose: ai_training / ai_search / ai_assistant / search_engine / seo / social / generic
 - 6 액션: pass / meter / verify / token_only / block / gone
+
+## 외부 모니터링 연동 (innerops 등)
+
+### 인증 키
+- `ADMIN_KEY` — 풀 권한 (read + write). 어드민 SPA 전용.
+- `STATS_KEY` — **read-only** 키 (2026-05 추가). 외부 모니터링 도구용.
+  - GET `/admin/stats/*` 와 `/admin/logs` 만 허용
+  - 그 외 경로/메서드는 403
+
+### Authorization 헤더
+```
+GET /admin/stats/summary
+Authorization: Bearer <STATS_KEY>
+```
+
+### 통합 엔드포인트 (innerops crawl 페이지 전용)
+`GET /admin/stats/summary?domain=<선택>` — 한 번 호출로 모든 KPI:
+```json
+{
+  "source": "guardus",
+  "totalToday": <int>,
+  "botPctToday": <float 0~1>,
+  "blockedToday": <int>,
+  "today4way": { "user": N, "bot": N, "other_bot": N, "malicious": N },
+  "hourly": [{ "hour": "00", "user": N, "bot": N, "other_bot": N, "malicious": N }, ...24],
+  "botCategories": [{ "name": "GPTBot", "purpose": "ai_training", "action": "meter", "requests": N }, ...],
+  "purposes": { "ai_training": N, ... },
+  "actions": { "pass": N, "meter": N, "block": N, ... },
+  "channels": [{ "domain": "viewus.co", "totalReq": N, "botReq": N, "blockedReq": N }, ...]
+}
+```
+
+### 키 발급 방법
+```bash
+# 32바이트 랜덤
+openssl rand -hex 32
+
+# .env 또는 docker-compose 환경변수에 추가
+STATS_KEY=<생성된_키>
+
+# innerops 쪽 .env 에도 같은 값
+GUARDUS_URL=https://botgate-admin.viewus.co
+GUARDUS_STATS_KEY=<같은_키>
+```

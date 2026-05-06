@@ -23,15 +23,32 @@ const app = Fastify({ logger: true })
 app.register(cors, { origin: true })
 
 // ── 어드민 인증 ────────────────────────────────────────────
-// ADMIN_KEY 환경변수가 설정된 경우 /admin/* 엔드포인트 보호
+// ADMIN_KEY: 풀 권한 (read + write)
+// STATS_KEY: 읽기 전용 — innerops 같은 외부 모니터링 도구용
+//            GET /admin/stats/* + GET /admin/logs 만 허용
 const ADMIN_KEY = process.env.ADMIN_KEY?.trim()
-if (ADMIN_KEY) {
+const STATS_KEY = process.env.STATS_KEY?.trim()  // optional, 없으면 비활성
+
+if (ADMIN_KEY || STATS_KEY) {
   app.addHook('preHandler', async (req, reply) => {
     if (!req.url.startsWith('/admin')) return
     const auth = (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '')
-    if (auth !== ADMIN_KEY) {
-      return reply.code(401).send({ error: 'unauthorized' })
+
+    // ADMIN_KEY 매칭이면 항상 통과
+    if (ADMIN_KEY && auth === ADMIN_KEY) return
+
+    // STATS_KEY 매칭이면 GET 메서드 + stats/logs 경로만 통과
+    if (STATS_KEY && auth === STATS_KEY) {
+      if (req.method !== 'GET') {
+        return reply.code(403).send({ error: 'STATS_KEY is read-only' })
+      }
+      if (!req.url.startsWith('/admin/stats') && !req.url.startsWith('/admin/logs')) {
+        return reply.code(403).send({ error: 'STATS_KEY allows /admin/stats/* and /admin/logs only' })
+      }
+      return
     }
+
+    return reply.code(401).send({ error: 'unauthorized' })
   })
 }
 

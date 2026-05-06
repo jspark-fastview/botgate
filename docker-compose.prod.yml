@@ -19,9 +19,10 @@ services:
   token-api:
     build: ./token-api
     ports:
-      - "3000:3000"      # ALB → admin.botgate.io 라우팅용
+      - "3000:3000"      # ALB → botgate-admin.viewus.co 라우팅용
     environment:
       - ADMIN_KEY=${ADMIN_KEY}
+      - STATS_KEY=${STATS_KEY:-}      # innerops 등 외부 모니터링용 read-only 키
       - OPENRESTY_HOST=openresty
       - OPENRESTY_PORT=80
       - ALB_HOSTNAME=${ALB_HOSTNAME:-}
