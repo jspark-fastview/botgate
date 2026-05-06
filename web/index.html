@@ -93,6 +93,8 @@
     transition: background 120ms, color 120ms;
   }
   .purpose-pill.active { color: #fff; }
+  .csv-btn { margin-left:auto; padding:4px 10px; font-size:11px; font-weight:700; color:var(--ink-dim); background:var(--bg-soft); border:1px solid var(--line); border-radius:6px; cursor:pointer; letter-spacing:.02em; transition:background 150ms,color 150ms; flex-shrink:0; }
+  .csv-btn:hover { background:var(--brand); color:#fff; border-color:var(--brand); }
   .pricing-base-card:hover { background: var(--bg-soft); }
   .pricing-base-card.active { border-color: var(--brand) !important; background: var(--brand-soft); }
   .pricing-base-card.active div:last-child { color: var(--brand) !important; font-weight: 700; }
@@ -685,7 +687,7 @@
         </div>
       </div>
       <div class="panel">
-        <div class="panel-head"><h3>봇 상세 테이블</h3></div>
+        <div class="panel-head"><h3>봇 상세 테이블</h3><button class="csv-btn" onclick="downloadBotsCsv()">↓ CSV</button></div>
         <div style="overflow-x:auto;">
           <table class="tbl">
             <thead><tr><th>Bot UA</th><th>요청 수</th><th>비율</th></tr></thead>
@@ -703,6 +705,7 @@
         <div class="panel-head">
           <h3>경로별 요청 현황</h3>
           <span class="sub">AI 봇 기준 · 상위 50개 경로 · 클릭하면 세부 봇 목록</span>
+          <button class="csv-btn" onclick="downloadPagesCsv()">↓ CSV</button>
         </div>
         <div style="overflow-x:auto;">
           <table class="tbl">
@@ -739,7 +742,7 @@
         </div>
       </div>
       <div class="panel">
-        <div class="panel-head"><h3>AI 회사별 요청 현황</h3><span class="sub">bot_name 기준 누적</span></div>
+        <div class="panel-head"><h3>AI 회사별 요청 현황</h3><span class="sub">bot_name 기준 누적</span><button class="csv-btn" onclick="downloadPlatformsCsv()">↓ CSV</button></div>
         <div id="platforms-purpose-filter" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
           <button class="purpose-pill active" data-purpose="all" onclick="filterPlatformsByPurpose('all')">전체</button>
         </div>
@@ -866,6 +869,7 @@
         <select id="traffic-ch-select" class="ch-select ch-selector" onchange="onChannelChange(this)">
           <option value="">전체 채널</option>
         </select>
+        <button class="csv-btn" onclick="downloadTrafficCsv()">↓ CSV</button>
         <span id="traffic-status" style="font-size:13px;color:var(--ok);font-weight:600;">● 라이브</span>
       </div>
     </div>
@@ -2037,6 +2041,70 @@
   let _analyticsActiveTab  = 'bots';
   let _analyticsPagePaths  = [];
 
+  // ── CSV 캐시 ──────────────────────────────────────────
+  let _csvBotsData      = [];
+  let _csvPagesData     = [];
+  let _csvPlatformsData = [];
+
+  function downloadCSV(rows, filename) {
+    if (!rows.length) return alert('다운로드할 데이터가 없습니다.');
+    const keys = Object.keys(rows[0]);
+    const escape = v => {
+      const s = String(v ?? '');
+      return s.includes(',') || s.includes('"') || s.includes('\n')
+        ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = [keys.join(','), ...rows.map(r => keys.map(k => escape(r[k])).join(','))].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
+  function downloadBotsCsv() {
+    const total = _csvBotsData.reduce((a, b) => a + b.count, 0);
+    downloadCSV(_csvBotsData.map(b => ({
+      bot_ua:  b.bot_ua || b.name || '',
+      vendor:  VENDOR_MAP[b.bot_ua || b.name] || '',
+      count:   b.count,
+      pct:     total ? (b.count / total * 100).toFixed(1) : '0',
+    })), `bots_${new Date().toISOString().slice(0,10)}.csv`);
+  }
+
+  function downloadPagesCsv() {
+    const total = _csvPagesData.reduce((a, p) => a + p.count, 0);
+    downloadCSV(_csvPagesData.map(p => ({
+      path:  p.path || '/',
+      count: p.count,
+      pct:   total ? (p.count / total * 100).toFixed(1) : '0',
+    })), `pages_${new Date().toISOString().slice(0,10)}.csv`);
+  }
+
+  function downloadPlatformsCsv() {
+    downloadCSV(_csvPlatformsData.map(r => ({
+      vendor:  r.vendor  || '',
+      bot_name: r.bot_name || '',
+      purpose: r.purpose || '',
+      count:   r.count,
+    })), `platforms_${new Date().toISOString().slice(0,10)}.csv`);
+  }
+
+  function downloadTrafficCsv() {
+    downloadCSV(trafficRows.map(l => ({
+      ts:          l.ts          || '',
+      category:    l.category    || '',
+      bot_purpose: l.bot_purpose || '',
+      bot_name:    l.bot_name    || '',
+      bot_ua:      l.bot_ua      || '',
+      domain:      l.domain      || '',
+      path:        l.path        || '',
+      ip:          l.ip          || '',
+      verified:    l.verified ? 'Y' : 'N',
+      blocked:     l.blocked  ? 'Y' : 'N',
+    })), `traffic_${new Date().toISOString().slice(0,10)}.csv`);
+  }
+
   function switchAnalyticsTab(tab) {
     _analyticsActiveTab = tab;
     ['bots','pages','platforms','pricing'].forEach(t => {
@@ -2063,6 +2131,7 @@
         apiFetch(`${API}/admin/stats/daily/bots?_=1${cp}`).then(r => r.json()),
       ]);
       _analyticsDailyBotsCache = dailyBots;
+      _csvBotsData = bots;
       renderDailyChart(dailyBots);
       renderBotBars(bots);
       renderBotTable(bots);
@@ -2085,6 +2154,7 @@
       const total  = pages.reduce((a, p) => a + p.count, 0);
       const colors = ['#2b6df6','#9d6bff','#ff7a5c','#1aa377','#c4a01a','#e95c99','#00bcd4'];
       _analyticsPagePaths = pages.map(p => p.path || '/');
+      _csvPagesData = pages;
       tbody.innerHTML = pages.map((p, i) => {
         const pct = total ? (p.count / total * 100).toFixed(1) : 0;
         const rowId = `page-sub-${i}`;
@@ -2215,6 +2285,12 @@
 
       // AI 회사별 상세 테이블
       _platformsBotNames = botNames;
+      _csvPlatformsData = botNames.map(r => ({
+        vendor:   VENDOR_MAP[r.bot_name] || r.bot_name || '',
+        bot_name: r.bot_name || '',
+        purpose:  r.bot_purpose || '',
+        count:    r.count,
+      }));
       _buildPlatformPills();
       renderPlatformsTbl('all');
     } catch(e) {
