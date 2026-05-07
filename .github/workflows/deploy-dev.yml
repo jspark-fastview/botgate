@@ -24,10 +24,10 @@ jobs:
             git pull origin main
 
             # ── 기존 스택 (openresty + token-api) ─────────────────────────
-            echo "▶ token-api 빌드"
-            docker compose -f docker-compose.prod.yml --env-file .env build token-api
+            echo "▶ 기존 스택 빌드"
+            docker compose -f docker-compose.prod.yml --env-file .env build openresty token-api
 
-            echo "▶ token-api 재시작"
+            echo "▶ 기존 스택 재시작"
             docker compose -f docker-compose.prod.yml --env-file .env up -d --no-deps openresty token-api
 
             echo "▶ health check (기존)"

@@ -1,6 +1,6 @@
 services:
   openresty:
-    image: openresty/openresty:1.25.3.2-alpine
+    build: ./openresty
     ports:
       - "80:80"          # 봇 트래픽 (표준 HTTP)
     environment:
