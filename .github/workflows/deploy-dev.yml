@@ -23,13 +23,27 @@ jobs:
             echo "▶ git pull"
             git pull origin main
 
+            # ── 기존 스택 (openresty + token-api) ─────────────────────────
             echo "▶ token-api 빌드"
             docker compose -f docker-compose.prod.yml --env-file .env build token-api
 
-            echo "▶ token-api 재시작 (기존 스택만)"
+            echo "▶ token-api 재시작"
             docker compose -f docker-compose.prod.yml --env-file .env up -d --no-deps openresty token-api
 
-            echo "▶ health check"
+            echo "▶ health check (기존)"
             sleep 3
             curl -sf http://localhost:3000/health | grep -q '"ok":true'
+
+            # ── 신규 스택 (internal-api + admin-api + frontend) ────────────
+            echo "▶ guardus-new 빌드"
+            docker compose -p guardus-new -f docker-compose.new-stack.yml --env-file .env build
+
+            echo "▶ guardus-new 재시작"
+            docker compose -p guardus-new -f docker-compose.new-stack.yml --env-file .env up -d
+
+            echo "▶ health check (신규)"
+            sleep 5
+            curl -sf http://localhost:3002/actuator/health | grep -q '"status":"UP"'
+            curl -sf http://localhost:3003 > /dev/null
+
             echo "✅ 배포 완료"

@@ -37,7 +37,11 @@ services:
     build: ./frontend
     ports:
       - "3003:3003"
+    environment:
+      - API_URL=http://admin-api:3002
     restart: unless-stopped
+    networks:
+      - default
 
 volumes:
   token-data:
