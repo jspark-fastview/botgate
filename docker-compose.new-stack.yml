@@ -22,9 +22,14 @@ services:
     environment:
       - ADMIN_KEY=${ADMIN_KEY}
       - STATS_KEY=${STATS_KEY:-}
+      - OPENRESTY_HOST=openresty
+      - OPENRESTY_PORT=80
     volumes:
       - token-data:/app/data
     restart: unless-stopped
+    networks:
+      - default
+      - botgate_default    # OpenResty cache invalidation 접근용
 
   frontend:
     build: ./frontend
