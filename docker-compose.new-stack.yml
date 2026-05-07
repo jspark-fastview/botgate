@@ -1,3 +1,8 @@
+# 신규 스택 — 기존 botgate 스택과 독립된 프로젝트로 관리
+# 기동: docker compose -p guardus-new -f docker-compose.new-stack.yml --env-file .env up -d
+# 중단: docker compose -p guardus-new -f docker-compose.new-stack.yml down
+name: guardus-new
+
 services:
   internal-api:
     build: ./internal-api
