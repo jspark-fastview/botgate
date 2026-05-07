@@ -5,8 +5,8 @@ local cjson = require "cjson.safe"
 
 local _M = {}
 
-local HOST = os.getenv("TOKEN_API_HOST") or "token-api"
-local PORT = tonumber(os.getenv("TOKEN_API_PORT")) or 3000
+local HOST = os.getenv("INTERNAL_API_HOST") or os.getenv("TOKEN_API_HOST") or "token-api"
+local PORT = tonumber(os.getenv("INTERNAL_API_PORT") or os.getenv("TOKEN_API_PORT")) or 3000
 
 local function send(premature, payload)
     if premature then return end

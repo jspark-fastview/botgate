@@ -6,6 +6,8 @@ services:
     environment:
       - TOKEN_API_HOST=token-api
       - TOKEN_API_PORT=3000
+      - INTERNAL_API_HOST=internal-api   # guardus-new 스택 (botgate_default 네트워크 공유)
+      - INTERNAL_API_PORT=3001
       - BOTGATE_BYPASS_KEY=${BOTGATE_BYPASS_KEY:-}
       - ADMIN_KEY=${ADMIN_KEY}
     volumes:

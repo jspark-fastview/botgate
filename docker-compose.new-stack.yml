@@ -11,6 +11,9 @@ services:
     volumes:
       - token-data:/app/data
     restart: unless-stopped
+    networks:
+      - default
+      - botgate_default    # OpenResty가 internal-api 이름으로 접근 가능
 
   admin-api:
     build: ./admin-api
@@ -33,3 +36,9 @@ volumes:
   token-data:
     external: true
     name: botgate_token-data
+
+networks:
+  default:
+  botgate_default:
+    external: true
+    name: botgate_default

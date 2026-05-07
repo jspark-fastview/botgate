@@ -36,8 +36,8 @@ end
 -- ── 토큰 검증 (동기 cosocket) ─────────────────────────────────────────
 -- 반환: valid (bool), plan (string|nil)
 local function validate_token(token, ua, host, ip)
-    local api_host = os.getenv("TOKEN_API_HOST") or "127.0.0.1"
-    local api_port = tonumber(os.getenv("TOKEN_API_PORT") or "3000")
+    local api_host = os.getenv("INTERNAL_API_HOST") or os.getenv("TOKEN_API_HOST") or "127.0.0.1"
+    local api_port = tonumber(os.getenv("INTERNAL_API_PORT") or os.getenv("TOKEN_API_PORT") or "3000")
 
     local sock = ngx.socket.tcp()
     sock:settimeout(500)   -- 500 ms
