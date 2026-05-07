@@ -28,12 +28,15 @@ jobs:
             docker compose -f docker-compose.prod.yml down --remove-orphans 2>/dev/null || true
 
             echo "▶ docker compose build"
-            docker compose -f docker-compose.prod.yml --env-file .env build token-api
+            docker compose -f docker-compose.prod.yml --env-file .env build
 
             echo "▶ docker compose up"
             docker compose -f docker-compose.prod.yml --env-file .env up -d
 
             echo "▶ health check"
-            sleep 3
+            sleep 5
             curl -sf http://localhost:3000/health | grep -q '"ok":true'
+            curl -sf http://localhost:3001/health | grep -q '"ok":true'
+            curl -sf http://localhost:3002/health | grep -q '"ok":true'
+            curl -sf http://localhost:3003/ > /dev/null
             echo "✅ 배포 완료"
