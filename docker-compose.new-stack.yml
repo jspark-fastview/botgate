@@ -24,8 +24,10 @@ services:
       - STATS_KEY=${STATS_KEY:-}
       - OPENRESTY_HOST=openresty
       - OPENRESTY_PORT=80
+      - WEB_DIR=/app/web
     volumes:
       - token-data:/app/data
+      - ./web:/app/web:ro   # 어드민 SPA 정적 파일
     restart: unless-stopped
     networks:
       - default

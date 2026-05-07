@@ -33,7 +33,8 @@ public class AdminAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String uri = req.getRequestURI();
-        if (!uri.startsWith("/admin")) {
+        // /admin/ 이하 API만 보호 (/admin.html 같은 정적 파일은 통과)
+        if (!uri.startsWith("/admin/")) {
             chain.doFilter(req, res);
             return;
         }
