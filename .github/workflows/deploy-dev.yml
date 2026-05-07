@@ -23,20 +23,13 @@ jobs:
             echo "▶ git pull"
             git pull origin main
 
-            echo "▶ 기존 컨테이너/네트워크 정리 (dev/prod 양쪽)"
-            docker compose down --remove-orphans 2>/dev/null || true
-            docker compose -f docker-compose.prod.yml down --remove-orphans 2>/dev/null || true
+            echo "▶ token-api 빌드"
+            docker compose -f docker-compose.prod.yml --env-file .env build token-api
 
-            echo "▶ docker compose build"
-            docker compose -f docker-compose.prod.yml --env-file .env build
-
-            echo "▶ docker compose up"
-            docker compose -f docker-compose.prod.yml --env-file .env up -d
+            echo "▶ token-api 재시작 (기존 스택만)"
+            docker compose -f docker-compose.prod.yml --env-file .env up -d --no-deps openresty token-api
 
             echo "▶ health check"
-            sleep 5
+            sleep 3
             curl -sf http://localhost:3000/health | grep -q '"ok":true'
-            curl -sf http://localhost:3001/health | grep -q '"ok":true'
-            curl -sf http://localhost:3002/health | grep -q '"ok":true'
-            curl -sf http://localhost:3003/ > /dev/null
             echo "✅ 배포 완료"

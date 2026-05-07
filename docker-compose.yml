@@ -28,30 +28,5 @@ services:
       - ./web:/app/web:ro
     restart: unless-stopped
 
-  internal-api:
-    build: ./internal-api
-    ports:
-      - "3001:3001"
-    volumes:
-      - token-data:/app/data
-    restart: unless-stopped
-
-  admin-api:
-    build: ./admin-api
-    ports:
-      - "3002:3002"
-    environment:
-      - ADMIN_KEY=${ADMIN_KEY:-}
-      - STATS_KEY=${STATS_KEY:-}
-    volumes:
-      - token-data:/app/data
-    restart: unless-stopped
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "3003:3003"
-    restart: unless-stopped
-
 volumes:
   token-data:
