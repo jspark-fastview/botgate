@@ -56,8 +56,9 @@ local function fetch_channels_from_api()
         if not line or line == "" then break end
     end
 
-    local body = sock:receive("*a")
+    local body, rerr = sock:receive("*a")
     sock:close()
+    ngx.log(ngx.WARN, "[channels] body_len=", #(body or ""), " rerr=", tostring(rerr))
     return body
 end
 
