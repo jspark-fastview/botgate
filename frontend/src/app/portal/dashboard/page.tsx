@@ -7,6 +7,7 @@ import {
   type DashboardResponse, type CategoryStats, type DailyRow,
   type BotRow, type PurposeRow, type MaliciousRow, type Token,
 } from '@/lib/api'
+import ChannelSelector from '@/components/ChannelSelector'
 
 const PURPOSE_LABEL: Record<string, string> = {
   ai_training:   'AI 학습',
@@ -40,20 +41,23 @@ interface State {
 }
 
 export default function DashboardPage() {
+  const [channel, setChannel] = useState('')
   const [s, setS] = useState<State>({
     dash: null, category: null, daily: [], botsAi: [], botsOther: [], purpose: [], malicious: [], tokens: [],
   })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    setLoading(true)
+    const d = channel || undefined
     Promise.all([
       dashboard().catch(() => null),
-      myStats.category().catch(() => null),
-      myStats.daily(30).catch(() => []),
-      myStats.bots('bot', 5).catch(() => []),
-      myStats.bots('other_bot', 5).catch(() => []),
-      myStats.purpose().catch(() => []),
-      myStats.malicious().catch(() => []),
+      myStats.category(d).catch(() => null),
+      myStats.daily(30, d).catch(() => []),
+      myStats.bots('bot', 5, d).catch(() => []),
+      myStats.bots('other_bot', 5, d).catch(() => []),
+      myStats.purpose(d).catch(() => []),
+      myStats.malicious(d).catch(() => []),
       myTokens().catch(() => []),
     ]).then(([dash, category, daily, botsAi, botsOther, purpose, malicious, tokens]) => {
       setS({
@@ -68,7 +72,7 @@ export default function DashboardPage() {
       })
       setLoading(false)
     })
-  }, [])
+  }, [channel])
 
   const c           = s.category ?? { malicious: 0, bot: 0, other_bot: 0, user: 0 }
   const activeTok   = s.tokens.filter(t => t.active === 1).length
@@ -134,9 +138,14 @@ export default function DashboardPage() {
         @media (max-width: 600px)  { .kpis { grid-template-columns: 1fr 1fr; } }
       `}</style>
 
-      <div style={{marginBottom:'24px'}}>
-        <h1 style={{fontSize:'26px', fontWeight:800, letterSpacing:'-0.02em', margin:0}}>대시보드</h1>
-        <div style={{fontSize:'13.5px', color:'var(--ink-dim)', marginTop:'4px'}}>내 채널 봇 트래픽을 한눈에 확인하세요.</div>
+      <div className="page-head">
+        <div>
+          <h1>대시보드</h1>
+          <div className="greeting">내 채널 봇 트래픽 현황을 실시간으로 확인하세요.</div>
+        </div>
+        <div className="right">
+          <ChannelSelector value={channel} onChange={setChannel} />
+        </div>
       </div>
 
       {/* ── KPI 5개 ───────────────────────────────────────── */}

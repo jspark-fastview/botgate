@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { myStats, fmt, type LogRow } from '@/lib/api'
+import ChannelSelector from '@/components/ChannelSelector'
 
 const CATEGORIES = [
   { key: 'all',       label: '전체',    color: '#64748b' },
@@ -42,17 +43,18 @@ function exportCsv(rows: LogRow[], category: string) {
 
 export default function TrafficPage() {
   const [category, setCategory] = useState('bot')
+  const [channel,  setChannel]  = useState('')
   const [logs, setLogs]         = useState<LogRow[]>([])
   const [loading, setLoading]   = useState(true)
   const [autoRefresh, setAuto]  = useState(false)
 
   const load = useCallback(() => {
     setLoading(true)
-    myStats.logs(category, 200)
+    myStats.logs(category, 200, channel || undefined)
       .then(rs => setLogs(rs ?? []))
       .catch(() => setLogs([]))
       .finally(() => setLoading(false))
-  }, [category])
+  }, [category, channel])
 
   useEffect(() => { load() }, [load])
 
@@ -87,9 +89,14 @@ export default function TrafficPage() {
         .x-dot::before { content: '— '; color: var(--ink-mute); }
       `}</style>
 
-      <div style={{marginBottom:'18px'}}>
-        <h1 style={{fontSize:'26px', fontWeight:800, letterSpacing:'-0.02em', margin:0}}>실시간 트래픽</h1>
-        <div style={{fontSize:'13.5px', color:'var(--ink-dim)', marginTop:'4px'}}>최근 200건. 카테고리별 필터 가능.</div>
+      <div className="page-head">
+        <div>
+          <h1>실시간 트래픽</h1>
+          <div className="greeting">최근 200건의 봇 트래픽 로그를 카테고리/채널별로 확인하세요.</div>
+        </div>
+        <div className="right">
+          <ChannelSelector value={channel} onChange={setChannel} />
+        </div>
       </div>
 
       <div className="filter-bar">

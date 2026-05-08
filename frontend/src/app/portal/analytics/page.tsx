@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { myStats, fmt, type DailyRow, type BotRow, type BillingStats } from '@/lib/api'
+import ChannelSelector from '@/components/ChannelSelector'
 
 type Tab = 'report' | 'pricing'
 
 export default function AnalyticsPage() {
   const [tab, setTab]           = useState<Tab>('report')
   const [days, setDays]         = useState(30)
+  const [channel, setChannel]   = useState('')
   const [daily, setDaily]       = useState<DailyRow[]>([])
   const [bots,  setBots]        = useState<BotRow[]>([])
   const [billing, setBilling]   = useState<BillingStats | null>(null)
@@ -15,17 +17,18 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     setLoading(true)
+    const d = channel || undefined
     Promise.all([
-      myStats.daily(days).catch(() => []),
-      myStats.bots('bot', 50).catch(() => []),
-      myStats.billing().catch(() => null),
-    ]).then(([d, b, bl]) => {
-      setDaily(d ?? [])
+      myStats.daily(days, d).catch(() => []),
+      myStats.bots('bot', 50, d).catch(() => []),
+      myStats.billing(d).catch(() => null),
+    ]).then(([dl, b, bl]) => {
+      setDaily(dl ?? [])
       setBots(b ?? [])
       setBilling(bl ?? null)
       setLoading(false)
     })
-  }, [days])
+  }, [days, channel])
 
   type DayBucket = { bot: number; other_bot: number; user: number; malicious: number; total: number }
   const byDate: Record<string, DayBucket> = {}
@@ -67,6 +70,7 @@ export default function AnalyticsPage() {
           <div className="greeting">일별 봇 트래픽 + 채널 단가 기반 수익 계산기.</div>
         </div>
         <div className="right">
+          <ChannelSelector value={channel} onChange={setChannel} />
           <div className="tabs">
             <button className={tab === 'report'  ? 'active' : ''} onClick={() => setTab('report')}>리포트</button>
             <button className={tab === 'pricing' ? 'active' : ''} onClick={() => setTab('pricing')}>수익 계산기</button>

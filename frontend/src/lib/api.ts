@@ -240,14 +240,47 @@ export interface LogRow {
   ts:           string
 }
 
+function q(domain?: string, extra: Record<string, string | number> = {}) {
+  const p = new URLSearchParams()
+  if (domain) p.set('domain', domain)
+  for (const [k, v] of Object.entries(extra)) p.set(k, String(v))
+  const s = p.toString()
+  return s ? `?${s}` : ''
+}
+
 export const myStats = {
-  category:  ()                              => get<CategoryStats>('/me/stats/category'),
-  daily:     (days = 30)                     => get<DailyRow[]>(`/me/stats/daily?days=${days}`),
-  bots:      (category = 'bot', limit = 10)  => get<BotRow[]>(`/me/stats/bots?category=${category}&limit=${limit}`),
-  purpose:   ()                              => get<PurposeRow[]>('/me/stats/purpose'),
-  malicious: ()                              => get<MaliciousRow[]>('/me/stats/malicious'),
-  billing:   ()                              => get<BillingStats>('/me/stats/billing'),
-  logs:      (category = 'bot', limit = 100) => get<LogRow[]>(`/me/logs?category=${category}&limit=${limit}`),
+  category:  (domain?: string)                                       => get<CategoryStats>(`/me/stats/category${q(domain)}`),
+  daily:     (days = 30, domain?: string)                            => get<DailyRow[]>(`/me/stats/daily${q(domain, { days })}`),
+  bots:      (category = 'bot', limit = 10, domain?: string)         => get<BotRow[]>(`/me/stats/bots${q(domain, { category, limit })}`),
+  purpose:   (domain?: string)                                       => get<PurposeRow[]>(`/me/stats/purpose${q(domain)}`),
+  malicious: (domain?: string)                                       => get<MaliciousRow[]>(`/me/stats/malicious${q(domain)}`),
+  billing:   (domain?: string)                                       => get<BillingStats>(`/me/stats/billing${q(domain)}`),
+  logs:      (category = 'bot', limit = 100, domain?: string)        => get<LogRow[]>(`/me/logs${q(domain, { category, limit })}`),
+}
+
+// ── Path Rules ────────────────────────────────────────────────────────────
+
+export interface PathRule {
+  id:         string
+  pattern:    string
+  action:     string  // allow / block / meter / verify / token_only / gone
+  note:       string
+  active:     number
+  created_at: string
+}
+
+export const pathRules = {
+  list:   ()                                                        => get<PathRule[]>('/me/path-rules'),
+  create: (pattern: string, action: string, note: string = '')      => post<PathRule>('/me/path-rules', { pattern, action, note }),
+  update: (id: string, body: { action?: string; note?: string; active?: boolean }) => patch<{ ok: boolean }>(`/me/path-rules/${id}`, body),
+  remove: (id: string)                                              => del<{ ok: boolean }>(`/me/path-rules/${id}`),
+}
+
+// ── Purpose Policies ──────────────────────────────────────────────────────
+
+export const purposePolicies = {
+  list:   ()                                  => get<Record<string, string>>('/me/purpose-policies'),
+  update: (purpose: string, action: string)   => patch<{ ok: boolean }>(`/me/purpose-policies/${purpose}`, { action }),
 }
 
 // ── Format helpers ────────────────────────────────────────────────────────

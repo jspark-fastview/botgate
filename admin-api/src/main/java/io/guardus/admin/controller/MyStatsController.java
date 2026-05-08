@@ -33,6 +33,17 @@ public class MyStatsController {
         return domains;
     }
 
+    /** 채널 selector 적용: filter가 user 소유 도메인에 포함되면 그것만, 아니면 전체 */
+    private List<String> filterDomains(List<String> myDomains, String filter) {
+        if (filter == null || filter.isBlank() || "all".equals(filter)) return myDomains;
+        if (myDomains.contains(filter)) return List.of(filter);
+        // apex/www 자동 매칭
+        for (String d : myDomains) {
+            if (filter.equals("www." + d) || ("www." + filter).equals(d)) return List.of(filter);
+        }
+        return List.of(); // 본인 채널 아님 → empty
+    }
+
     /** domain IN (?,?,?) 절 + 파라미터 */
     private String domainIn(List<String> domains, List<Object> params) {
         if (domains.isEmpty()) return "1=0"; // no channels → no rows
@@ -41,10 +52,12 @@ public class MyStatsController {
         return "domain IN (" + ph + ")";
     }
 
-    /** GET /me/stats/category — 4-way 카운트 (malicious / bot / other_bot / user) */
+    /** GET /me/stats/category?domain=&hellip; */
     @GetMapping("/me/stats/category")
-    public Map<String, Object> category(@RequestHeader("Authorization") String auth) {
-        List<String> domains = myDomains(auth);
+    public Map<String, Object> category(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(required = false) String domain) {
+        List<String> domains = filterDomains(myDomains(auth), domain);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("malicious", 0L);
         result.put("bot",       0L);
@@ -61,12 +74,13 @@ public class MyStatsController {
         return result;
     }
 
-    /** GET /me/stats/daily?days=30 — 일별 카테고리별 추이 */
+    /** GET /me/stats/daily?domain=&days=30 */
     @GetMapping("/me/stats/daily")
     public List<Map<String, Object>> daily(
             @RequestHeader("Authorization") String auth,
+            @RequestParam(required = false) String domain,
             @RequestParam(defaultValue = "30") int days) {
-        List<String> domains = myDomains(auth);
+        List<String> domains = filterDomains(myDomains(auth), domain);
         if (domains.isEmpty()) return List.of();
 
         List<Object> params = new ArrayList<>();
@@ -79,13 +93,14 @@ public class MyStatsController {
                 params.toArray());
     }
 
-    /** GET /me/stats/bots?category=bot&limit=10 — 봇 이름별 TOP N */
+    /** GET /me/stats/bots?domain=&category=bot&limit=10 */
     @GetMapping("/me/stats/bots")
     public List<Map<String, Object>> bots(
             @RequestHeader("Authorization") String auth,
+            @RequestParam(required = false) String domain,
             @RequestParam(defaultValue = "bot") String category,
             @RequestParam(defaultValue = "10") int limit) {
-        List<String> domains = myDomains(auth);
+        List<String> domains = filterDomains(myDomains(auth), domain);
         if (domains.isEmpty()) return List.of();
 
         List<Object> params = new ArrayList<>();
@@ -106,10 +121,12 @@ public class MyStatsController {
                 params.toArray());
     }
 
-    /** GET /me/stats/purpose — purpose별 카운트 (user 제외) */
+    /** GET /me/stats/purpose?domain= */
     @GetMapping("/me/stats/purpose")
-    public List<Map<String, Object>> purpose(@RequestHeader("Authorization") String auth) {
-        List<String> domains = myDomains(auth);
+    public List<Map<String, Object>> purpose(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(required = false) String domain) {
+        List<String> domains = filterDomains(myDomains(auth), domain);
         if (domains.isEmpty()) return List.of();
 
         List<Object> params = new ArrayList<>();
@@ -121,10 +138,12 @@ public class MyStatsController {
                 params.toArray());
     }
 
-    /** GET /me/stats/malicious — 악성 봇 차단 통계 */
+    /** GET /me/stats/malicious?domain= */
     @GetMapping("/me/stats/malicious")
-    public List<Map<String, Object>> malicious(@RequestHeader("Authorization") String auth) {
-        List<String> domains = myDomains(auth);
+    public List<Map<String, Object>> malicious(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(required = false) String domain) {
+        List<String> domains = filterDomains(myDomains(auth), domain);
         if (domains.isEmpty()) return List.of();
 
         List<Object> params = new ArrayList<>();
@@ -136,10 +155,12 @@ public class MyStatsController {
                 params.toArray());
     }
 
-    /** GET /me/stats/billing — 과금 추정 */
+    /** GET /me/stats/billing?domain= */
     @GetMapping("/me/stats/billing")
-    public Map<String, Object> billing(@RequestHeader("Authorization") String auth) {
-        List<String> domains = myDomains(auth);
+    public Map<String, Object> billing(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(required = false) String domain) {
+        List<String> domains = filterDomains(myDomains(auth), domain);
         if (domains.isEmpty()) return Map.of("total", 0, "billed", 0, "unit_price", 2, "estimated_amount", 0);
 
         List<Object> params = new ArrayList<>();
@@ -159,13 +180,14 @@ public class MyStatsController {
         return Map.of("total", total, "billed", billed, "unit_price", unit, "estimated_amount", billed * unit);
     }
 
-    /** GET /me/logs?category=bot&limit=100 — 본인 채널 로그 */
+    /** GET /me/logs?domain=&category=bot&limit=100 */
     @GetMapping("/me/logs")
     public List<Map<String, Object>> logs(
             @RequestHeader("Authorization") String auth,
+            @RequestParam(required = false) String domain,
             @RequestParam(defaultValue = "bot") String category,
             @RequestParam(defaultValue = "100") int limit) {
-        List<String> domains = myDomains(auth);
+        List<String> domains = filterDomains(myDomains(auth), domain);
         if (domains.isEmpty()) return List.of();
 
         List<Object> params = new ArrayList<>();
@@ -180,6 +202,104 @@ public class MyStatsController {
                 "SELECT id, bot_ua, domain, ip, path, verified, billed, category, bot_purpose, bot_name, ts " +
                 "FROM access_logs WHERE " + where + catCond + " ORDER BY id DESC LIMIT ?",
                 params.toArray());
+    }
+
+    // ── 경로 규칙 (path-rules) — 글로벌 ────────────────────────────
+
+    /** GET /me/path-rules */
+    @GetMapping("/me/path-rules")
+    public List<Map<String, Object>> listRules(@RequestHeader("Authorization") String auth) {
+        if (sessions.validate(auth) == null) return List.of();
+        return db.queryForList(
+                "SELECT id, pattern, action, note, active, created_at FROM path_rules ORDER BY created_at ASC");
+    }
+
+    /** POST /me/path-rules */
+    @PostMapping("/me/path-rules")
+    public Map<String, Object> createRule(
+            @RequestHeader("Authorization") String auth,
+            @RequestBody Map<String, Object> body) {
+        if (sessions.validate(auth) == null) return Map.of("error", "unauthorized");
+        String pattern = (String) body.get("pattern");
+        String action  = (String) body.get("action");
+        if (pattern == null || pattern.isBlank() || action == null) return Map.of("error", "pattern, action 필수");
+        String note = body.getOrDefault("note", "").toString();
+        String id = "pr_" + io.guardus.admin.util.NanoId.generate(8);
+        try {
+            db.update("INSERT INTO path_rules (id, pattern, action, note) VALUES (?, ?, ?, ?)",
+                    id, pattern, action, note);
+        } catch (Exception e) {
+            if (e.getMessage() != null && e.getMessage().contains("UNIQUE"))
+                return Map.of("error", "이미 존재하는 패턴입니다");
+            throw e;
+        }
+        io.guardus.admin.util.CacheInvalidator.invalidate();
+        return Map.of("id", id, "pattern", pattern, "action", action, "note", note, "active", 1);
+    }
+
+    /** PATCH /me/path-rules/:id (active 토글, action 변경) */
+    @PatchMapping("/me/path-rules/{id}")
+    public Map<String, Object> updateRule(
+            @RequestHeader("Authorization") String auth,
+            @org.springframework.web.bind.annotation.PathVariable String id,
+            @RequestBody Map<String, Object> body) {
+        if (sessions.validate(auth) == null) return Map.of("error", "unauthorized");
+        List<Map<String, Object>> rows = db.queryForList("SELECT * FROM path_rules WHERE id = ?", id);
+        if (rows.isEmpty()) return Map.of("error", "not found");
+        Map<String, Object> existing = rows.get(0);
+        String action = body.containsKey("action") ? (String) body.get("action") : (String) existing.get("action");
+        String note   = body.containsKey("note")   ? body.get("note").toString()  : (String) existing.get("note");
+        int active;
+        if (body.containsKey("active")) {
+            Object v = body.get("active");
+            active = (Boolean.TRUE.equals(v) || "true".equals(v.toString()) || "1".equals(v.toString())) ? 1 : 0;
+        } else {
+            active = ((Number) existing.get("active")).intValue();
+        }
+        db.update("UPDATE path_rules SET action = ?, note = ?, active = ? WHERE id = ?", action, note, active, id);
+        io.guardus.admin.util.CacheInvalidator.invalidate();
+        return Map.of("ok", true);
+    }
+
+    /** DELETE /me/path-rules/:id */
+    @DeleteMapping("/me/path-rules/{id}")
+    public Map<String, Object> deleteRule(
+            @RequestHeader("Authorization") String auth,
+            @org.springframework.web.bind.annotation.PathVariable String id) {
+        if (sessions.validate(auth) == null) return Map.of("error", "unauthorized");
+        int n = db.update("DELETE FROM path_rules WHERE id = ?", id);
+        if (n == 0) return Map.of("error", "not found");
+        io.guardus.admin.util.CacheInvalidator.invalidate();
+        return Map.of("ok", true);
+    }
+
+    // ── 봇 정책 (purpose policies) — 글로벌 ─────────────────────────
+
+    /** GET /me/purpose-policies */
+    @GetMapping("/me/purpose-policies")
+    public Map<String, Object> listPolicies(@RequestHeader("Authorization") String auth) {
+        if (sessions.validate(auth) == null) return Map.of();
+        List<Map<String, Object>> rows = db.queryForList("SELECT purpose, action FROM purpose_policies");
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (Map<String, Object> r : rows) result.put((String) r.get("purpose"), r.get("action"));
+        return result;
+    }
+
+    /** PATCH /me/purpose-policies/:purpose */
+    @PatchMapping("/me/purpose-policies/{purpose}")
+    public Map<String, Object> updatePolicy(
+            @RequestHeader("Authorization") String auth,
+            @org.springframework.web.bind.annotation.PathVariable String purpose,
+            @RequestBody Map<String, Object> body) {
+        if (sessions.validate(auth) == null) return Map.of("error", "unauthorized");
+        String action = (String) body.get("action");
+        if (action == null) return Map.of("error", "action 필수");
+        db.update("""
+                INSERT INTO purpose_policies (purpose, action) VALUES (?, ?)
+                ON CONFLICT(purpose) DO UPDATE SET action = excluded.action
+                """, purpose, action);
+        io.guardus.admin.util.CacheInvalidator.invalidate();
+        return Map.of("ok", true, "purpose", purpose, "action", action);
     }
 
     private long toLong(Object v) {

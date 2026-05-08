@@ -96,7 +96,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
           </Link>
 
           <div className="side-section">
-            <span className="h">포털</span>
+            <span className="h">메인</span>
             <Link href="/portal/dashboard" className={isActive('/portal/dashboard') ? 'active' : ''}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/>
@@ -113,29 +113,44 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             </Link>
             <Link href="/portal/traffic" className={isActive('/portal/traffic') ? 'active' : ''}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24"/>
+                <path d="M12 2v20M5 9l7-7 7 7M5 15l7 7 7-7"/>
               </svg>
               실시간 트래픽
             </Link>
-            <Link href="/portal/channels" className={isActive('/portal/channels') ? 'active' : ''}>
+          </div>
+
+          <div className="side-section">
+            <span className="h">설정</span>
+            <Link href="/portal/rules" className={isActive('/portal/rules') ? 'active' : ''}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="9"/>
-                <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>
+                <path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
               </svg>
-              내 채널
+              경로 규칙
+            </Link>
+            <Link href="/portal/policies" className={isActive('/portal/policies') ? 'active' : ''}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+              </svg>
+              봇 정책
             </Link>
             <Link href="/portal/tokens" className={isActive('/portal/tokens') ? 'active' : ''}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="7" width="20" height="14" rx="2"/>
                 <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
               </svg>
-              봇 토큰
+              봇 화이트리스트
+            </Link>
+            <Link href="/portal/channels" className={isActive('/portal/channels') ? 'active' : ''}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>
+              </svg>
+              채널 등록/관리
             </Link>
             <Link href="/portal/catalog" className={isActive('/portal/catalog') ? 'active' : ''}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
               </svg>
               봇 카탈로그
             </Link>
