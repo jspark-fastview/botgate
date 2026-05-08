@@ -83,12 +83,17 @@ end
 
 -- ── 모든 봇 갱신 (timer 에서 호출) ──
 function _M.refresh_all()
+    ngx.log(ngx.INFO, "[bot_ip_verifier] refresh_all() entered")
     local dict = ngx.shared[SHARED]
-    if not dict then return end
+    if not dict then
+        ngx.log(ngx.ERR, "[bot_ip_verifier] shared dict not found: ", SHARED)
+        return
+    end
 
     local total, ok = 0, 0
     for bot_name, url in pairs(SOURCES) do
         total = total + 1
+        ngx.log(ngx.INFO, "[bot_ip_verifier] fetching ", bot_name, " from ", url)
         local cidrs = fetch_one(bot_name, url)
         if cidrs and #cidrs > 0 then
             -- net,mask 쌍을 ":" 와 "|" 로 인코딩 (JSON 보다 작고 빠름)

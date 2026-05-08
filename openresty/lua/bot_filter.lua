@@ -242,7 +242,8 @@ function _M.run()
             end
         elseif rdns_verifiable then
             -- 2순위: rDNS (IP 데이터 없는 봇 폴백)
-            _, verified, detail = rdns.verify(raw_ua, ip)
+            local _ignore
+            _ignore, verified, detail = rdns.verify(raw_ua, ip)
             verify_method = "rdns"
         end
 
