@@ -44,7 +44,7 @@ jobs:
             echo "▶ health check (신규)"
             for i in $(seq 1 24); do
               sleep 5
-              curl -sf http://localhost:3002/actuator/health | grep -q '"status":"UP"' && break
+              curl -sf http://localhost:3001/actuator/health | grep -q '"status":"UP"' && break
               echo "  대기중... (${i}/24)"
               [ $i -eq 24 ] && { echo "admin-api 기동 timeout"; exit 1; }
             done
