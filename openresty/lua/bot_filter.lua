@@ -35,7 +35,12 @@ end
 
 -- ── 토큰 검증 (동기 cosocket) ─────────────────────────────────────────
 -- 반환: valid (bool), plan (string|nil)
-local function validate_token(token, ua, host, ip)
+-- ── 토큰 검증 캐시 (5분 TTL) ─────────────────────────────
+-- internal-api → SQLite 호출 비용 절감. 토큰은 거의 변하지 않으니 hit 률 99%+
+-- revoke 시점부터 최대 5분간 stale 가능 — 비즈니스상 허용
+local TOKEN_CACHE_TTL = 300
+
+local function validate_token_uncached(token, ua, host, ip)
     local api_host = os.getenv("INTERNAL_API_HOST") or os.getenv("TOKEN_API_HOST") or "127.0.0.1"
     local api_port = tonumber(os.getenv("INTERNAL_API_PORT") or os.getenv("TOKEN_API_PORT") or "3000")
 
@@ -93,6 +98,26 @@ local function validate_token(token, ua, host, ip)
     if not data then return false, nil end
 
     return data.valid == true, data.plan
+end
+
+-- 캐시 wrapper — 외부 호출자는 이 함수만 사용
+local function validate_token(token, ua, host, ip)
+    if not token or token == "" then return false, nil end
+    local cache = ngx.shared.token_cache
+    if cache then
+        local cached = cache:get(token)
+        if cached then
+            -- 형식: "1|paid" / "0|" — pipe 로 valid + plan 합침
+            local v, plan = cached:match("^(%d)|(.*)$")
+            if v then return v == "1", (plan ~= "" and plan or nil) end
+        end
+    end
+    local valid, plan = validate_token_uncached(token, ua, host, ip)
+    if cache then
+        -- 결과 캐시 (실패도 캐시 — invalid 토큰 폭주 방지)
+        cache:set(token, (valid and "1" or "0") .. "|" .. (plan or ""), TOKEN_CACHE_TTL)
+    end
+    return valid, plan
 end
 
 -- ── 메인 필터 ─────────────────────────────────────────────────────────

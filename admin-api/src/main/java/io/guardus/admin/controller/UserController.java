@@ -208,6 +208,7 @@ public class UserController {
             return ResponseEntity.status(403).body(Map.of("error", "forbidden"));
 
         db.update("DELETE FROM tokens WHERE id = ?", id);
+        CacheInvalidator.invalidate();
         return ResponseEntity.ok(Map.of("ok", true));
     }
 

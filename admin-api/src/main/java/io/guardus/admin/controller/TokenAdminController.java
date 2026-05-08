@@ -51,6 +51,7 @@ public class TokenAdminController {
         boolean active = Boolean.TRUE.equals(activeVal) || "true".equals(activeVal.toString());
         int changed = db.update("UPDATE tokens SET active = ? WHERE id = ?", active ? 1 : 0, id);
         if (changed == 0) return ResponseEntity.status(404).body(Map.of("error", "not found"));
+        io.guardus.admin.util.CacheInvalidator.invalidate();
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
@@ -61,6 +62,7 @@ public class TokenAdminController {
         db.update("UPDATE access_logs SET token = NULL WHERE token = (SELECT token FROM tokens WHERE id = ?)", id);
         int changed = db.update("DELETE FROM tokens WHERE id = ?", id);
         if (changed == 0) return ResponseEntity.notFound().build();
+        io.guardus.admin.util.CacheInvalidator.invalidate();
         return ResponseEntity.noContent().build();
     }
 }
