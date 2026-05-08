@@ -40,13 +40,10 @@ local function fetch_channels_from_api()
 
     -- 상태줄
     local status_line = sock:receive("*l")
-    if not status_line then
-        ngx.log(ngx.ERR, "[channels] no status line, key_len=", #key)
-        sock:close(); return nil
-    end
+    if not status_line then sock:close(); return nil end
     local status = tonumber(status_line:match("HTTP/%d%.%d (%d+)"))
     if status ~= 200 then
-        ngx.log(ngx.ERR, "[channels] bad status ", status, " key_len=", #key, " host=", host, ":", port)
+        ngx.log(ngx.ERR, "[channels] bad status ", status)
         sock:close(); return nil
     end
 
@@ -56,10 +53,8 @@ local function fetch_channels_from_api()
         if not line or line == "" then break end
     end
 
-    local body, rerr = sock:receive("*a")
+    local body = sock:receive("*a")
     sock:close()
-    local prefix = (body or ""):sub(1, 80)
-    ngx.log(ngx.WARN, "[channels] body_len=", #(body or ""), " rerr=", tostring(rerr), " prefix=", prefix)
     return body
 end
 
