@@ -50,4 +50,8 @@ jobs:
             done
             curl -sf http://localhost:3003 > /dev/null
 
+            # ── 모니터링 스택 (Loki/Tempo/Prometheus/Grafana/OTel) ──────────
+            echo "▶ monitoring 스택 기동"
+            docker compose -p monitoring -f docker-compose.monitoring.yml --env-file .env up -d
+
             echo "✅ 배포 완료"
