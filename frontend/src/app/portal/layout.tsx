@@ -102,7 +102,21 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
                 <rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/>
                 <rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>
               </svg>
-              내 대시보드
+              대시보드
+            </Link>
+            <Link href="/portal/analytics" className={isActive('/portal/analytics') ? 'active' : ''}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 3v18h18"/>
+                <path d="M7 14l4-4 4 4 5-5"/>
+              </svg>
+              분석 리포트
+            </Link>
+            <Link href="/portal/traffic" className={isActive('/portal/traffic') ? 'active' : ''}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24"/>
+              </svg>
+              실시간 트래픽
             </Link>
             <Link href="/portal/channels" className={isActive('/portal/channels') ? 'active' : ''}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -116,7 +130,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
                 <rect x="2" y="7" width="20" height="14" rx="2"/>
                 <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
               </svg>
-              내 토큰
+              봇 토큰
             </Link>
           </div>
 

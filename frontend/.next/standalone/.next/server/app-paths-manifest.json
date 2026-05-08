@@ -1,0 +1,9 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/page": "app/page.js",
+  "/login/page": "app/login/page.js",
+  "/portal/channels/page": "app/portal/channels/page.js",
+  "/portal/dashboard/page": "app/portal/dashboard/page.js",
+  "/portal/page": "app/portal/page.js",
+  "/portal/tokens/page": "app/portal/tokens/page.js"
+}

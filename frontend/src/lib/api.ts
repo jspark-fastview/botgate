@@ -122,6 +122,70 @@ export function myTokens() {
   return get<Token[]>('/me/tokens')
 }
 
+// ── Stats ─────────────────────────────────────────────────────────────────
+
+export interface CategoryStats {
+  malicious: number
+  bot:       number
+  other_bot: number
+  user:      number
+}
+
+export interface DailyRow {
+  date:     string
+  category: string
+  count:    number
+}
+
+export interface BotRow {
+  bot_ua: string
+  count:  number
+}
+
+export interface PurposeRow {
+  bot_purpose: string
+  count:       number
+  unique_bots: number
+}
+
+export interface MaliciousRow {
+  bot_name:   string
+  bot_vendor: string
+  count:      number
+  last_seen:  string
+}
+
+export interface BillingStats {
+  total:            number
+  billed:           number
+  unit_price:       number
+  estimated_amount: number
+}
+
+export interface LogRow {
+  id:           number
+  bot_ua:       string
+  domain:       string
+  ip:           string
+  path:         string
+  verified:     number
+  billed:       number
+  category:     string
+  bot_purpose:  string
+  bot_name:     string
+  ts:           string
+}
+
+export const myStats = {
+  category:  ()                              => get<CategoryStats>('/me/stats/category'),
+  daily:     (days = 30)                     => get<DailyRow[]>(`/me/stats/daily?days=${days}`),
+  bots:      (category = 'bot', limit = 10)  => get<BotRow[]>(`/me/stats/bots?category=${category}&limit=${limit}`),
+  purpose:   ()                              => get<PurposeRow[]>('/me/stats/purpose'),
+  malicious: ()                              => get<MaliciousRow[]>('/me/stats/malicious'),
+  billing:   ()                              => get<BillingStats>('/me/stats/billing'),
+  logs:      (category = 'bot', limit = 100) => get<LogRow[]>(`/me/logs?category=${category}&limit=${limit}`),
+}
+
 // ── Format helpers ────────────────────────────────────────────────────────
 
 export function fmt(n: number | null | undefined): string {
