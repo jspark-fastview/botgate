@@ -83,7 +83,7 @@ end
 
 -- ── 모든 봇 갱신 (timer 에서 호출) ──
 function _M.refresh_all()
-    ngx.log(ngx.INFO, "[bot_ip_verifier] refresh_all() entered")
+    ngx.log(ngx.WARN, "[bot_ip_verifier] refresh_all() entered")
     local dict = ngx.shared[SHARED]
     if not dict then
         ngx.log(ngx.ERR, "[bot_ip_verifier] shared dict not found: ", SHARED)
@@ -93,7 +93,7 @@ function _M.refresh_all()
     local total, ok = 0, 0
     for bot_name, url in pairs(SOURCES) do
         total = total + 1
-        ngx.log(ngx.INFO, "[bot_ip_verifier] fetching ", bot_name, " from ", url)
+        ngx.log(ngx.WARN, "[bot_ip_verifier] fetching ", bot_name, " from ", url)
         local cidrs = fetch_one(bot_name, url)
         if cidrs and #cidrs > 0 then
             -- net,mask 쌍을 ":" 와 "|" 로 인코딩 (JSON 보다 작고 빠름)
@@ -102,13 +102,13 @@ function _M.refresh_all()
                 parts[#parts + 1] = c.net .. ":" .. c.mask
             end
             dict:set("ranges:" .. bot_name, table.concat(parts, "|"), TTL)
-            ngx.log(ngx.INFO, "[bot_ip_verifier] ", bot_name, " loaded ", #cidrs, " ranges")
+            ngx.log(ngx.WARN, "[bot_ip_verifier] ", bot_name, " loaded ", #cidrs, " ranges")
             ok = ok + 1
         end
     end
     dict:set("__last_refresh", ngx.now(), TTL)
     dict:set("__bots_loaded", ok, TTL)
-    ngx.log(ngx.INFO, "[bot_ip_verifier] refresh done: ", ok, "/", total, " bots")
+    ngx.log(ngx.WARN, "[bot_ip_verifier] refresh done: ", ok, "/", total, " bots")
 end
 
 -- ── 검증: ip 가 bot_name 의 공식 범위에 있는가? ──
