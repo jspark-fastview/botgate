@@ -211,15 +211,15 @@ public class UserController {
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
-    /** GET /me/bot-catalog — 봇 카탈로그 read-only */
+    /** GET /me/bot-catalog — /admin/bots/catalog 와 동일 형식 (delegate) */
+    @org.springframework.beans.factory.annotation.Autowired
+    private BotAdminController botCtrl;
+
     @GetMapping("/me/bot-catalog")
-    public List<Map<String, Object>> botCatalog(
+    public ResponseEntity<Object> botCatalog(
             @RequestHeader(value = "Authorization", required = false) String auth) {
-        if (sessions.validate(auth) == null) return List.of();
-        return db.queryForList(
-                "SELECT name, vendor, purpose, patterns, is_malicious, enabled" +
-                " FROM bot_catalog WHERE enabled = 1" +
-                " ORDER BY is_malicious DESC, purpose ASC, name ASC");
+        if (sessions.validate(auth) == null) return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
+        return ResponseEntity.ok(botCtrl.catalog());
     }
 
     /** GET /me/profile */
