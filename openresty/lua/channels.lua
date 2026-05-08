@@ -10,8 +10,8 @@ local CACHE_TTL = 60   -- seconds
 
 -- ── HTTP GET (cosocket) ──────────────────────────────────
 local function fetch_channels_from_api()
-    local host = os.getenv("TOKEN_API_HOST") or "127.0.0.1"
-    local port = tonumber(os.getenv("TOKEN_API_PORT") or "3000")
+    local host = os.getenv("ADMIN_API_HOST") or os.getenv("TOKEN_API_HOST") or "127.0.0.1"
+    local port = tonumber(os.getenv("ADMIN_API_PORT") or os.getenv("TOKEN_API_PORT") or "3000")
     local key  = os.getenv("ADMIN_KEY") or ""
 
     local sock = ngx.socket.tcp()

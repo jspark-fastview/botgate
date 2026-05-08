@@ -31,7 +31,9 @@ services:
     restart: unless-stopped
     networks:
       - default
-      - botgate_default    # OpenResty cache invalidation 접근용
+      - botgate_default:
+          aliases:
+            - admin-api   # OpenResty가 admin-api 이름으로 접근 가능
 
   frontend:
     build: ./frontend

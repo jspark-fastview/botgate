@@ -4,34 +4,14 @@ services:
     ports:
       - "80:80"          # 봇 트래픽 (표준 HTTP)
     environment:
-      - TOKEN_API_HOST=token-api
-      - TOKEN_API_PORT=3000
       - INTERNAL_API_HOST=internal-api   # guardus-new 스택 (botgate_default 네트워크 공유)
       - INTERNAL_API_PORT=3001
+      - ADMIN_API_HOST=admin-api         # guardus-new 스택 (botgate_default 네트워크 공유)
+      - ADMIN_API_PORT=3002
       - BOTGATE_BYPASS_KEY=${BOTGATE_BYPASS_KEY:-}
       - ADMIN_KEY=${ADMIN_KEY}
     volumes:
       - ./openresty/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
       - ./openresty/conf.d/dev:/etc/nginx/conf.d:ro
       - ./openresty/lua:/etc/nginx/lua:ro
-    depends_on:
-      - token-api
     restart: always
-
-  token-api:
-    build: ./token-api
-    ports:
-      - "3000:3000"      # ALB → botgate-admin.viewus.co 라우팅용
-    environment:
-      - ADMIN_KEY=${ADMIN_KEY}
-      - STATS_KEY=${STATS_KEY:-}      # innerops 등 외부 모니터링용 read-only 키
-      - OPENRESTY_HOST=openresty
-      - OPENRESTY_PORT=80
-      - ALB_HOSTNAME=${ALB_HOSTNAME:-}
-    volumes:
-      - token-data:/app/data
-      - ./web:/app/web:ro
-    restart: always
-
-volumes:
-  token-data:
