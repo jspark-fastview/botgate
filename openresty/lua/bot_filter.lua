@@ -8,6 +8,7 @@
 --   3) 일반 트래픽  → pass
 
 local rdns             = require "rdns"
+local ip_verifier      = require "bot_ip_verifier"
 local logger           = require "logger"
 local path_rules       = require "path_rules"
 local settings         = require "settings"
@@ -226,18 +227,32 @@ function _M.run()
         end
 
         -- verify (default for AI training)
-        -- rDNS 검증 불가능한 봇 (ai_assistant: 사용자 IP / generic: 미분류)은 rDNS 스킵
+        -- 1순위: 공식 IP 범위 lookup (DNS 호출 0, μs 단위)
+        -- 2순위: rDNS 검증 (1순위 데이터 없는 봇만)
+        -- ai_assistant/generic 은 둘 다 스킵
         local rdns_verifiable = (cls.purpose ~= "ai_assistant" and cls.purpose ~= "generic")
-        local verified, detail = false, "skipped (non-verifiable)"
-        if rdns_verifiable then
+        local verified, detail, verify_method = false, "skipped (non-verifiable)", "none"
+
+        if rdns_verifiable and ip_verifier.has_ranges(cls.name) then
+            -- 1순위: IP 범위 매칭
+            if ip_verifier.verify(ip, cls.name) then
+                verified, detail, verify_method = true, "ip-range match", "ip-list"
+            else
+                verified, detail, verify_method = false, "ip-range mismatch (possible spoofing)", "ip-list"
+            end
+        elseif rdns_verifiable then
+            -- 2순위: rDNS (IP 데이터 없는 봇 폴백)
             _, verified, detail = rdns.verify(raw_ua, ip)
+            verify_method = "rdns"
         end
+
         if verified then
             json_log({ bot_category = "real_ai_bot", action = "pass", path = path,
-                       detail = detail, bot_name = cls.name, bot_purpose = cls.purpose })
+                       detail = detail, bot_name = cls.name, bot_purpose = cls.purpose,
+                       method = verify_method })
             logger.access(raw_ua, host, ip, path, true, billed, cls.category, cls.purpose, cls.name, cls.vendor, false)
             ngx.ctx.access_logged = true
-            ngx.req.set_header("X-Bot-Verified", "rdns")
+            ngx.req.set_header("X-Bot-Verified", verify_method)
             ngx.req.set_header("X-Bot-Purpose",  cls.purpose)
             ngx.req.set_header("X-Bot-Billed",   billed and "1" or "0")
             return
