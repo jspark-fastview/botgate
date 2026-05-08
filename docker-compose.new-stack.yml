@@ -30,10 +30,10 @@ services:
       - ./web:/app/web:ro   # 어드민 SPA 정적 파일
     restart: unless-stopped
     networks:
-      - default
-      - botgate_default:
-          aliases:
-            - admin-api   # OpenResty가 admin-api 이름으로 접근 가능
+      default: {}
+      botgate_default:
+        aliases:
+          - admin-api   # OpenResty가 admin-api 이름으로 접근 가능
 
   frontend:
     build: ./frontend

@@ -28,7 +28,7 @@ jobs:
             docker compose -f docker-compose.prod.yml --env-file .env build openresty
 
             echo "▶ openresty 재시작"
-            docker compose -f docker-compose.prod.yml --env-file .env up -d --no-deps openresty
+            docker compose -f docker-compose.prod.yml --env-file .env up -d --no-deps --remove-orphans openresty
 
             echo "▶ health check (openresty)"
             sleep 3
