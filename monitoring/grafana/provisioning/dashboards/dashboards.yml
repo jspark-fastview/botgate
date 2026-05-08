@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: 'GuardUs'
+    orgId: 1
+    folder: 'GuardUs'
+    type: file
+    disableDeletion: false
+    editable: true
+    allowUiUpdates: true
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards
