@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1
 FROM openresty/openresty:1.25.3.2-alpine
-RUN apk add --no-cache curl \
+# ca-certificates: HTTPS fetch (lua-resty-http → bot_ip_verifier 가 외부 JSON 가져옴)
+RUN apk add --no-cache curl ca-certificates \
+ && update-ca-certificates 2>/dev/null || true \
  && mkdir -p /usr/local/openresty/lualib/resty \
  # lua-resty-http (admin-api/internal-api 호출용)
  && for f in http.lua http_headers.lua http_connect.lua; do \
@@ -13,3 +15,4 @@ RUN apk add --no-cache curl \
            -o "/usr/local/openresty/lualib/$f"; \
     done \
  && apk del curl
+# ca-certificates 는 런타임에 필요하므로 유지

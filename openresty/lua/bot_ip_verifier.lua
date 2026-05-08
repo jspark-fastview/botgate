@@ -51,7 +51,11 @@ end
 local function fetch_one(bot_name, url)
     local httpc = http.new()
     httpc:set_timeout(5000)
-    local res, err = httpc:request_uri(url, { method = "GET" })
+    local res, err = httpc:request_uri(url, {
+        method = "GET",
+        ssl_verify = true,
+        keepalive = false,
+    })
     httpc:close()
     if not res then
         ngx.log(ngx.WARN, "[bot_ip_verifier] ", bot_name, " fetch error: ", err)
