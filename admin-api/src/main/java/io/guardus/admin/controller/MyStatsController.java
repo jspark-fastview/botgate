@@ -180,6 +180,35 @@ public class MyStatsController {
         return Map.of("total", total, "billed", billed, "unit_price", unit, "estimated_amount", billed * unit);
     }
 
+    /** GET /me/logs/export?period=day|week|month&domain=&category= */
+    @GetMapping("/me/logs/export")
+    public List<Map<String, Object>> exportLogs(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(defaultValue = "day") String period,
+            @RequestParam(required = false) String domain,
+            @RequestParam(defaultValue = "all") String category) {
+        List<String> domains = filterDomains(myDomains(auth), domain);
+        if (domains.isEmpty()) return List.of();
+
+        String interval = switch (period) {
+            case "week"  -> "-7 days";
+            case "month" -> "-30 days";
+            default      -> "-1 days";
+        };
+        List<Object> params = new ArrayList<>();
+        String where = domainIn(domains, params);
+        String catCond = "";
+        if (!"all".equals(category) && !category.isBlank()) {
+            catCond = " AND category = ?";
+            params.add(category);
+        }
+        return db.queryForList(
+                "SELECT id, bot_ua, domain, ip, path, verified, billed, category, bot_purpose, bot_name, bot_vendor, blocked, ts " +
+                "FROM access_logs WHERE " + where + catCond +
+                " AND ts >= datetime('now', '" + interval + "') ORDER BY id DESC LIMIT 100000",
+                params.toArray());
+    }
+
     /** GET /me/logs?domain=&category=bot&limit=100 */
     @GetMapping("/me/logs")
     public List<Map<String, Object>> logs(

@@ -234,9 +234,11 @@ export interface LogRow {
   path:         string
   verified:     number
   billed:       number
+  blocked?:     number
   category:     string
   bot_purpose:  string
   bot_name:     string
+  bot_vendor?:  string
   ts:           string
 }
 
@@ -256,6 +258,7 @@ export const myStats = {
   malicious: (domain?: string)                                       => get<MaliciousRow[]>(`/me/stats/malicious${q(domain)}`),
   billing:   (domain?: string)                                       => get<BillingStats>(`/me/stats/billing${q(domain)}`),
   logs:      (category = 'bot', limit = 100, domain?: string)        => get<LogRow[]>(`/me/logs${q(domain, { category, limit })}`),
+  exportLogs:(period: 'day'|'week'|'month', category = 'all', domain?: string) => get<LogRow[]>(`/me/logs/export${q(domain, { period, category })}`),
 }
 
 // ── Path Rules ────────────────────────────────────────────────────────────

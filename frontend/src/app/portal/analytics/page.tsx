@@ -86,7 +86,7 @@ export default function AnalyticsPage() {
       </div>
 
       {tab === 'pricing' ? (
-        <PricingTab billing={billing} loading={loading} />
+        <PricingTab billing={billing} daily={daily} loading={loading} />
       ) : (
         <>
           <div className="summary">
@@ -173,105 +173,126 @@ export default function AnalyticsPage() {
   )
 }
 
-// ── 수익 계산기 (Pricing Calculator) ─────────────────────────────────
-function PricingTab({ billing, loading }: { billing: BillingStats | null; loading: boolean }) {
-  type Base = 'total' | 'billed' | 'month'
+// ── 수익 계산기 (Pricing Calculator) — 원본 SPA 디자인 그대로 ────────
+function PricingTab({ billing, daily, loading }: { billing: BillingStats | null; daily: DailyRow[]; loading: boolean }) {
+  type Base = 'total' | 'month' | 'billed'
 
-  const [base, setBase]   = useState<Base>('billed')
-  const [price, setPrice] = useState(2)  // 건당 단가 (KRW)
+  const [base,  setBase]  = useState<Base>('billed')
+  const [rate,  setRate]  = useState(2.00)  // USD per 1,000 pages
 
-  const total  = Number(billing?.total ?? 0)
+  const total  = Number(billing?.total  ?? 0)
   const billed = Number(billing?.billed ?? 0)
-  // monthly estimate: simple — total ÷ 30일 가정
-  const monthlyAvg = Math.round(total / 30 * 30) // (placeholder for monthly basis)
 
-  const baseCount = base === 'total' ? total : base === 'billed' ? billed : monthlyAvg
-  const monthly   = base === 'month' ? baseCount : baseCount * 30 / 30   // approx
-  const totalRev  = baseCount * price
+  // 이번달 = 최근 30일 (모든 카테고리 합)
+  const monthCount = daily.reduce((sum, r) => sum + Number(r.count), 0)
+
+  const baseCount = base === 'total' ? total : base === 'month' ? monthCount : billed
+  const baseLabel = base === 'total' ? '누적 전체' : base === 'month' ? '최근 30일' : '과금 대상만 (meter)'
+
+  // rate는 1,000 pages 당 USD
+  const usdRevenue = baseCount / 1000 * rate
+  const krwRevenue = usdRevenue * 1300       // 1 USD ≈ 1300 KRW
+  const perReqKrw  = baseCount > 0 ? krwRevenue / baseCount : 0
+
+  function step(d: number) {
+    setRate(r => Math.max(0, Math.round((r + d) * 100) / 100))
+  }
+
+  const cards: Array<{ key: Base; title: string; value: number; valColor: string; sub1: string; sub2: string }> = [
+    { key: 'total',  title: '전체 AI봇 요청', value: total,      valColor: 'var(--ink)',   sub1: '누적 전체 · 통과 + 차단 포함',   sub2: '검색봇·기타봇 포함, 일부는 무료 통과' },
+    { key: 'month',  title: '이번달 요청',    value: monthCount, valColor: 'var(--brand)', sub1: '최근 30일 · 통과 + 차단 포함',  sub2: '월별 트래픽 규모 파악용' },
+    { key: 'billed', title: '과금 대상',      value: billed,     valColor: 'var(--ok)',    sub1: 'meter 정책 적용 요청만',        sub2: '실제 수익화 대상 — 전체보다 적음' },
+  ]
 
   return (
     <>
       <div className="panel">
-        <div className="panel-head">
-          <h3>기준 데이터</h3>
-          <span className="sub">계산 기준을 선택하세요</span>
+        <div className="panel-head" style={{marginBottom:'20px'}}>
+          <h3>예상 수익 계산기</h3>
+          <span className="sub">기준 데이터를 선택하고 단가를 입력하세요</span>
+          <span style={{marginLeft:'8px', fontSize:'10px', fontWeight:700, background:'rgba(26,163,119,.15)', color:'var(--ok)', padding:'3px 8px', borderRadius:'6px'}}>PREVIEW</span>
         </div>
-        <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'12px'}}>
-          {[
-            { key: 'total'  as const, l: '총 봇 요청',     v: total,  c: 'var(--ink)'   },
-            { key: 'billed' as const, l: '과금 대상 (meter)', v: billed, c: 'var(--ok)'    },
-            { key: 'month'  as const, l: '월 평균 추정',   v: monthlyAvg, c: 'var(--brand)' },
-          ].map(b => (
-            <button key={b.key} onClick={() => setBase(b.key)}
-              style={{
-                cursor:'pointer', textAlign:'left',
-                border: `2px solid ${base === b.key ? 'var(--brand)' : 'var(--line)'}`,
-                background: base === b.key ? 'var(--brand-soft)' : '#fff',
-                borderRadius:'12px', padding:'14px 16px', transition:'all 150ms',
-                fontFamily:'var(--sans)',
-              }}>
-              <div style={{fontSize:'12px', color:'var(--ink-dim)', marginBottom:'4px'}}>{b.l}</div>
-              <div style={{fontSize:'26px', fontWeight:800, letterSpacing:'-0.02em', color: base === b.key ? 'var(--brand)' : b.c}}>
-                {loading ? '…' : fmt(b.v)}
+
+        {/* 기준 데이터 선택 */}
+        <div style={{fontSize:'11px', fontWeight:700, color:'var(--ink-dim)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:'10px'}}>기준 데이터</div>
+        <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'10px', marginBottom:'24px'}}>
+          {cards.map(c => {
+            const active = base === c.key
+            return (
+              <div key={c.key} onClick={() => setBase(c.key)}
+                style={{
+                  cursor:'pointer',
+                  border: `2px solid ${active ? 'var(--brand)' : 'var(--line)'}`,
+                  background: active ? 'var(--brand-soft)' : '#fff',
+                  borderRadius:'12px', padding:'14px 16px', transition:'all 150ms',
+                }}>
+                <div style={{fontSize:'11px', fontWeight:700, color: c.key === 'billed' ? 'var(--ok)' : 'var(--ink-dim)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:'6px'}}>
+                  {c.title}
+                </div>
+                <div style={{fontSize:'26px', fontWeight:800, letterSpacing:'-.02em', color: active ? 'var(--brand)' : c.valColor, marginBottom:'4px'}}>
+                  {loading ? '—' : fmt(c.value)}
+                </div>
+                <div style={{fontSize:'11px', color:'var(--ink-mute)'}}>{c.sub1}</div>
+                <div style={{fontSize:'10px', color:'var(--ink-mute)', marginTop:'4px'}}>{c.sub2}</div>
+                <div style={{marginTop:'10px', fontSize:'12px', fontWeight:600, color: active ? 'var(--brand)' : 'var(--ink-dim)'}}>
+                  {active ? '✓ 적용됨' : '계산에 적용 →'}
+                </div>
               </div>
-            </button>
-          ))}
+            )
+          })}
+        </div>
+
+        {/* 구분선 */}
+        <div style={{borderTop:'1px solid var(--line)', marginBottom:'20px'}}/>
+
+        {/* 단가 + 결과 */}
+        <div style={{fontSize:'11px', fontWeight:700, color:'var(--ink-dim)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:'10px'}}>단가 설정</div>
+        <div style={{display:'flex', alignItems:'center', gap:'6px', marginBottom:'20px', flexWrap:'wrap'}}>
+          <button onClick={() => step(-0.1)}
+            style={{width:'36px', height:'44px', borderRadius:'8px', border:'1px solid var(--line)', background:'var(--bg-soft)', color:'var(--ink)', fontSize:'18px', cursor:'pointer'}}>−</button>
+          <div style={{display:'flex', alignItems:'center', background:'var(--ink)', borderRadius:'8px', padding:'0 14px'}}>
+            <span style={{fontSize:'16px', fontWeight:600, color:'rgba(255,255,255,.5)'}}>$</span>
+            <input type="number" step="0.01" min={0} value={rate}
+              onChange={e => setRate(Math.max(0, Number(e.target.value) || 0))}
+              style={{background:'transparent', color:'#fff', border:'none', fontSize:'22px', fontWeight:700, fontFamily:'var(--mono)', width:'100px', outline:'none', padding:'10px 6px'}}/>
+          </div>
+          <button onClick={() => step(0.1)}
+            style={{width:'36px', height:'44px', borderRadius:'8px', border:'1px solid var(--line)', background:'var(--bg-soft)', color:'var(--ink)', fontSize:'18px', cursor:'pointer'}}>+</button>
+          <span style={{fontSize:'13px', color:'var(--ink-dim)'}}>/1,000 pages</span>
+
+          <div style={{marginLeft:'24px'}}>
+            <div style={{fontSize:'32px', fontWeight:800, color:'var(--brand)', letterSpacing:'-0.02em', lineHeight:1.1}}>
+              ₩{fmt(Math.round(krwRevenue))}
+            </div>
+            <div style={{fontSize:'12px', color:'var(--ink-dim)', marginTop:'2px'}}>
+              {baseLabel} · {fmt(baseCount)}건 × ₩{perReqKrw.toFixed(2)}
+            </div>
+          </div>
+        </div>
+
+        {/* 결과 4타일 (어두운 배경) */}
+        <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'8px'}}>
+          <ResultTile label="예상 수익 (KRW)" val={`₩${fmt(Math.round(krwRevenue))}`} color="#1aa377"/>
+          <ResultTile label="건당 단가"        val={`₩${perReqKrw.toFixed(2)}`}                color="#fff"/>
+          <ResultTile label="예상 수익 (USD)" val={`$${usdRevenue.toFixed(2)}`}                color="#fff"/>
+          <ResultTile label="기준 요청 수"     val={loading ? '—' : fmt(baseCount)}            color="#fff"/>
         </div>
       </div>
 
-      <div className="panel">
-        <div className="panel-head">
-          <h3>단가 입력</h3>
-          <span className="sub">건당 단가(KRW)를 입력하면 예상 수익이 갱신됩니다</span>
-        </div>
-        <div style={{display:'flex', gap:'12px', alignItems:'flex-end', flexWrap:'wrap', marginBottom:'18px'}}>
-          <div style={{flex:1, minWidth:'200px'}}>
-            <label className="lbl">건당 단가 (₩)</label>
-            <input
-              type="number" min={0} step="0.5"
-              value={price}
-              onChange={e => setPrice(Math.max(0, Number(e.target.value) || 0))}
-              className="inp"
-              style={{fontSize:'18px', fontWeight:700}}
-            />
-          </div>
-          <div style={{display:'flex', gap:'8px'}}>
-            {[1, 2, 5, 10, 50, 100].map(p => (
-              <button key={p}
-                className={`purpose-pill${price === p ? ' active' : ''}`}
-                style={price === p ? {background:'var(--brand)'} : {}}
-                onClick={() => setPrice(p)}>
-                ₩{p}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'14px'}}>
-          <div className="kpi">
-            <div className="l">기준 요청 수</div>
-            <div className="v">{loading ? '…' : fmt(baseCount)}</div>
-            <div className="s">{base === 'total' ? '누적 전체' : base === 'billed' ? '과금 대상만' : '월 추정'}</div>
-          </div>
-          <div className="kpi accent">
-            <div className="l">예상 수익</div>
-            <div className="v">₩{fmt(totalRev)}</div>
-            <div className="s">단가 × 기준 요청</div>
-          </div>
-          <div className="kpi">
-            <div className="l">월 환산 (USD ≈)</div>
-            <div className="v">${(monthly * price / 1300).toFixed(2)}</div>
-            <div className="s">1 USD ≈ 1300 KRW</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="panel" style={{background:'var(--pastel-blue)', borderColor:'var(--brand-soft)'}}>
-        <div style={{fontSize:'13px', color:'var(--ink-2)', lineHeight:1.7}}>
-          <strong>안내:</strong> &nbsp; 이 계산은 임시 PREVIEW입니다. 정식 가격 정책은 GuardUs 운영팀과 협의 후 적용됩니다.
-          기준 요청 수는 현재 누적된 access_log 기준이며, 채널별로 단가를 다르게 설정하는 기능은 추후 제공됩니다.
-        </div>
+      <div className="panel" style={{background:'var(--pastel-blue)', borderColor:'var(--brand-soft)', fontSize:'13px', color:'var(--ink-2)', lineHeight:1.7}}>
+        <strong>안내:</strong> &nbsp;
+        이 계산은 임시 PREVIEW입니다. 정식 가격 정책은 GuardUs 운영팀과 협의 후 적용되며,
+        채널별 단가 차등 설정은 추후 제공 예정입니다. 환율은 1 USD ≈ 1,300 KRW.
       </div>
     </>
+  )
+}
+
+function ResultTile({ label, val, color }: { label: string; val: string; color: string }) {
+  return (
+    <div style={{background:'var(--ink)', borderRadius:'10px', padding:'14px 16px'}}>
+      <div style={{fontSize:'9px', fontWeight:700, textTransform:'uppercase', letterSpacing:'.07em', color:'rgba(255,255,255,.4)', marginBottom:'6px'}}>{label}</div>
+      <div style={{fontSize:'18px', fontWeight:700, color, fontFamily:'var(--mono)'}}>{val}</div>
+    </div>
   )
 }
