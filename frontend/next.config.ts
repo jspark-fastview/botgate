@@ -11,7 +11,11 @@ const nextConfig: NextConfig = {
         { source: '/portal/:path*',   destination: '/portal-app.html' },
       ],
       afterFiles: [
-        { source: '/api/:path*', destination: `${apiUrl}/:path*` },
+        { source: '/api/:path*',   destination: `${apiUrl}/:path*` },
+        // SPA(portal-app.html)가 ${origin}/me/* 형태로 직접 호출 → admin-api 로 프록시
+        { source: '/me/:path*',    destination: `${apiUrl}/me/:path*` },
+        { source: '/auth/:path*',  destination: `${apiUrl}/auth/:path*` },
+        { source: '/admin/:path*', destination: `${apiUrl}/admin/:path*` },
       ],
       fallback: [],
     }
