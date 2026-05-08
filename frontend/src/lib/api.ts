@@ -81,12 +81,19 @@ export interface ChannelStat {
   domain: string
   total: number
   verified: number
+  blocked: number
   bot_types: number
+}
+
+export interface PurposeStat {
+  bot_purpose: string
+  total: number
 }
 
 export interface DashboardResponse {
   channels: Channel[]
   stats: ChannelStat[]
+  purposes: PurposeStat[]
 }
 
 export function dashboard() {

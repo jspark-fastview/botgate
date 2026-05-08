@@ -1,10 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { myChannels, createChannel, type Channel } from '@/lib/api'
+import { myChannels, dashboard, createChannel, type Channel, type ChannelStat } from '@/lib/api'
+import { fmt } from '@/lib/api'
 
 export default function ChannelsPage() {
   const [channels, setChannels]     = useState<Channel[]>([])
+  const [statsMap, setStatsMap]     = useState<Record<string, ChannelStat>>({})
   const [loading, setLoading]       = useState(true)
   const [showForm, setShowForm]     = useState(false)
   const [saving, setSaving]         = useState(false)
@@ -15,7 +17,9 @@ export default function ChannelsPage() {
 
   async function load() {
     try {
-      setChannels(await myChannels())
+      const [chs, dash] = await Promise.all([myChannels(), dashboard()])
+      setChannels(chs)
+      setStatsMap(Object.fromEntries(dash.stats.map(s => [s.domain, s])))
     } catch { /* ignore */ }
     finally { setLoading(false) }
   }
@@ -132,28 +136,33 @@ export default function ChannelsPage() {
                 <th>업스트림 URL</th>
                 <th style={{textAlign:'right'}}>총 요청</th>
                 <th style={{textAlign:'right'}}>검증</th>
+                <th style={{textAlign:'right'}}>차단</th>
                 <th>상태</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} style={{textAlign:'center', color:'var(--ink-mute)', padding:'24px'}}>로딩중…</td></tr>
+                <tr><td colSpan={7} style={{textAlign:'center', color:'var(--ink-mute)', padding:'24px'}}>로딩중…</td></tr>
               ) : channels.length === 0 ? (
-                <tr><td colSpan={6} style={{textAlign:'center', color:'var(--ink-mute)', padding:'32px'}}>등록된 채널이 없어요.</td></tr>
-              ) : channels.map(c => (
-                <tr key={c.id}>
-                  <td style={{fontWeight:600}}>{c.name}</td>
-                  <td className="mono">{c.domain}</td>
-                  <td className="mono" style={{fontSize:'12px', color:'var(--ink-dim)'}}>{c.upstream}</td>
-                  <td style={{textAlign:'right', fontWeight:700}}>—</td>
-                  <td style={{textAlign:'right', color:'var(--ok)'}}>—</td>
-                  <td>
-                    <span className={`sdot ${c.active ? 'sdot-on' : 'sdot-off'}`}>
-                      {c.active ? '활성' : '비활성'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                <tr><td colSpan={7} style={{textAlign:'center', color:'var(--ink-mute)', padding:'32px'}}>등록된 채널이 없어요.</td></tr>
+              ) : channels.map(c => {
+                const s = statsMap[c.domain]
+                return (
+                  <tr key={c.id}>
+                    <td style={{fontWeight:600}}>{c.name}</td>
+                    <td className="mono">{c.domain}</td>
+                    <td className="mono" style={{fontSize:'12px', color:'var(--ink-dim)'}}>{c.upstream}</td>
+                    <td style={{textAlign:'right', fontWeight:700}}>{s ? fmt(s.total) : '—'}</td>
+                    <td style={{textAlign:'right', color:'var(--ok)'}}>{s ? fmt(s.verified) : '—'}</td>
+                    <td style={{textAlign:'right', color:'#ef4444'}}>{s ? fmt(s.blocked) : '—'}</td>
+                    <td>
+                      <span className={`sdot ${c.active ? 'sdot-on' : 'sdot-off'}`}>
+                        {c.active ? '활성' : '비활성'}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

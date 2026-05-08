@@ -31,18 +31,27 @@ public class UserController {
         if (user == null) return Map.of("channels", List.of(), "stats", List.of());
 
         List<Map<String, Object>> channels = db.queryForList(
-                "SELECT id, name, domain FROM channels WHERE owner_id = ?", user.get("id"));
-        if (channels.isEmpty()) return Map.of("channels", List.of(), "stats", List.of());
+                "SELECT id, name, domain, upstream, active, created_at" +
+                " FROM channels WHERE owner_id = ? ORDER BY created_at", user.get("id"));
+        if (channels.isEmpty()) return Map.of("channels", List.of(), "stats", List.of(), "purposes", List.of());
 
         String ph = String.join(",", channels.stream().map(c2 -> "?").toList());
         Object[] domains = channels.stream().map(c -> c.get("domain")).toArray();
+
         List<Map<String, Object>> stats = db.queryForList(
                 "SELECT domain, COUNT(*) AS total," +
                 " SUM(CASE WHEN verified=1 THEN 1 ELSE 0 END) AS verified," +
+                " SUM(CASE WHEN blocked=1 THEN 1 ELSE 0 END) AS blocked," +
                 " COUNT(DISTINCT bot_ua) AS bot_types" +
                 " FROM access_logs WHERE domain IN (" + ph + ") GROUP BY domain", domains);
 
-        return Map.of("channels", channels, "stats", stats);
+        List<Map<String, Object>> purposes = db.queryForList(
+                "SELECT bot_purpose, COUNT(*) AS total" +
+                " FROM access_logs WHERE domain IN (" + ph + ")" +
+                " AND bot_purpose IS NOT NULL AND bot_purpose != ''" +
+                " GROUP BY bot_purpose ORDER BY total DESC", domains);
+
+        return Map.of("channels", channels, "stats", stats, "purposes", purposes);
     }
 
     /** GET /me/channels */
