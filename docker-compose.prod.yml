@@ -3,6 +3,7 @@ services:
     build: ./openresty
     ports:
       - "80:80"          # 봇 트래픽 (표준 HTTP)
+    # 9145 (/metrics) 는 호스트 노출 X — Prometheus 가 botgate_default 네트워크로 직접 스크레이프
     environment:
       - INTERNAL_API_HOST=internal-api   # guardus-new 스택 (botgate_default 네트워크 공유)
       - INTERNAL_API_PORT=3001

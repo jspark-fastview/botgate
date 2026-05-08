@@ -1,0 +1,160 @@
+{
+  "uid": "openresty",
+  "title": "GuardUs · OpenResty (게이트웨이)",
+  "tags": ["guardus", "openresty", "edge"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "host",
+        "label": "도메인",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(nginx_http_requests_total, host)",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "title": "총 RPS", "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(nginx_http_requests_total{host=~\"$host\"}[1m]))", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 2, "title": "에러율 (5xx)", "type": "stat",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(nginx_http_requests_total{status=~\"5..\",host=~\"$host\"}[5m])) / clamp_min(sum(rate(nginx_http_requests_total{host=~\"$host\"}[5m])), 1)", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": 0 },
+            { "color": "orange", "value": 0.01 },
+            { "color": "red", "value": 0.05 }
+          ]}
+        }
+      }
+    },
+    {
+      "id": 3, "title": "p95 응답시간", "type": "stat",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(nginx_http_request_duration_seconds_bucket{host=~\"$host\"}[5m])) by (le))", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 4, "title": "검증된 봇 비율", "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(nginx_http_requests_total{bot_verified!~\"-|\"}[5m])) / clamp_min(sum(rate(nginx_http_requests_total[5m])), 1)", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit" } }
+    },
+    {
+      "id": 5, "title": "활성 연결", "type": "stat",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(nginx_http_connections)", "refId": "A" }
+      ]
+    },
+    {
+      "id": 6, "title": "전송 대역폭 (B/s)", "type": "stat",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(nginx_http_response_size_bytes{host=~\"$host\"}[1m]))", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps" } }
+    },
+
+    {
+      "id": 10, "title": "RPS by status", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum by (status) (rate(nginx_http_requests_total{host=~\"$host\"}[1m]))", "legendFormat": "{{status}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" },
+        "overrides": [
+          { "matcher": { "id": "byRegexp", "options": "5.." }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]},
+          { "matcher": { "id": "byRegexp", "options": "4.." }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }]},
+          { "matcher": { "id": "byRegexp", "options": "2.." }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }]}
+        ]
+      }
+    },
+    {
+      "id": 11, "title": "응답시간 p50 / p95 / p99", "type": "timeseries",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(nginx_http_request_duration_seconds_bucket{host=~\"$host\"}[5m])) by (le))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(nginx_http_request_duration_seconds_bucket{host=~\"$host\"}[5m])) by (le))", "legendFormat": "p95", "refId": "B" },
+        { "expr": "histogram_quantile(0.99, sum(rate(nginx_http_request_duration_seconds_bucket{host=~\"$host\"}[5m])) by (le))", "legendFormat": "p99", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+
+    {
+      "id": 20, "title": "도메인별 RPS (TOP 10)", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "topk(10, sum by (host) (rate(nginx_http_requests_total[1m])))", "legendFormat": "{{host}}", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 21, "title": "봇 검증 분포 (verified policy)", "type": "piechart",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum by (bot_verified) (rate(nginx_http_requests_total{host=~\"$host\"}[5m]))", "legendFormat": "{{bot_verified}}", "refId": "A" }
+      ]
+    },
+
+    {
+      "id": 30, "title": "User-Agent TOP 20 (실시간)", "type": "table",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 9 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "expr": "topk(20, sum by (ua) (count_over_time({container=\"botgate-openresty-1\"} | json | host=~\"$host\" [$__range])))", "refId": "A", "instant": true }
+      ]
+    },
+    {
+      "id": 31, "title": "URI TOP 20", "type": "table",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 9 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "expr": "topk(20, sum by (uri) (count_over_time({container=\"botgate-openresty-1\"} | json | host=~\"$host\" [$__range])))", "refId": "A", "instant": true }
+      ]
+    },
+
+    {
+      "id": 40, "title": "에러 / 차단 로그 (4xx + 5xx)", "type": "logs",
+      "gridPos": { "x": 0, "y": 29, "w": 24, "h": 10 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "expr": "{container=\"botgate-openresty-1\", status=~\"4..|5..\"} | json", "refId": "A" }
+      ],
+      "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending" }
+    }
+  ]
+}

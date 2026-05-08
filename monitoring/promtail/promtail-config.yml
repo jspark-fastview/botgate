@@ -1,4 +1,5 @@
-# Promtail — Docker 컨테이너 stdout 을 모두 Loki 로 푸시
+# Promtail — Docker stdout → Loki
+# OpenResty JSON 로그는 추가 파이프라인으로 필드 추출
 server:
   http_listen_port: 9080
   grpc_listen_port: 0
@@ -24,3 +25,27 @@ scrape_configs:
         target_label: 'service'
       - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
         target_label: 'project'
+    pipeline_stages:
+      # OpenResty JSON 액세스 로그만 필드 파싱
+      - match:
+          selector: '{container="botgate-openresty-1"}'
+          stages:
+            - json:
+                expressions:
+                  status:        status
+                  host:          host
+                  ua:            ua
+                  uri:           uri
+                  method:        method
+                  bytes:         bytes
+                  req_time:      req_time
+                  upstream_time: upstream_time
+                  bot_verified:  x_bot_verified
+                  ip:            ip
+            # 정수 status 를 라벨로 (저카디널리티)
+            - labels:
+                status:
+                method:
+                host:
+                bot_verified:
+            # 메시지 timestamp 는 ts 사용 시 충돌 가능 — 그대로 둠
