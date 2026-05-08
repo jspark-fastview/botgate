@@ -58,7 +58,8 @@ local function fetch_channels_from_api()
 
     local body, rerr = sock:receive("*a")
     sock:close()
-    ngx.log(ngx.WARN, "[channels] body_len=", #(body or ""), " rerr=", tostring(rerr))
+    local prefix = (body or ""):sub(1, 80)
+    ngx.log(ngx.WARN, "[channels] body_len=", #(body or ""), " rerr=", tostring(rerr), " prefix=", prefix)
     return body
 end
 
