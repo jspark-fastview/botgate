@@ -83,7 +83,7 @@ services:
   grafana:
     image: grafana/grafana:11.3.1
     ports:
-      - "127.0.0.1:3000:3000"   # localhost 만 노출 — SSH 터널로 접근
+      - "3000:3000"   # ALB → grafana.viewus.co 로 공개 (Grafana 자체 admin 인증으로 보호)
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - grafana-data:/var/lib/grafana
@@ -92,6 +92,8 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme}
       - GF_AUTH_ANONYMOUS_ENABLED=false
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=https://grafana.viewus.co
+      - GF_SERVER_DOMAIN=grafana.viewus.co
       - GF_INSTALL_PLUGINS=
     networks: [monitoring]
     restart: unless-stopped
