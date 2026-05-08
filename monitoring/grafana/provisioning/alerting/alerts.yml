@@ -1,0 +1,177 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: launch-readiness
+    folder: GuardUs
+    interval: 1m
+    rules:
+      # ── 게이트웨이 핵심 ──
+      - uid: alert-5xx
+        title: "OpenResty 5xx 율 > 1%"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              expr: 'sum(rate(nginx_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(nginx_http_requests_total[5m])), 1)'
+              refId: A
+              instant: false
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { params: [0.01], type: gt }
+              refId: C
+        for: 5m
+        annotations:
+          summary: "5xx 비율이 1% 초과 5분 지속"
+          description: "OpenResty 응답 중 5xx 가 비정상적으로 많음. backend 또는 OpenResty 자체 이상 의심."
+        labels: { severity: critical }
+        execErrState: OK
+        noDataState: OK
+
+      - uid: alert-p95
+        title: "OpenResty p95 latency > 1s"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              expr: 'histogram_quantile(0.95, sum(rate(nginx_http_request_duration_seconds_bucket[5m])) by (le))'
+              refId: A
+              instant: false
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { params: [1.0], type: gt }
+              refId: C
+        for: 5m
+        annotations:
+          summary: "p95 응답시간 1초 초과"
+        labels: { severity: warning }
+        execErrState: OK
+        noDataState: OK
+
+      # ── 봇 검증 — 스푸핑 의심 ──
+      - uid: alert-spoofing
+        title: "검증 실패율 급증 (스푸핑 의심)"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              expr: 'sum(rate(nginx_http_requests_total{bot_verified="-"}[5m])) / clamp_min(sum(rate(nginx_http_requests_total[5m])), 1)'
+              refId: A
+              instant: false
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 600, to: 0 }
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { params: [0.5], type: gt }
+              refId: C
+        for: 5m
+        annotations:
+          summary: "전체 트래픽 50%가 verified=false — 스푸핑 봇 폭증 의심"
+          description: "평소 대비 검증 실패 비율이 비정상적으로 높음. 채널 owner_id 누락, IP verifier 다운, 또는 실제 스푸핑 공격일 수 있음."
+        labels: { severity: critical }
+        execErrState: OK
+        noDataState: OK
+
+      # ── 자원 ──
+      - uid: alert-cpu
+        title: "EC2 CPU > 80%"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              expr: '1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))'
+              refId: A
+              instant: false
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { params: [0.8], type: gt }
+              refId: C
+        for: 5m
+        annotations:
+          summary: "EC2 CPU 80% 초과 5분 지속"
+        labels: { severity: warning }
+        execErrState: OK
+        noDataState: OK
+
+      - uid: alert-hikari
+        title: "HikariCP pending > 0 (DB 풀 포화)"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: { from: 180, to: 0 }
+            model:
+              expr: 'max(hikaricp_connections_pending)'
+              refId: A
+              instant: false
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 180, to: 0 }
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { params: [0], type: gt }
+              refId: C
+        for: 3m
+        annotations:
+          summary: "DB 커넥션 대기 발생"
+          description: "HikariCP pending > 0 — 동시 요청이 DB pool 한계 초과. SQLite write 락 또는 트래픽 폭증."
+        labels: { severity: warning }
+        execErrState: OK
+        noDataState: OK
+
+      - uid: alert-no-channel
+        title: "no_channel 응답 발생"
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: loki
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              expr: 'count_over_time({container="botgate-openresty-1"} |= "no_channel" [5m])'
+              refId: A
+              datasource: { type: loki, uid: loki }
+              queryType: instant
+          - refId: C
+            datasourceUid: __expr__
+            relativeTimeRange: { from: 300, to: 0 }
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { params: [10], type: gt }
+              refId: C
+        for: 1m
+        annotations:
+          summary: "OpenResty no_channel 응답 5분간 10건 초과"
+          description: "채널 lookup 실패. admin-api 통신 끊김 또는 채널 캐시 비어있을 가능성."
+        labels: { severity: critical }
+        execErrState: OK
+        noDataState: OK
