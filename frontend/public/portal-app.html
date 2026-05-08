@@ -1269,7 +1269,15 @@
       ...opts,
       headers: { ...opts.headers, ...(key ? { 'Authorization': `Bearer ${key}` } : {}) },
     }).then(r => {
-      if (r.status === 401) { showLogin(); throw new Error('unauthorized') }
+      if (r.status === 401) {
+        // /me/* 또는 /auth/me 가 401이면 진짜 세션 만료 → 로그인 페이지로
+        // 그 외 (/admin/* 등 운영자 전용)는 그냥 throw (호출자가 catch)
+        const path = String(url).replace(API, '')
+        if (path.startsWith('/me/') || path.startsWith('/auth/me')) {
+          showLogin()
+        }
+        throw new Error('unauthorized')
+      }
       return r
     })
   }
