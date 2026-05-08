@@ -24,7 +24,7 @@ local function fetch_channels_from_api()
     end
 
     local req_lines = {
-        "GET /admin/channels HTTP/1.1",
+        "GET /admin/channels HTTP/1.0",
         "Host: " .. host .. ":" .. port,
         "Connection: close",
     }

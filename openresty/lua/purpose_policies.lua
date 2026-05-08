@@ -22,7 +22,7 @@ local function fetch_from_api()
     end
 
     local req_lines = {
-        "GET /admin/purpose-policies HTTP/1.1",
+        "GET /admin/purpose-policies HTTP/1.0",
         "Host: " .. host .. ":" .. port,
         "Connection: close",
     }

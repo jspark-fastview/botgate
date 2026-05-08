@@ -24,7 +24,7 @@ local function fetch_rules_from_api()
     end
 
     local req_lines = {
-        "GET /admin/path-rules HTTP/1.1",
+        "GET /admin/path-rules HTTP/1.0",
         "Host: " .. host .. ":" .. port,
         "Connection: close",
     }
