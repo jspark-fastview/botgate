@@ -1,16 +1,20 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { myChannels, dashboard, createChannel, type Channel, type ChannelStat } from '@/lib/api'
-import { fmt } from '@/lib/api'
+import {
+  myChannels, dashboard, createChannel, updateChannel, deleteChannel, checkDns,
+  fmt,
+  type Channel, type ChannelStat, type DnsCheckResult,
+} from '@/lib/api'
 
 export default function ChannelsPage() {
-  const [channels, setChannels]     = useState<Channel[]>([])
-  const [statsMap, setStatsMap]     = useState<Record<string, ChannelStat>>({})
-  const [loading, setLoading]       = useState(true)
-  const [showForm, setShowForm]     = useState(false)
-  const [saving, setSaving]         = useState(false)
-  const [formErr, setFormErr]       = useState('')
+  const [channels, setChannels] = useState<Channel[]>([])
+  const [statsMap, setStatsMap] = useState<Record<string, ChannelStat>>({})
+  const [dnsMap,   setDnsMap]   = useState<Record<string, DnsCheckResult>>({})
+  const [loading,  setLoading]  = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [saving,   setSaving]   = useState(false)
+  const [formErr,  setFormErr]  = useState('')
   const nameRef     = useRef<HTMLInputElement>(null)
   const domainRef   = useRef<HTMLInputElement>(null)
   const upstreamRef = useRef<HTMLInputElement>(null)
@@ -60,105 +64,115 @@ export default function ChannelsPage() {
     }
   }
 
+  async function toggleActive(c: Channel) {
+    try {
+      await updateChannel(c.id, { active: !c.active })
+      setChannels(channels.map(ch => ch.id === c.id ? { ...ch, active: ch.active ? 0 : 1 } : ch))
+    } catch (err: unknown) { alert((err as Error).message || '변경 실패') }
+  }
+
+  async function handleDelete(c: Channel) {
+    if (!confirm(`'${c.name}' 채널을 삭제할까요?`)) return
+    try {
+      await deleteChannel(c.id)
+      setChannels(channels.filter(ch => ch.id !== c.id))
+    } catch (err: unknown) { alert((err as Error).message || '삭제 실패') }
+  }
+
+  async function handleDns(c: Channel) {
+    setDnsMap(m => ({ ...m, [c.id]: { domain: c.domain, status: 'checking' } }))
+    try {
+      const res = await checkDns(c.id)
+      setDnsMap(m => ({ ...m, [c.id]: res }))
+    } catch (err: unknown) {
+      setDnsMap(m => ({ ...m, [c.id]: { domain: c.domain, status: 'error', message: (err as Error).message } }))
+    }
+  }
+
+  function dnsBadge(c: Channel) {
+    const r = dnsMap[c.id]
+    if (!r) return <button className="csv-btn" onClick={() => handleDns(c)}>DNS 확인</button>
+    if (r.status === 'checking') return <span className="muted" style={{fontSize:'11px'}}>확인중…</span>
+    if (r.status === 'ok')       return <span className="badge ok">정상</span>
+    return <span className="badge bad" title={r.message ?? r.status}>{r.status}</span>
+  }
+
   return (
     <>
-      <style>{`
-        .panel { background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 24px; margin-bottom: 16px; }
-        .panel-0 { padding: 0; overflow: hidden; }
-        .panel-head { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-        .panel-head h3 { font-size: 16px; font-weight: 700; margin: 0; color: var(--ink); }
-        .tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-        .tbl th {
-          padding: 10px 14px; text-align: left;
-          font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-          color: var(--ink-mute); background: var(--bg-soft); border-bottom: 1px solid var(--line);
-        }
-        .tbl td { padding: 12px 14px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: middle; }
-        .tbl tr:last-child td { border-bottom: none; }
-        .tbl tr:hover td { background: var(--bg-soft); }
-        .mono { font-family: var(--mono); font-size: 12px; color: var(--ink-dim); }
-        .sdot { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
-        .sdot::before { content:''; display:inline-block; width:7px; height:7px; border-radius:50%; }
-        .sdot-on::before  { background: var(--ok); }
-        .sdot-off::before { background: var(--ink-mute); }
-        .add-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
-        .add-field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
-        .add-field label { font-size: 12px; color: var(--ink-dim); font-weight: 600; }
-        .add-field input {
-          padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px;
-          font-size: 13px; font-family: var(--sans); outline: none;
-        }
-        .add-field input:focus { border-color: var(--brand); }
-        .form-err { font-size: 12.5px; color: var(--bad); width: 100%; margin-top: -4px; }
-      `}</style>
-
-      <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'16px', marginBottom:'28px'}}>
+      <div className="page-head">
         <div>
-          <h1 style={{fontSize:'28px', fontWeight:800, letterSpacing:'-0.02em', margin:0, color:'var(--ink)'}}>내 채널</h1>
-          <div style={{fontSize:'14px', color:'var(--ink-dim)', marginTop:'4px'}}>AI 봇 트래픽을 받을 내 사이트를 등록하세요.</div>
+          <h1>내 채널</h1>
+          <div className="greeting">AI 봇 트래픽을 받을 사이트를 등록하세요.</div>
         </div>
-        <button className="btn" style={{flexShrink:0}} onClick={openForm}>+ 채널 추가</button>
+        <div className="right">
+          <button className="btn" onClick={openForm}>+ 채널 추가</button>
+        </div>
       </div>
 
       {showForm && (
         <div className="panel" style={{marginBottom:'16px'}}>
-          <div className="add-form">
-            <div className="add-field" style={{minWidth:'140px'}}>
-              <label>채널 이름</label>
-              <input ref={nameRef} type="text" placeholder="내 뉴스 사이트" />
+          <div style={{display:'flex', gap:'12px', alignItems:'flex-end', flexWrap:'wrap'}}>
+            <div style={{flex:1, minWidth:'140px'}}>
+              <label className="lbl">채널 이름</label>
+              <input ref={nameRef} className="inp" type="text" placeholder="내 뉴스 사이트" />
             </div>
-            <div className="add-field" style={{minWidth:'180px'}}>
-              <label>도메인</label>
-              <input ref={domainRef} type="text" placeholder="news.example.com" style={{fontFamily:'var(--mono)'}} />
+            <div style={{flex:1, minWidth:'180px'}}>
+              <label className="lbl">도메인</label>
+              <input ref={domainRef} className="inp mono" type="text" placeholder="news.example.com" />
             </div>
-            <div className="add-field" style={{minWidth:'200px'}}>
-              <label>업스트림 URL</label>
-              <input ref={upstreamRef} type="text" placeholder="http://origin.example.com" style={{fontFamily:'var(--mono)'}} />
+            <div style={{flex:1, minWidth:'200px'}}>
+              <label className="lbl">업스트림 URL</label>
+              <input ref={upstreamRef} className="inp mono" type="text" placeholder="https://origin.example.com" />
             </div>
             <div style={{display:'flex', gap:'8px'}}>
-              <button className="btn" onClick={handleSave} disabled={saving}>
-                {saving ? '저장중…' : '저장'}
-              </button>
-              <button className="btn" style={{background:'#fff', color:'var(--ink-2)'}} onClick={closeForm}>취소</button>
+              <button className="btn" onClick={handleSave} disabled={saving}>{saving ? '저장중…' : '저장'}</button>
+              <button className="btn ghost" onClick={closeForm}>취소</button>
             </div>
-            {formErr && <div className="form-err">{formErr}</div>}
+            {formErr && <div style={{fontSize:'12.5px', color:'var(--bad)', width:'100%', marginTop:'-4px'}}>{formErr}</div>}
           </div>
         </div>
       )}
 
-      <div className="panel panel-0">
+      <div className="panel flush">
         <div style={{overflowX:'auto'}}>
           <table className="tbl">
             <thead>
               <tr>
                 <th>채널 이름</th>
                 <th>도메인</th>
-                <th>업스트림 URL</th>
-                <th style={{textAlign:'right'}}>총 요청</th>
+                <th>업스트림</th>
+                <th style={{textAlign:'right'}}>요청</th>
                 <th style={{textAlign:'right'}}>검증</th>
                 <th style={{textAlign:'right'}}>차단</th>
+                <th>DNS</th>
                 <th>상태</th>
+                <th style={{textAlign:'right'}}>관리</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{textAlign:'center', color:'var(--ink-mute)', padding:'24px'}}>로딩중…</td></tr>
+                <tr><td colSpan={9} style={{textAlign:'center', color:'var(--ink-mute)', padding:'24px'}}>로딩중…</td></tr>
               ) : channels.length === 0 ? (
-                <tr><td colSpan={7} style={{textAlign:'center', color:'var(--ink-mute)', padding:'32px'}}>등록된 채널이 없어요.</td></tr>
+                <tr><td colSpan={9} style={{textAlign:'center', color:'var(--ink-mute)', padding:'40px'}}>등록된 채널이 없어요.</td></tr>
               ) : channels.map(c => {
                 const s = statsMap[c.domain]
                 return (
                   <tr key={c.id}>
                     <td style={{fontWeight:600}}>{c.name}</td>
                     <td className="mono">{c.domain}</td>
-                    <td className="mono" style={{fontSize:'12px', color:'var(--ink-dim)'}}>{c.upstream}</td>
-                    <td style={{textAlign:'right', fontWeight:700}}>{s ? fmt(s.total) : '—'}</td>
-                    <td style={{textAlign:'right', color:'var(--ok)'}}>{s ? fmt(s.verified) : '—'}</td>
-                    <td style={{textAlign:'right', color:'#ef4444'}}>{s ? fmt(s.blocked) : '—'}</td>
+                    <td className="mono" style={{fontSize:'11.5px', color:'var(--ink-dim)', maxWidth:'200px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={c.upstream}>{c.upstream}</td>
+                    <td style={{textAlign:'right', fontWeight:700}}>{s ? fmt(Number(s.total)) : '—'}</td>
+                    <td style={{textAlign:'right', color:'var(--ok)'}}>{s ? fmt(Number(s.verified)) : '—'}</td>
+                    <td style={{textAlign:'right', color:'var(--bad)'}}>{s ? fmt(Number(s.blocked)) : '—'}</td>
+                    <td>{dnsBadge(c)}</td>
                     <td>
-                      <span className={`sdot ${c.active ? 'sdot-on' : 'sdot-off'}`}>
+                      <button onClick={() => toggleActive(c)} className={`sdot ${c.active ? 'sdot-on' : 'sdot-off'}`}
+                        style={{background:'none', border:'none', cursor:'pointer', padding:0, fontFamily:'inherit'}}>
                         {c.active ? '활성' : '비활성'}
-                      </span>
+                      </button>
+                    </td>
+                    <td style={{textAlign:'right'}}>
+                      <button className="btn ghost sm" onClick={() => handleDelete(c)} style={{color:'var(--bad)', borderColor:'var(--line)'}}>삭제</button>
                     </td>
                   </tr>
                 )

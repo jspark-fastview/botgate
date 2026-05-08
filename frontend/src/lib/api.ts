@@ -108,6 +108,49 @@ export function createChannel(name: string, domain: string, upstream: string) {
   return post<Channel>('/me/channels', { name, domain, upstream })
 }
 
+async function patch<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'PATCH',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as Record<string, unknown>
+    throw Object.assign(new Error((err.error as string) || res.statusText), { status: res.status })
+  }
+  return res.json() as Promise<T>
+}
+
+async function del<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { method: 'DELETE', headers: authHeaders() })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as Record<string, unknown>
+    throw Object.assign(new Error((err.error as string) || res.statusText), { status: res.status })
+  }
+  return res.json() as Promise<T>
+}
+
+export function updateChannel(id: string, body: { active?: boolean; name?: string; upstream?: string }) {
+  return patch<{ ok: boolean }>(`/me/channels/${id}`, body)
+}
+
+export function deleteChannel(id: string) {
+  return del<{ ok: boolean }>(`/me/channels/${id}`)
+}
+
+export interface DnsCheckResult {
+  id?:           string
+  domain:        string
+  status:        string  // ok / wrong_target / no_record / etc
+  message?:      string
+  resolved?:     string
+  expected?:     string
+}
+
+export function checkDns(channelId: string) {
+  return get<DnsCheckResult>(`/me/channels/${channelId}/dns-check`)
+}
+
 export interface Token {
   id: string
   token: string
@@ -120,6 +163,27 @@ export interface Token {
 
 export function myTokens() {
   return get<Token[]>('/me/tokens')
+}
+
+export function issueToken(owner: string, plan: string = 'default') {
+  return post<Token>('/me/tokens', { owner, plan })
+}
+
+export function revokeToken(id: string) {
+  return del<{ ok: boolean }>(`/me/tokens/${id}`)
+}
+
+export interface BotCatalogEntry {
+  name:         string
+  vendor:       string
+  purpose:      string
+  patterns:     string
+  is_malicious: number
+  enabled:      number
+}
+
+export function botCatalog() {
+  return get<BotCatalogEntry[]>('/me/bot-catalog')
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────

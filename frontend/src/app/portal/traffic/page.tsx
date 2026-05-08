@@ -23,6 +23,23 @@ const PURPOSE_LABEL: Record<string, string> = {
   search_engine: '검색엔진', seo: 'SEO', social: '소셜', generic: '기타',
 }
 
+function exportCsv(rows: LogRow[], category: string) {
+  if (rows.length === 0) return
+  const head = ['ts','category','domain','bot_name','bot_ua','path','ip','verified','billed','bot_purpose']
+  const esc = (s: unknown) => `"${String(s ?? '').replace(/"/g, '""')}"`
+  const lines = [head.join(',')]
+  rows.forEach(r => {
+    lines.push([r.ts, r.category, r.domain, r.bot_name, r.bot_ua, r.path, r.ip, r.verified, r.billed, r.bot_purpose].map(esc).join(','))
+  })
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+  const url  = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `traffic-${category}-${new Date().toISOString().slice(0,10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function TrafficPage() {
   const [category, setCategory] = useState('bot')
   const [logs, setLogs]         = useState<LogRow[]>([])
@@ -82,6 +99,7 @@ export default function TrafficPage() {
           </button>
         ))}
         <button onClick={load} style={{marginLeft:'8px'}}>↻ 새로고침</button>
+        <button onClick={() => exportCsv(logs, category)} disabled={logs.length === 0}>⬇ CSV</button>
         <label className="auto">
           <input type="checkbox" checked={autoRefresh} onChange={e => setAuto(e.target.checked)} />
           5초 자동 새로고침

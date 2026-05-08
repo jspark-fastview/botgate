@@ -1,48 +1,98 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { myTokens, type Token } from '@/lib/api'
+import { useEffect, useRef, useState } from 'react'
+import { myTokens, issueToken, revokeToken, type Token } from '@/lib/api'
 
 export default function TokensPage() {
-  const [tokens, setTokens] = useState<Token[]>([])
+  const [tokens, setTokens]   = useState<Token[]>([])
   const [loading, setLoading] = useState(true)
+  const [showForm, setShow]   = useState(false)
+  const [saving, setSaving]   = useState(false)
+  const [issued, setIssued]   = useState<Token | null>(null)
+  const ownerRef = useRef<HTMLInputElement>(null)
+  const planRef  = useRef<HTMLSelectElement>(null)
 
-  useEffect(() => {
-    myTokens()
-      .then(setTokens)
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
+  async function load() {
+    try { setTokens(await myTokens()) }
+    catch { /* */ }
+    finally { setLoading(false) }
+  }
+  useEffect(() => { load() }, [])
+
+  async function handleIssue() {
+    const owner = ownerRef.current?.value.trim() || ''
+    const plan  = planRef.current?.value || 'default'
+    if (!owner) { alert('소유자(봇 회사명)을 입력하세요.'); return }
+    setSaving(true)
+    try {
+      const t = await issueToken(owner, plan)
+      setIssued(t)
+      setShow(false)
+      if (ownerRef.current) ownerRef.current.value = ''
+      load()
+    } catch (err: unknown) { alert((err as Error).message || '발급 실패') }
+    finally { setSaving(false) }
+  }
+
+  async function handleRevoke(t: Token) {
+    if (!confirm(`'${t.owner}' 토큰을 폐기할까요?`)) return
+    try {
+      await revokeToken(t.id)
+      setTokens(tokens.filter(x => x.id !== t.id))
+    } catch (err: unknown) { alert((err as Error).message || '폐기 실패') }
+  }
+
+  function copyToken(t: string) {
+    navigator.clipboard.writeText(t).then(() => alert('복사됨')).catch(() => {})
+  }
 
   return (
     <>
-      <style>{`
-        .panel-0 { background: #fff; border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 0; overflow: hidden; }
-        .tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-        .tbl th {
-          padding: 10px 14px; text-align: left;
-          font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-          color: var(--ink-mute); background: var(--bg-soft); border-bottom: 1px solid var(--line);
-        }
-        .tbl td { padding: 12px 14px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: middle; }
-        .tbl tr:last-child td { border-bottom: none; }
-        .tbl tr:hover td { background: var(--bg-soft); }
-        .mono { font-family: var(--mono); font-size: 12px; color: var(--ink-dim); }
-        .sdot { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
-        .sdot::before { content:''; display:inline-block; width:7px; height:7px; border-radius:50%; }
-        .sdot-on::before  { background: var(--ok); }
-        .sdot-off::before { background: var(--ink-mute); }
-        .badge { font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; }
-        .badge-free { background: var(--pastel-mint); color: var(--ok); }
-        .badge-paid { background: var(--brand-soft); color: var(--brand); }
-      `}</style>
-
-      <div style={{marginBottom:'28px'}}>
-        <h1 style={{fontSize:'28px', fontWeight:800, letterSpacing:'-0.02em', margin:0, color:'var(--ink)'}}>내 토큰</h1>
-        <div style={{fontSize:'14px', color:'var(--ink-dim)', marginTop:'4px'}}>내 계정에 연결된 API 토큰입니다.</div>
+      <div className="page-head">
+        <div>
+          <h1>봇 토큰</h1>
+          <div className="greeting">유료 콘텐츠 접근용 API 토큰을 발급/관리하세요.</div>
+        </div>
+        <div className="right">
+          <button className="btn" onClick={() => setShow(!showForm)}>+ 토큰 발급</button>
+        </div>
       </div>
 
-      <div className="panel-0">
+      {issued && (
+        <div className="panel" style={{background:'var(--brand-soft)', borderColor:'var(--brand)'}}>
+          <div style={{fontSize:'13px', fontWeight:700, color:'var(--brand)', marginBottom:'8px'}}>✅ 발급 완료 — 지금 한 번만 표시됩니다</div>
+          <div className="mono" style={{fontSize:'13px', wordBreak:'break-all', padding:'10px 12px', background:'#fff', border:'1px solid var(--line)', borderRadius:'8px'}}>{issued.token}</div>
+          <div style={{display:'flex', gap:'8px', marginTop:'10px'}}>
+            <button className="btn sm" onClick={() => copyToken(issued.token)}>복사</button>
+            <button className="btn ghost sm" onClick={() => setIssued(null)}>닫기</button>
+          </div>
+        </div>
+      )}
+
+      {showForm && (
+        <div className="panel">
+          <div style={{display:'flex', gap:'12px', alignItems:'flex-end', flexWrap:'wrap'}}>
+            <div style={{flex:1, minWidth:'200px'}}>
+              <label className="lbl">소유자 (봇 회사명)</label>
+              <input ref={ownerRef} className="inp" type="text" placeholder="OpenAI / Anthropic / ..." />
+            </div>
+            <div style={{minWidth:'160px'}}>
+              <label className="lbl">플랜</label>
+              <select ref={planRef} className="inp" defaultValue="default">
+                <option value="default">default</option>
+                <option value="paid">paid</option>
+                <option value="preview">preview (임시)</option>
+              </select>
+            </div>
+            <div style={{display:'flex', gap:'8px'}}>
+              <button className="btn" onClick={handleIssue} disabled={saving}>{saving ? '발급중…' : '발급'}</button>
+              <button className="btn ghost" onClick={() => setShow(false)}>취소</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="panel flush">
         <div style={{overflowX:'auto'}}>
           <table className="tbl">
             <thead>
@@ -50,31 +100,29 @@ export default function TokensPage() {
                 <th>소유자</th>
                 <th>플랜</th>
                 <th>토큰</th>
-                <th>만료일</th>
+                <th>발급일</th>
                 <th>상태</th>
+                <th style={{textAlign:'right'}}>관리</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} style={{textAlign:'center', color:'var(--ink-mute)', padding:'24px'}}>로딩중…</td></tr>
+                <tr><td colSpan={6} style={{textAlign:'center', color:'var(--ink-mute)', padding:'24px'}}>로딩중…</td></tr>
               ) : tokens.length === 0 ? (
-                <tr><td colSpan={5} style={{textAlign:'center', color:'var(--ink-mute)', padding:'32px'}}>발급된 토큰이 없어요. 관리자에게 문의하세요.</td></tr>
+                <tr><td colSpan={6} style={{textAlign:'center', color:'var(--ink-mute)', padding:'40px'}}>발급된 토큰이 없어요.</td></tr>
               ) : tokens.map(t => (
                 <tr key={t.id}>
                   <td style={{fontWeight:600}}>{t.owner ?? '—'}</td>
                   <td>
-                    <span className={`badge ${t.plan === 'paid' ? 'badge-paid' : 'badge-free'}`}>
-                      {t.plan ?? 'free'}
+                    <span className={`badge ${t.plan === 'paid' ? 'brand' : t.plan === 'preview' ? 'warn' : 'ok'}`}>
+                      {t.plan ?? 'default'}
                     </span>
                   </td>
-                  <td className="mono">{t.token}</td>
-                  <td style={{fontSize:'13px', color:'var(--ink-dim)'}}>
-                    {t.expires_at ? t.expires_at.slice(0, 10) : '—'}
-                  </td>
-                  <td>
-                    <span className={`sdot ${t.active ? 'sdot-on' : 'sdot-off'}`}>
-                      {t.active ? '활성' : '비활성'}
-                    </span>
+                  <td className="mono" style={{fontSize:'11px', maxWidth:'220px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={t.token}>{t.token}</td>
+                  <td style={{fontSize:'12.5px', color:'var(--ink-dim)'}}>{(t.created_at ?? '').slice(0, 10)}</td>
+                  <td><span className={`sdot ${t.active ? 'sdot-on' : 'sdot-off'}`}>{t.active ? '활성' : '폐기'}</span></td>
+                  <td style={{textAlign:'right'}}>
+                    {t.active === 1 && <button className="btn ghost sm" onClick={() => handleRevoke(t)} style={{color:'var(--bad)'}}>폐기</button>}
                   </td>
                 </tr>
               ))}

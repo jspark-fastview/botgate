@@ -1,11 +1,14 @@
 package io.guardus.admin.controller;
 
+import io.guardus.admin.service.DnsService;
 import io.guardus.admin.service.SessionService;
+import io.guardus.admin.util.CacheInvalidator;
 import io.guardus.admin.util.NanoId;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -17,10 +20,20 @@ public class UserController {
 
     private final JdbcTemplate   db;
     private final SessionService sessions;
+    private final DnsService     dns;
 
-    public UserController(JdbcTemplate db, SessionService sessions) {
+    public UserController(JdbcTemplate db, SessionService sessions, DnsService dns) {
         this.db       = db;
         this.sessions = sessions;
+        this.dns      = dns;
+    }
+
+    /** 본인 소유 채널 확인 */
+    private boolean ownsChannel(String userId, String channelId) {
+        Integer cnt = db.queryForObject(
+                "SELECT COUNT(*) FROM channels WHERE id = ? AND owner_id = ?",
+                Integer.class, channelId, userId);
+        return cnt != null && cnt > 0;
     }
 
     /** GET /me/dashboard */
@@ -93,6 +106,64 @@ public class UserController {
                 Map.of("id", id, "name", name, "domain", domain, "upstream", upstream, "active", 1));
     }
 
+    /** PATCH /me/channels/:id — 본인 채널 수정 (active 토글, name/upstream 변경) */
+    @PatchMapping("/me/channels/{id}")
+    public ResponseEntity<Map<String, Object>> updateChannel(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @PathVariable String id,
+            @RequestBody Map<String, Object> body) {
+        Map<String, Object> user = sessions.validate(auth);
+        if (user == null) return ResponseEntity.status(401).body(Map.of("error", "not authenticated"));
+        if (!ownsChannel((String) user.get("id"), id))
+            return ResponseEntity.status(403).body(Map.of("error", "forbidden"));
+
+        Map<String, Object> existing = db.queryForList("SELECT * FROM channels WHERE id = ?", id).get(0);
+        String name     = body.containsKey("name")     ? (String) body.get("name")     : (String) existing.get("name");
+        String upstream = body.containsKey("upstream") ? (String) body.get("upstream") : (String) existing.get("upstream");
+        int active;
+        if (body.containsKey("active")) {
+            Object v = body.get("active");
+            active = (Boolean.TRUE.equals(v) || "true".equals(v.toString()) || "1".equals(v.toString())) ? 1 : 0;
+        } else {
+            active = ((Number) existing.get("active")).intValue();
+        }
+        db.update("UPDATE channels SET name = ?, upstream = ?, active = ? WHERE id = ?",
+                name, upstream, active, id);
+        CacheInvalidator.invalidate();
+        return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    /** DELETE /me/channels/:id — 본인 채널 삭제 */
+    @DeleteMapping("/me/channels/{id}")
+    public ResponseEntity<Map<String, Object>> deleteChannel(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @PathVariable String id) {
+        Map<String, Object> user = sessions.validate(auth);
+        if (user == null) return ResponseEntity.status(401).body(Map.of("error", "not authenticated"));
+        if (!ownsChannel((String) user.get("id"), id))
+            return ResponseEntity.status(403).body(Map.of("error", "forbidden"));
+
+        db.update("DELETE FROM channels WHERE id = ?", id);
+        CacheInvalidator.invalidate();
+        return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    /** GET /me/channels/:id/dns-check — 본인 채널 DNS 확인 */
+    @GetMapping("/me/channels/{id}/dns-check")
+    public ResponseEntity<Map<String, Object>> dnsCheck(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @PathVariable String id) {
+        Map<String, Object> user = sessions.validate(auth);
+        if (user == null) return ResponseEntity.status(401).body(Map.of("error", "not authenticated"));
+        if (!ownsChannel((String) user.get("id"), id))
+            return ResponseEntity.status(403).body(Map.of("error", "forbidden"));
+
+        Map<String, Object> ch = db.queryForList("SELECT * FROM channels WHERE id = ?", id).get(0);
+        Map<String, Object> result = new LinkedHashMap<>(dns.checkDns((String) ch.get("domain")));
+        result.put("id", id);
+        return ResponseEntity.ok(result);
+    }
+
     /** GET /me/tokens */
     @GetMapping("/me/tokens")
     public List<Map<String, Object>> myTokens(
@@ -102,6 +173,53 @@ public class UserController {
         return db.queryForList(
                 "SELECT id, token, owner, plan, active, created_at, expires_at" +
                 " FROM tokens WHERE user_id = ? ORDER BY created_at DESC", user.get("id"));
+    }
+
+    /** POST /me/tokens — 본인 토큰 발급 */
+    @PostMapping("/me/tokens")
+    public ResponseEntity<Map<String, Object>> issueToken(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @RequestBody Map<String, Object> body) {
+        Map<String, Object> user = sessions.validate(auth);
+        if (user == null) return ResponseEntity.status(401).body(Map.of("error", "not authenticated"));
+
+        String owner = body.containsKey("owner") ? (String) body.get("owner") : (String) user.get("name");
+        String plan  = body.containsKey("plan")  ? (String) body.get("plan")  : "default";
+        String token = "tk_" + NanoId.generate(24);
+        String id    = "to_" + NanoId.generate(8);
+        db.update("INSERT INTO tokens (id, token, owner, plan, active, user_id) VALUES (?, ?, ?, ?, 1, ?)",
+                id, token, owner, plan, user.get("id"));
+        return ResponseEntity.status(201).body(Map.of(
+                "id", id, "token", token, "owner", owner, "plan", plan, "active", 1));
+    }
+
+    /** DELETE /me/tokens/:id — 본인 토큰 폐기 */
+    @DeleteMapping("/me/tokens/{id}")
+    public ResponseEntity<Map<String, Object>> revokeToken(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @PathVariable String id) {
+        Map<String, Object> user = sessions.validate(auth);
+        if (user == null) return ResponseEntity.status(401).body(Map.of("error", "not authenticated"));
+
+        Integer cnt = db.queryForObject(
+                "SELECT COUNT(*) FROM tokens WHERE id = ? AND user_id = ?",
+                Integer.class, id, user.get("id"));
+        if (cnt == null || cnt == 0)
+            return ResponseEntity.status(403).body(Map.of("error", "forbidden"));
+
+        db.update("DELETE FROM tokens WHERE id = ?", id);
+        return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    /** GET /me/bot-catalog — 봇 카탈로그 read-only */
+    @GetMapping("/me/bot-catalog")
+    public List<Map<String, Object>> botCatalog(
+            @RequestHeader(value = "Authorization", required = false) String auth) {
+        if (sessions.validate(auth) == null) return List.of();
+        return db.queryForList(
+                "SELECT name, vendor, purpose, patterns, is_malicious, enabled" +
+                " FROM bot_catalog WHERE enabled = 1" +
+                " ORDER BY is_malicious DESC, purpose ASC, name ASC");
     }
 
     /** GET /me/profile */

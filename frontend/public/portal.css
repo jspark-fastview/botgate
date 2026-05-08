@@ -1,0 +1,146 @@
+/* ============================================================
+   Portal — shared component styles (admin SPA와 디자인 일치)
+   디자인 토큰은 botgate-marketing.css 의 :root 사용
+   ============================================================ */
+
+/* ── 페이지 헤더 ───────────────────────────────────────── */
+.page-head {
+  display: flex; align-items: center; gap: 16px;
+  margin-bottom: 28px;
+}
+.page-head h1 {
+  font-size: 28px; font-weight: 800; letter-spacing: -0.02em;
+  margin: 0; color: var(--ink);
+}
+.page-head .greeting {
+  font-size: 14px; color: var(--ink-dim); margin-top: 4px;
+}
+.page-head .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+/* ── Range pill (기간 토글) ───────────────────────────── */
+.range-pill {
+  display: inline-flex; gap: 4px;
+  background: #fff; border: 1px solid var(--line);
+  border-radius: var(--radius-pill); padding: 4px;
+}
+.range-pill button {
+  border: none; background: transparent;
+  font-family: var(--sans); font-size: 13px; font-weight: 500;
+  padding: 6px 14px; border-radius: var(--radius-pill);
+  color: var(--ink-2); cursor: pointer;
+}
+.range-pill button.active {
+  background: var(--ink); color: #fff; font-weight: 600;
+}
+
+/* ── 카테고리 pill (purpose 등) ────────────────────────── */
+.purpose-pill {
+  border: none; border-radius: 20px; padding: 4px 12px;
+  font-family: var(--sans); font-size: 12px; font-weight: 600;
+  cursor: pointer; background: var(--bg-soft); color: var(--ink-2);
+  transition: background 120ms, color 120ms;
+}
+.purpose-pill.active { color: #fff; }
+
+/* ── CSV 다운로드 버튼 ───────────────────────────────── */
+.csv-btn {
+  margin-left: auto; padding: 4px 10px; font-size: 11px; font-weight: 700;
+  color: var(--ink-dim); background: var(--bg-soft); border: 1px solid var(--line);
+  border-radius: 6px; cursor: pointer; letter-spacing: 0.02em;
+  transition: background 150ms, color 150ms; flex-shrink: 0;
+  font-family: var(--sans);
+}
+.csv-btn:hover { background: var(--brand); color: #fff; border-color: var(--brand); }
+
+/* ── 일반 버튼 ────────────────────────────────────────── */
+.btn {
+  font-family: var(--sans);
+  font-weight: 600; font-size: 13.5px;
+  padding: 9px 18px; border-radius: 10px;
+  border: 1px solid var(--brand); background: var(--brand); color: #fff;
+  cursor: pointer; transition: filter 120ms;
+}
+.btn:hover { filter: brightness(1.07); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn.ghost {
+  background: #fff; color: var(--ink-2); border-color: var(--line);
+}
+.btn.ghost:hover { background: var(--bg-soft); border-color: var(--ink-mute); }
+.btn.danger {
+  background: var(--bad); border-color: var(--bad);
+}
+.btn.sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+
+/* ── KPI 카드 ─────────────────────────────────────────── */
+.kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 24px; }
+.kpi {
+  background: #fff; border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px; position: relative; overflow: hidden;
+}
+.kpi.accent { background: var(--brand); color: #fff; border-color: var(--brand); }
+.kpi.accent .l, .kpi.accent .s { color: rgba(255,255,255,0.85); }
+.kpi .l { font-size: 12.5px; color: var(--ink-dim); font-weight: 500; margin-bottom: 8px; }
+.kpi .v { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; color: inherit; }
+.kpi .s { font-size: 12px; color: var(--ink-dim); margin-top: 6px; }
+
+@media (max-width: 1100px) { .kpis { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px)  { .kpis { grid-template-columns: 1fr 1fr; } }
+
+/* ── 패널 ────────────────────────────────────────────── */
+.panel {
+  background: #fff; border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+  margin-bottom: 16px;
+}
+.panel.flush { padding: 0; overflow: hidden; }
+.panel-head {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+}
+.panel-head h3 { font-size: 16px; font-weight: 700; margin: 0; color: var(--ink); }
+.panel-head .sub { font-size: 13px; color: var(--ink-dim); }
+.panel-head .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+/* ── 테이블 ──────────────────────────────────────────── */
+.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.tbl th {
+  padding: 11px 14px; text-align: left;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink-mute); background: var(--bg-soft); border-bottom: 1px solid var(--line);
+}
+.tbl td { padding: 12px 14px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: var(--bg-soft); }
+
+/* ── 폼 입력 ─────────────────────────────────────────── */
+.inp {
+  padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px;
+  font-size: 13.5px; font-family: var(--sans); outline: none; background: #fff;
+  width: 100%;
+}
+.inp:focus { border-color: var(--brand); }
+.inp.mono { font-family: var(--mono); font-size: 12.5px; }
+.lbl { font-size: 12px; color: var(--ink-dim); font-weight: 600; margin-bottom: 4px; display: block; }
+
+/* ── 상태 배지 ───────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 6px;
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.badge.ok    { background: var(--pastel-mint); color: var(--ok); }
+.badge.bad   { background: var(--pastel-rose); color: var(--bad); }
+.badge.warn  { background: var(--pastel-lemon); color: var(--warn); }
+.badge.brand { background: var(--brand-soft); color: var(--brand); }
+
+.sdot { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+.sdot::before { content:''; display:inline-block; width:7px; height:7px; border-radius:50%; }
+.sdot-on::before  { background: var(--ok); }
+.sdot-off::before { background: var(--ink-mute); }
+
+/* ── 헬퍼 ────────────────────────────────────────────── */
+.mono { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+.muted { color: var(--ink-mute); }
+.bar { height: 6px; background: var(--bg-soft); border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; transition: width 400ms; }

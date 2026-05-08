@@ -24,6 +24,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
         <link rel="stylesheet" href="/botgate-marketing.css" />
+        <link rel="stylesheet" href="/portal.css" />
       </head>
       <body>{children}</body>
     </html>
