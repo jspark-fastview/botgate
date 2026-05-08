@@ -1,6 +1,7 @@
 package io.guardus.admin.controller;
 
 import io.guardus.admin.service.SessionService;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,6 +54,7 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/category?domain=&hellip; */
+    @Cacheable(value = "stats", key = "'cat:' + #auth + ':' + #domain")
     @GetMapping("/me/stats/category")
     public Map<String, Object> category(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -75,6 +77,7 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/daily?domain=&category=bot&billed= — /admin/stats/daily 와 동일 형식 */
+    @Cacheable(value = "stats", key = "'daily:' + #auth + ':' + #domain + ':' + #category + ':' + #billed")
     @GetMapping("/me/stats/daily")
     public List<Map<String, Object>> daily(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -100,6 +103,7 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/bots?domain=&category=bot&limit=10 */
+    @Cacheable(value = "stats", key = "'bots:' + #auth + ':' + #domain + ':' + #category + ':' + #limit")
     @GetMapping("/me/stats/bots")
     public List<Map<String, Object>> bots(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -128,6 +132,7 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/purpose?domain= */
+    @Cacheable(value = "stats", key = "'purpose:' + #auth + ':' + #domain")
     @GetMapping("/me/stats/purpose")
     public List<Map<String, Object>> purpose(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -145,6 +150,7 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/malicious?domain= */
+    @Cacheable(value = "stats", key = "'mal:' + #auth + ':' + #domain")
     @GetMapping("/me/stats/malicious")
     public List<Map<String, Object>> malicious(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -162,6 +168,7 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/billing?domain= */
+    @Cacheable(value = "stats", key = "'bill:' + #auth + ':' + #domain")
     @GetMapping("/me/stats/billing")
     public Map<String, Object> billing(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -187,6 +194,7 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/daily/bots?domain=&category=bot */
+    @Cacheable(value = "stats", key = "'dailybots:' + #auth + ':' + #domain + ':' + #category")
     @GetMapping("/me/stats/daily/bots")
     public List<Map<String, Object>> dailyBots(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -211,6 +219,7 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/hourly?date=YYYY-MM-DD&domain=&category=bot */
+    @Cacheable(value = "stats", key = "'hourly:' + #auth + ':' + #date + ':' + #domain + ':' + #category")
     @GetMapping("/me/stats/hourly")
     public List<Map<String, Object>> hourly(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -244,6 +253,7 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/pages?domain=&category=&limit=50 */
+    @Cacheable(value = "stats", key = "'pages:' + #auth + ':' + #domain + ':' + #category + ':' + #limit")
     @GetMapping("/me/stats/pages")
     public List<Map<String, Object>> pages(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -293,6 +303,7 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/bot-names?domain=&purpose= */
+    @Cacheable(value = "stats", key = "'botnames:' + #auth + ':' + #domain + ':' + #purpose")
     @GetMapping("/me/stats/bot-names")
     public List<Map<String, Object>> botNames(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -316,6 +327,7 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/channels — 본인 채널들의 누적 통계 */
+    @Cacheable(value = "stats", key = "'chstats:' + #auth")
     @GetMapping("/me/stats/channels")
     public List<Map<String, Object>> statsByChannel(@RequestHeader(value = "Authorization", required = false) String auth) {
         Map<String, Object> user = sessions.validate(auth);
@@ -332,10 +344,7 @@ public class MyStatsController {
                   SUM(CASE WHEN l.category = 'bot' AND l.blocked  = 1                THEN 1 ELSE 0 END) AS blocked,
                   COUNT(DISTINCT CASE WHEN l.category = 'bot' THEN l.bot_name END) AS bot_types
                 FROM channels c
-                LEFT JOIN access_logs l ON
-                  l.domain = c.domain
-                  OR l.domain = 'www.' || c.domain
-                  OR l.domain = REPLACE(c.domain, 'www.', '')
+                LEFT JOIN access_logs l ON l.domain_canonical = c.domain_canonical
                 WHERE c.owner_id = ?
                 GROUP BY c.id
                 ORDER BY (bot_total + other_bot_total + user_total) DESC
@@ -343,6 +352,7 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/domains — 본인 채널 도메인별 카운트 */
+    @Cacheable(value = "stats", key = "'doms:' + #auth")
     @GetMapping("/me/stats/domains")
     public List<Map<String, Object>> statsDomains(@RequestHeader(value = "Authorization", required = false) String auth) {
         List<String> domains = myDomains(auth);

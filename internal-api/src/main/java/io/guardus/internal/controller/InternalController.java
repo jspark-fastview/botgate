@@ -27,6 +27,13 @@ public class InternalController {
         this.objectMapper = objectMapper;
     }
 
+    /** "www.viewus.co" / "VIEWUS.CO" → "viewus.co" */
+    private static String canonicalDomain(String d) {
+        if (d == null) return null;
+        String s = d.toLowerCase();
+        return s.startsWith("www.") ? s.substring(4) : s;
+    }
+
     // POST /internal/tokens/validate
     @PostMapping("/internal/tokens/validate")
     public ResponseEntity<Map<String, Object>> validateToken(@RequestBody ValidateRequest req) {
@@ -39,9 +46,9 @@ public class InternalController {
         String plan = valid ? (String) rows.get(0).get("plan") : null;
 
         jdbc.update(
-            "INSERT INTO access_logs (token, bot_ua, domain, ip, path, verified, billed, category, bot_purpose, bot_name, bot_vendor, blocked) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO access_logs (token, bot_ua, domain, domain_canonical, ip, path, verified, billed, category, bot_purpose, bot_name, bot_vendor, blocked) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             valid ? req.token() : null,
-            req.bot_ua(), req.domain(), req.ip(), req.path(),
+            req.bot_ua(), req.domain(), canonicalDomain(req.domain()), req.ip(), req.path(),
             valid ? 1 : 0,
             Boolean.TRUE.equals(req.billed()) ? 1 : 0,
             "bot",
@@ -64,9 +71,9 @@ public class InternalController {
     @PostMapping("/internal/access")
     public ResponseEntity<Void> logAccess(@RequestBody AccessLogRequest req) {
         jdbc.update(
-            "INSERT INTO access_logs (token, bot_ua, domain, ip, path, verified, billed, category, bot_purpose, bot_name, bot_vendor, blocked) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO access_logs (token, bot_ua, domain, domain_canonical, ip, path, verified, billed, category, bot_purpose, bot_name, bot_vendor, blocked) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             null,
-            req.bot_ua(), req.domain(), req.ip(), req.path(),
+            req.bot_ua(), req.domain(), canonicalDomain(req.domain()), req.ip(), req.path(),
             Boolean.TRUE.equals(req.verified()) ? 1 : 0,
             Boolean.TRUE.equals(req.billed()) ? 1 : 0,
             req.category() != null ? req.category() : "bot",

@@ -69,8 +69,8 @@ public class ChannelAdminController {
         }
         String id = "ch_" + NanoId.generate(8);
         try {
-            db.update("INSERT INTO channels (id, name, domain, upstream) VALUES (?, ?, ?, ?)",
-                    id, name, domain, upstream);
+            db.update("INSERT INTO channels (id, name, domain, domain_canonical, upstream) VALUES (?, ?, ?, ?, ?)",
+                    id, name, domain, canonicalDomain(domain), upstream);
         } catch (Exception e) {
             if (e.getMessage() != null && e.getMessage().contains("UNIQUE")) {
                 return ResponseEntity.status(409).body(Map.of("error", "domain already exists"));
@@ -145,5 +145,11 @@ public class ChannelAdminController {
         if (v instanceof Number n) return n.intValue();
         if (v instanceof Boolean b) return b ? 1 : 0;
         return 0;
+    }
+
+    static String canonicalDomain(String d) {
+        if (d == null) return null;
+        String s = d.toLowerCase();
+        return s.startsWith("www.") ? s.substring(4) : s;
     }
 }

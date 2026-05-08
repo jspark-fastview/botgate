@@ -39,6 +39,15 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
+    <!-- Caffeine 캐시 (stats 30s TTL) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-cache</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.github.ben-manes.caffeine</groupId>
+      <artifactId>caffeine</artifactId>
+    </dependency>
     <!-- scrypt (Node.js crypto.scrypt 호환 — 기존 패스워드 해시 검증용) -->
     <dependency>
       <groupId>org.bouncycastle</groupId>

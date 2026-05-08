@@ -94,8 +94,8 @@ public class UserController {
         }
         String id = "ch_" + NanoId.generate(8);
         try {
-            db.update("INSERT INTO channels (id, name, domain, upstream, owner_id) VALUES (?, ?, ?, ?, ?)",
-                    id, name, domain, upstream, user.get("id"));
+            db.update("INSERT INTO channels (id, name, domain, domain_canonical, upstream, owner_id) VALUES (?, ?, ?, ?, ?, ?)",
+                    id, name, domain, ChannelAdminController.canonicalDomain(domain), upstream, user.get("id"));
         } catch (Exception e) {
             if (e.getMessage() != null && e.getMessage().contains("UNIQUE")) {
                 return ResponseEntity.status(409).body(Map.of("error", "domain already exists"));
