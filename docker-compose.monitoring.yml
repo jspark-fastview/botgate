@@ -66,6 +66,43 @@ services:
         limits:
           memory: 256M
 
+  # cAdvisor — 컨테이너별 CPU/메모리/네트워크 메트릭
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    privileged: true
+    command:
+      - --housekeeping_interval=15s
+      - --docker_only=true
+      - --disable_metrics=disk,referenced_memory,udp,tcp,sched,hugetlb,resctrl,advtcp,process
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    networks: [monitoring]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # node-exporter — 호스트(EC2) CPU/메모리/디스크/네트워크
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    command:
+      - --path.rootfs=/host
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc|var/lib/docker)($$|/)
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    networks: [monitoring]
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
   promtail:
     image: grafana/promtail:3.2.0
     command: -config.file=/etc/promtail/config.yml

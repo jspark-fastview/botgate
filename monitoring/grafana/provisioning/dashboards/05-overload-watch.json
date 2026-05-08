@@ -1,0 +1,198 @@
+{
+  "uid": "overload-watch",
+  "title": "GuardUs · 과부하 감시",
+  "tags": ["guardus", "overload", "load-test"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "title": "RPS (1m rate)", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(nginx_http_requests_total[1m]))", "legendFormat": "OpenResty", "refId": "A" },
+        { "expr": "sum by (service) (rate(http_server_requests_seconds_count[1m]))", "legendFormat": "{{service}}", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 2, "title": "응답시간 p95 (Edge + Apps)", "type": "timeseries",
+      "gridPos": { "x": 8, "y": 0, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(nginx_http_request_duration_seconds_bucket[1m])) by (le))", "legendFormat": "openresty p95", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum by (le, service) (rate(http_server_requests_seconds_bucket[1m])))", "legendFormat": "{{service}} p95", "refId": "B" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": 0 },
+            { "color": "orange", "value": 0.5 },
+            { "color": "red", "value": 2 }
+          ]},
+          "custom": { "thresholdsStyle": { "mode": "line" } }
+        }
+      }
+    },
+    {
+      "id": 3, "title": "에러율 (5xx)", "type": "timeseries",
+      "gridPos": { "x": 16, "y": 0, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(nginx_http_requests_total{status=~\"5..\"}[1m])) / clamp_min(sum(rate(nginx_http_requests_total[1m])), 1)", "legendFormat": "openresty 5xx %", "refId": "A" },
+        { "expr": "sum by (service) (rate(http_server_requests_seconds_count{status=~\"5..\"}[1m])) / clamp_min(sum by (service) (rate(http_server_requests_seconds_count[1m])), 1)", "legendFormat": "{{service}} 5xx %", "refId": "B" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": 0 },
+            { "color": "orange", "value": 0.01 },
+            { "color": "red", "value": 0.05 }
+          ]}
+        }
+      }
+    },
+
+    {
+      "id": 10, "title": "EC2 CPU (전체)", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 8, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[1m]))", "legendFormat": "사용률", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit", "max": 1,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": 0 },
+            { "color": "orange", "value": 0.7 },
+            { "color": "red", "value": 0.9 }
+          ]}
+        }
+      }
+    },
+    {
+      "id": 11, "title": "EC2 메모리", "type": "timeseries",
+      "gridPos": { "x": 8, "y": 8, "w": 8, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)", "legendFormat": "사용률", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit", "max": 1,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": 0 },
+            { "color": "orange", "value": 0.8 },
+            { "color": "red", "value": 0.95 }
+          ]}
+        }
+      }
+    },
+    {
+      "id": 12, "title": "EC2 네트워크 (out)", "type": "timeseries",
+      "gridPos": { "x": 16, "y": 8, "w": 8, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(node_network_transmit_bytes_total{device!~\"lo|veth.*|docker.*|br.*\"}[1m]))", "legendFormat": "tx", "refId": "A" },
+        { "expr": "sum(rate(node_network_receive_bytes_total{device!~\"lo|veth.*|docker.*|br.*\"}[1m]))", "legendFormat": "rx", "refId": "B" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps" } }
+    },
+
+    {
+      "id": 20, "title": "컨테이너 CPU (top 6)", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 15, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "topk(6, sum by (name) (rate(container_cpu_usage_seconds_total{name!=\"\"}[1m])))", "legendFormat": "{{name}}", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit" } }
+    },
+    {
+      "id": 21, "title": "컨테이너 메모리", "type": "timeseries",
+      "gridPos": { "x": 12, "y": 15, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "topk(8, container_memory_working_set_bytes{name!=\"\"})", "legendFormat": "{{name}}", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" } }
+    },
+
+    {
+      "id": 30, "title": "OpenResty 활성 연결 (포화 신호)", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 23, "w": 8, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "nginx_http_connections", "legendFormat": "{{state}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 31, "title": "HikariCP — DB 풀 포화 (active vs max)", "type": "timeseries",
+      "gridPos": { "x": 8, "y": 23, "w": 8, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "hikaricp_connections_active", "legendFormat": "active {{service}}", "refId": "A" },
+        { "expr": "hikaricp_connections_pending", "legendFormat": "pending(WAIT) {{service}}", "refId": "B" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": 0 },
+            { "color": "red", "value": 1 }
+          ]}
+        }
+      }
+    },
+    {
+      "id": 32, "title": "JVM heap 사용률", "type": "timeseries",
+      "gridPos": { "x": 16, "y": 23, "w": 8, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum by (service) (jvm_memory_used_bytes{area=\"heap\"}) / sum by (service) (jvm_memory_max_bytes{area=\"heap\"})", "legendFormat": "{{service}}", "refId": "A" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit", "max": 1,
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": 0 },
+            { "color": "orange", "value": 0.75 },
+            { "color": "red", "value": 0.9 }
+          ]}
+        }
+      }
+    },
+
+    {
+      "id": 40, "title": "GC pause time", "type": "timeseries",
+      "gridPos": { "x": 0, "y": 30, "w": 8, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum by (service) (rate(jvm_gc_pause_seconds_sum[1m]))", "legendFormat": "{{service}}", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 41, "title": "Caffeine 캐시 hit률", "type": "timeseries",
+      "gridPos": { "x": 8, "y": 30, "w": 8, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum(rate(cache_gets_total{result=\"hit\"}[1m])) / clamp_min(sum(rate(cache_gets_total[1m])), 1)", "legendFormat": "hit %", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1 } }
+    },
+    {
+      "id": 42, "title": "Status code 분포 (실시간)", "type": "timeseries",
+      "gridPos": { "x": 16, "y": 30, "w": 8, "h": 7 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "sum by (status) (rate(nginx_http_requests_total[30s]))", "legendFormat": "{{status}}", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    }
+  ]
+}
