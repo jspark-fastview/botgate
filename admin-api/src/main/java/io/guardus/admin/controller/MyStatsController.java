@@ -74,22 +74,28 @@ public class MyStatsController {
         return result;
     }
 
-    /** GET /me/stats/daily?domain=&days=30 */
+    /** GET /me/stats/daily?domain=&category=bot&billed= — /admin/stats/daily 와 동일 형식 */
     @GetMapping("/me/stats/daily")
     public List<Map<String, Object>> daily(
             @RequestHeader("Authorization") String auth,
             @RequestParam(required = false) String domain,
-            @RequestParam(defaultValue = "30") int days) {
+            @RequestParam(defaultValue = "bot") String category,
+            @RequestParam(required = false) String billed) {
         List<String> domains = filterDomains(myDomains(auth), domain);
         if (domains.isEmpty()) return List.of();
 
         List<Object> params = new ArrayList<>();
         String where = domainIn(domains, params);
-        int cap = Math.min(Math.max(days, 1), 90);
+        String catCond = "";
+        if (!"all".equals(category) && !category.isBlank()) {
+            catCond = " AND category = ?";
+            params.add(category);
+        }
+        String billedCond = "1".equals(billed) ? " AND billed = 1" : "";
         return db.queryForList(
-                "SELECT DATE(ts) AS date, category, COUNT(*) AS count " +
-                "FROM access_logs WHERE " + where + " AND ts >= datetime('now', '-" + cap + " days') " +
-                "GROUP BY date, category ORDER BY date",
+                "SELECT DATE(ts) AS date, COUNT(*) AS count " +
+                "FROM access_logs WHERE " + where + " AND ts >= datetime('now', '-30 days')" + catCond + billedCond +
+                " GROUP BY date ORDER BY date DESC",
                 params.toArray());
     }
 
