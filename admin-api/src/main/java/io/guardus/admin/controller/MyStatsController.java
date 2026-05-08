@@ -55,7 +55,7 @@ public class MyStatsController {
     /** GET /me/stats/category?domain=&hellip; */
     @GetMapping("/me/stats/category")
     public Map<String, Object> category(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(required = false) String domain) {
         List<String> domains = filterDomains(myDomains(auth), domain);
         Map<String, Object> result = new LinkedHashMap<>();
@@ -77,7 +77,7 @@ public class MyStatsController {
     /** GET /me/stats/daily?domain=&category=bot&billed= — /admin/stats/daily 와 동일 형식 */
     @GetMapping("/me/stats/daily")
     public List<Map<String, Object>> daily(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(required = false) String domain,
             @RequestParam(defaultValue = "bot") String category,
             @RequestParam(required = false) String billed) {
@@ -102,7 +102,7 @@ public class MyStatsController {
     /** GET /me/stats/bots?domain=&category=bot&limit=10 */
     @GetMapping("/me/stats/bots")
     public List<Map<String, Object>> bots(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(required = false) String domain,
             @RequestParam(defaultValue = "bot") String category,
             @RequestParam(defaultValue = "10") int limit) {
@@ -130,7 +130,7 @@ public class MyStatsController {
     /** GET /me/stats/purpose?domain= */
     @GetMapping("/me/stats/purpose")
     public List<Map<String, Object>> purpose(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(required = false) String domain) {
         List<String> domains = filterDomains(myDomains(auth), domain);
         if (domains.isEmpty()) return List.of();
@@ -147,7 +147,7 @@ public class MyStatsController {
     /** GET /me/stats/malicious?domain= */
     @GetMapping("/me/stats/malicious")
     public List<Map<String, Object>> malicious(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(required = false) String domain) {
         List<String> domains = filterDomains(myDomains(auth), domain);
         if (domains.isEmpty()) return List.of();
@@ -164,7 +164,7 @@ public class MyStatsController {
     /** GET /me/stats/billing?domain= */
     @GetMapping("/me/stats/billing")
     public Map<String, Object> billing(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(required = false) String domain) {
         List<String> domains = filterDomains(myDomains(auth), domain);
         if (domains.isEmpty()) return Map.of("total", 0, "billed", 0, "unit_price", 2, "estimated_amount", 0);
@@ -189,7 +189,7 @@ public class MyStatsController {
     /** GET /me/stats/daily/bots?domain=&category=bot */
     @GetMapping("/me/stats/daily/bots")
     public List<Map<String, Object>> dailyBots(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(required = false) String domain,
             @RequestParam(defaultValue = "bot") String category) {
         List<String> domains = filterDomains(myDomains(auth), domain);
@@ -213,7 +213,7 @@ public class MyStatsController {
     /** GET /me/stats/hourly?date=YYYY-MM-DD&domain=&category=bot */
     @GetMapping("/me/stats/hourly")
     public List<Map<String, Object>> hourly(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(required = false) String date,
             @RequestParam(required = false) String domain,
             @RequestParam(defaultValue = "bot") String category) {
@@ -246,7 +246,7 @@ public class MyStatsController {
     /** GET /me/stats/pages?domain=&category=&limit=50 */
     @GetMapping("/me/stats/pages")
     public List<Map<String, Object>> pages(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(required = false) String domain,
             @RequestParam(required = false) String category,
             @RequestParam(defaultValue = "50") int limit) {
@@ -270,7 +270,7 @@ public class MyStatsController {
     /** GET /me/stats/pages/bots?path=&domain=&category=bot */
     @GetMapping("/me/stats/pages/bots")
     public List<Map<String, Object>> pageBots(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam String path,
             @RequestParam(required = false) String domain,
             @RequestParam(defaultValue = "bot") String category) {
@@ -295,7 +295,7 @@ public class MyStatsController {
     /** GET /me/stats/bot-names?domain=&purpose= */
     @GetMapping("/me/stats/bot-names")
     public List<Map<String, Object>> botNames(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(required = false) String domain,
             @RequestParam(required = false) String purpose) {
         List<String> domains = filterDomains(myDomains(auth), domain);
@@ -317,7 +317,7 @@ public class MyStatsController {
 
     /** GET /me/stats/channels — 본인 채널들의 누적 통계 */
     @GetMapping("/me/stats/channels")
-    public List<Map<String, Object>> statsByChannel(@RequestHeader("Authorization") String auth) {
+    public List<Map<String, Object>> statsByChannel(@RequestHeader(value = "Authorization", required = false) String auth) {
         Map<String, Object> user = sessions.validate(auth);
         if (user == null) return List.of();
         return db.queryForList("""
@@ -344,7 +344,7 @@ public class MyStatsController {
 
     /** GET /me/stats/domains — 본인 채널 도메인별 카운트 */
     @GetMapping("/me/stats/domains")
-    public List<Map<String, Object>> statsDomains(@RequestHeader("Authorization") String auth) {
+    public List<Map<String, Object>> statsDomains(@RequestHeader(value = "Authorization", required = false) String auth) {
         List<String> domains = myDomains(auth);
         if (domains.isEmpty()) return List.of();
         List<Object> params = new ArrayList<>();
@@ -358,7 +358,7 @@ public class MyStatsController {
     /** GET /me/channels/dns-status — 본인 채널들 DNS 일괄 확인 */
     @GetMapping("/me/channels/dns-status")
     public List<Map<String, Object>> dnsStatusAll(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @org.springframework.beans.factory.annotation.Autowired io.guardus.admin.service.DnsService dnsService) {
         Map<String, Object> user = sessions.validate(auth);
         if (user == null) return List.of();
@@ -376,7 +376,7 @@ public class MyStatsController {
     /** GET /me/logs/export?period=day|week|month&domain=&category= */
     @GetMapping("/me/logs/export")
     public List<Map<String, Object>> exportLogs(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(defaultValue = "day") String period,
             @RequestParam(required = false) String domain,
             @RequestParam(defaultValue = "all") String category) {
@@ -405,7 +405,7 @@ public class MyStatsController {
     /** GET /me/logs?domain=&category=bot&limit=100 */
     @GetMapping("/me/logs")
     public List<Map<String, Object>> logs(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(required = false) String domain,
             @RequestParam(defaultValue = "bot") String category,
             @RequestParam(defaultValue = "100") int limit) {
@@ -430,7 +430,7 @@ public class MyStatsController {
 
     /** GET /me/path-rules */
     @GetMapping("/me/path-rules")
-    public List<Map<String, Object>> listRules(@RequestHeader("Authorization") String auth) {
+    public List<Map<String, Object>> listRules(@RequestHeader(value = "Authorization", required = false) String auth) {
         if (sessions.validate(auth) == null) return List.of();
         return db.queryForList(
                 "SELECT id, pattern, action, note, active, created_at FROM path_rules ORDER BY created_at ASC");
@@ -439,7 +439,7 @@ public class MyStatsController {
     /** POST /me/path-rules */
     @PostMapping("/me/path-rules")
     public Map<String, Object> createRule(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestBody Map<String, Object> body) {
         if (sessions.validate(auth) == null) return Map.of("error", "unauthorized");
         String pattern = (String) body.get("pattern");
@@ -462,7 +462,7 @@ public class MyStatsController {
     /** PATCH /me/path-rules/:id (active 토글, action 변경) */
     @PatchMapping("/me/path-rules/{id}")
     public Map<String, Object> updateRule(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @org.springframework.web.bind.annotation.PathVariable String id,
             @RequestBody Map<String, Object> body) {
         if (sessions.validate(auth) == null) return Map.of("error", "unauthorized");
@@ -486,7 +486,7 @@ public class MyStatsController {
     /** DELETE /me/path-rules/:id */
     @DeleteMapping("/me/path-rules/{id}")
     public Map<String, Object> deleteRule(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @org.springframework.web.bind.annotation.PathVariable String id) {
         if (sessions.validate(auth) == null) return Map.of("error", "unauthorized");
         int n = db.update("DELETE FROM path_rules WHERE id = ?", id);
@@ -499,7 +499,7 @@ public class MyStatsController {
 
     /** GET /me/purpose-policies */
     @GetMapping("/me/purpose-policies")
-    public Map<String, Object> listPolicies(@RequestHeader("Authorization") String auth) {
+    public Map<String, Object> listPolicies(@RequestHeader(value = "Authorization", required = false) String auth) {
         if (sessions.validate(auth) == null) return Map.of();
         List<Map<String, Object>> rows = db.queryForList("SELECT purpose, action FROM purpose_policies");
         Map<String, Object> result = new LinkedHashMap<>();
@@ -510,7 +510,7 @@ public class MyStatsController {
     /** PATCH /me/purpose-policies/:purpose */
     @PatchMapping("/me/purpose-policies/{purpose}")
     public Map<String, Object> updatePolicy(
-            @RequestHeader("Authorization") String auth,
+            @RequestHeader(value = "Authorization", required = false) String auth,
             @org.springframework.web.bind.annotation.PathVariable String purpose,
             @RequestBody Map<String, Object> body) {
         if (sessions.validate(auth) == null) return Map.of("error", "unauthorized");
