@@ -3,3 +3,18 @@ token-api/node_modules/
 token-api/data/
 *.db
 .env
+
+# Java / Maven
+admin-api/target/
+internal-api/target/
+**/target/
+
+# Next.js
+frontend/.next/
+frontend/node_modules/
+frontend/out/
+
+# IDE
+.idea/
+.vscode/
+*.iml

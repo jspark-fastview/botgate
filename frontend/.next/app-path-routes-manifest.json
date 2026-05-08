@@ -1,9 +1,0 @@
-{
-  "/_not-found/page": "/_not-found",
-  "/page": "/",
-  "/login/page": "/login",
-  "/portal/channels/page": "/portal/channels",
-  "/portal/dashboard/page": "/portal/dashboard",
-  "/portal/page": "/portal",
-  "/portal/tokens/page": "/portal/tokens"
-}
