@@ -24,7 +24,8 @@ export default function LoginPage() {
       }
       const res = await login(email, password)
       localStorage.setItem('portalToken', res.token)
-      router.replace('/portal/dashboard')
+      // 채널 오너 포털 — 기존 SPA(portal-app.html)로 이동
+      window.location.href = '/portal-app.html'
     } catch (err: unknown) {
       const e = err as { message?: string }
       setError(e.message || '처리 실패')

@@ -180,6 +180,193 @@ public class MyStatsController {
         return Map.of("total", total, "billed", billed, "unit_price", unit, "estimated_amount", billed * unit);
     }
 
+    /** GET /me/stats/daily/bots?domain=&category=bot */
+    @GetMapping("/me/stats/daily/bots")
+    public List<Map<String, Object>> dailyBots(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(required = false) String domain,
+            @RequestParam(defaultValue = "bot") String category) {
+        List<String> domains = filterDomains(myDomains(auth), domain);
+        if (domains.isEmpty()) return List.of();
+
+        List<Object> params = new ArrayList<>();
+        String where = domainIn(domains, params);
+        String catCond = "";
+        if (!"all".equals(category) && !category.isBlank()) {
+            catCond = " AND category = ?";
+            params.add(category);
+        }
+        return db.queryForList(
+                "SELECT DATE(ts) AS date, COALESCE(NULLIF(bot_name,''), bot_ua) AS bot_name, COUNT(*) AS count " +
+                "FROM access_logs WHERE " + where + catCond +
+                " AND ts >= datetime('now', '-30 days') " +
+                "GROUP BY date, bot_name ORDER BY date, count DESC",
+                params.toArray());
+    }
+
+    /** GET /me/stats/hourly?date=YYYY-MM-DD&domain=&category=bot */
+    @GetMapping("/me/stats/hourly")
+    public List<Map<String, Object>> hourly(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(required = false) String date,
+            @RequestParam(required = false) String domain,
+            @RequestParam(defaultValue = "bot") String category) {
+        List<String> domains = filterDomains(myDomains(auth), domain);
+        if (domains.isEmpty() || date == null || !date.matches("\\d{4}-\\d{2}-\\d{2}")) return List.of();
+
+        List<Object> params = new ArrayList<>();
+        String where = domainIn(domains, params);
+        params.add(date);
+        String catCond = "";
+        if (!"all".equals(category) && !category.isBlank()) {
+            catCond = " AND category = ?";
+            params.add(category);
+        }
+        List<Map<String, Object>> rows = db.queryForList(
+                "SELECT strftime('%H', ts) AS hour, COUNT(*) AS count " +
+                "FROM access_logs WHERE " + where + " AND DATE(ts) = ?" + catCond +
+                " GROUP BY hour ORDER BY hour",
+                params.toArray());
+        Map<String, Long> map = new LinkedHashMap<>();
+        for (Map<String, Object> r : rows) map.put((String) r.get("hour"), toLong(r.get("count")));
+        List<Map<String, Object>> result = new ArrayList<>(24);
+        for (int i = 0; i < 24; i++) {
+            String h = String.format("%02d", i);
+            result.add(Map.of("hour", h, "count", map.getOrDefault(h, 0L)));
+        }
+        return result;
+    }
+
+    /** GET /me/stats/pages?domain=&category=&limit=50 */
+    @GetMapping("/me/stats/pages")
+    public List<Map<String, Object>> pages(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(required = false) String domain,
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "50") int limit) {
+        List<String> domains = filterDomains(myDomains(auth), domain);
+        if (domains.isEmpty()) return List.of();
+
+        List<Object> params = new ArrayList<>();
+        String where = domainIn(domains, params);
+        String catCond = "";
+        if (category != null && !"all".equals(category) && !category.isBlank()) {
+            catCond = " AND category = ?";
+            params.add(category);
+        }
+        params.add(Math.min(limit, 200));
+        return db.queryForList(
+                "SELECT path, COUNT(*) AS count FROM access_logs WHERE " + where + catCond +
+                " GROUP BY path ORDER BY count DESC LIMIT ?",
+                params.toArray());
+    }
+
+    /** GET /me/stats/pages/bots?path=&domain=&category=bot */
+    @GetMapping("/me/stats/pages/bots")
+    public List<Map<String, Object>> pageBots(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam String path,
+            @RequestParam(required = false) String domain,
+            @RequestParam(defaultValue = "bot") String category) {
+        List<String> domains = filterDomains(myDomains(auth), domain);
+        if (domains.isEmpty()) return List.of();
+
+        List<Object> params = new ArrayList<>();
+        String where = domainIn(domains, params);
+        params.add(path);
+        String catCond = "";
+        if (!"all".equals(category) && !category.isBlank()) {
+            catCond = " AND category = ?";
+            params.add(category);
+        }
+        return db.queryForList(
+                "SELECT COALESCE(NULLIF(bot_name,''), bot_ua) AS bot_name, COUNT(*) AS count " +
+                "FROM access_logs WHERE " + where + " AND path = ?" + catCond +
+                " GROUP BY bot_name ORDER BY count DESC LIMIT 10",
+                params.toArray());
+    }
+
+    /** GET /me/stats/bot-names?domain=&purpose= */
+    @GetMapping("/me/stats/bot-names")
+    public List<Map<String, Object>> botNames(
+            @RequestHeader("Authorization") String auth,
+            @RequestParam(required = false) String domain,
+            @RequestParam(required = false) String purpose) {
+        List<String> domains = filterDomains(myDomains(auth), domain);
+        if (domains.isEmpty()) return List.of();
+
+        List<Object> params = new ArrayList<>();
+        String where = domainIn(domains, params);
+        String pCond = "";
+        if (purpose != null && !purpose.isBlank()) {
+            pCond = " AND bot_purpose = ?";
+            params.add(purpose);
+        }
+        return db.queryForList(
+                "SELECT bot_name, bot_purpose, COUNT(*) AS count " +
+                "FROM access_logs WHERE " + where + " AND category != 'user' AND bot_name IS NOT NULL AND bot_name != ''" + pCond +
+                " GROUP BY bot_name ORDER BY count DESC",
+                params.toArray());
+    }
+
+    /** GET /me/stats/channels — 본인 채널들의 누적 통계 */
+    @GetMapping("/me/stats/channels")
+    public List<Map<String, Object>> statsByChannel(@RequestHeader("Authorization") String auth) {
+        Map<String, Object> user = sessions.validate(auth);
+        if (user == null) return List.of();
+        return db.queryForList("""
+                SELECT
+                  c.id, c.name, c.domain, c.upstream, c.active,
+                  SUM(CASE WHEN l.category = 'bot'       THEN 1 ELSE 0 END) AS bot_total,
+                  SUM(CASE WHEN l.category = 'other_bot' THEN 1 ELSE 0 END) AS other_bot_total,
+                  SUM(CASE WHEN l.category = 'user'      THEN 1 ELSE 0 END) AS user_total,
+                  SUM(CASE WHEN l.category = 'malicious' THEN 1 ELSE 0 END) AS malicious_total,
+                  SUM(CASE WHEN l.category = 'bot' AND l.verified = 1                THEN 1 ELSE 0 END) AS verified,
+                  SUM(CASE WHEN l.category = 'bot' AND l.verified = 0 AND l.blocked = 0 THEN 1 ELSE 0 END) AS lenient_pass,
+                  SUM(CASE WHEN l.category = 'bot' AND l.blocked  = 1                THEN 1 ELSE 0 END) AS blocked,
+                  COUNT(DISTINCT CASE WHEN l.category = 'bot' THEN l.bot_name END) AS bot_types
+                FROM channels c
+                LEFT JOIN access_logs l ON
+                  l.domain = c.domain
+                  OR l.domain = 'www.' || c.domain
+                  OR l.domain = REPLACE(c.domain, 'www.', '')
+                WHERE c.owner_id = ?
+                GROUP BY c.id
+                ORDER BY (bot_total + other_bot_total + user_total) DESC
+                """, user.get("id"));
+    }
+
+    /** GET /me/stats/domains — 본인 채널 도메인별 카운트 */
+    @GetMapping("/me/stats/domains")
+    public List<Map<String, Object>> statsDomains(@RequestHeader("Authorization") String auth) {
+        List<String> domains = myDomains(auth);
+        if (domains.isEmpty()) return List.of();
+        List<Object> params = new ArrayList<>();
+        String where = domainIn(domains, params);
+        return db.queryForList(
+                "SELECT domain, COUNT(*) AS count FROM access_logs WHERE " + where +
+                " GROUP BY domain ORDER BY count DESC",
+                params.toArray());
+    }
+
+    /** GET /me/channels/dns-status — 본인 채널들 DNS 일괄 확인 */
+    @GetMapping("/me/channels/dns-status")
+    public List<Map<String, Object>> dnsStatusAll(
+            @RequestHeader("Authorization") String auth,
+            @org.springframework.beans.factory.annotation.Autowired io.guardus.admin.service.DnsService dnsService) {
+        Map<String, Object> user = sessions.validate(auth);
+        if (user == null) return List.of();
+        List<Map<String, Object>> chs = db.queryForList(
+                "SELECT id, name, domain FROM channels WHERE owner_id = ?", user.get("id"));
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, Object> c : chs) {
+            Map<String, Object> r = new LinkedHashMap<>(dnsService.checkDns((String) c.get("domain")));
+            r.put("id", c.get("id"));
+            result.add(r);
+        }
+        return result;
+    }
+
     /** GET /me/logs/export?period=day|week|month&domain=&category= */
     @GetMapping("/me/logs/export")
     public List<Map<String, Object>> exportLogs(

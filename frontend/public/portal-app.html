@@ -1,0 +1,3290 @@
+<!doctype html>
+<html lang="ko" data-role="admin">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>botgate — 대시보드</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="botgate-marketing.css?v=2"/>
+<style>
+  body { background: #f6f8fb; }
+
+  .app-shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* ============ SIDEBAR ============ */
+  .side {
+    background: #fff;
+    border-right: 1px solid var(--line);
+    padding: 20px 16px;
+    position: sticky; top: 0; height: 100vh;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+  .side-logo {
+    display: inline-flex; align-items: center; gap: 9px;
+    font-weight: 800; font-size: 19px; letter-spacing: -0.02em;
+    color: var(--ink);
+    padding: 4px 6px;
+  }
+  .side-logo .logo-mark { width:28px; height:28px; border-radius:8px; }
+  .side-section { display: flex; flex-direction: column; gap: 2px; }
+  .side-section .h {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-mute);
+    padding: 6px 10px;
+  }
+  .side a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 10px;
+    font-size: 14px; font-weight: 500;
+    color: var(--ink-2);
+    cursor: pointer; transition: background 120ms;
+  }
+  .side a:hover { background: var(--bg-soft); color: var(--ink); }
+  .side a.active {
+    background: var(--brand-soft); color: var(--brand); font-weight: 600;
+  }
+  .side a svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+  .side-foot {
+    margin-top: auto;
+    padding: 14px;
+    background: var(--bg-soft);
+    border-radius: 14px;
+    font-size: 13px;
+  }
+  .side-foot .name { font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+  .side-foot .sub { color: var(--ink-dim); font-size: 12px; }
+
+  /* ============ MAIN ============ */
+  main { padding: 28px 32px 60px; max-width: 1280px; }
+
+  .page-head {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 28px;
+  }
+  .page-head h1 {
+    font-size: 28px; font-weight: 800; letter-spacing: -0.02em;
+    margin: 0; color: var(--ink);
+  }
+  .page-head .greeting {
+    font-size: 14px; color: var(--ink-dim); margin-top: 4px;
+  }
+  .page-head .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+  .range-pill {
+    display: inline-flex; gap: 4px;
+    background: #fff; border: 1px solid var(--line);
+    border-radius: var(--radius-pill); padding: 4px;
+  }
+  .range-pill button {
+    border: none; background: transparent;
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    padding: 6px 14px; border-radius: var(--radius-pill);
+    color: var(--ink-2); cursor: pointer;
+  }
+  .range-pill button.active {
+    background: var(--ink); color: #fff; font-weight: 600;
+  }
+  .purpose-pill {
+    border: none; border-radius: 20px; padding: 4px 12px;
+    font-family: var(--sans); font-size: 12px; font-weight: 600;
+    cursor: pointer; background: var(--bg-soft); color: var(--ink-2);
+    transition: background 120ms, color 120ms;
+  }
+  .purpose-pill.active { color: #fff; }
+  .csv-btn { margin-left:auto; padding:4px 10px; font-size:11px; font-weight:700; color:var(--ink-dim); background:var(--bg-soft); border:1px solid var(--line); border-radius:6px; cursor:pointer; letter-spacing:.02em; transition:background 150ms,color 150ms; flex-shrink:0; }
+  .csv-btn:hover { background:var(--brand); color:#fff; border-color:var(--brand); }
+  .pricing-base-card:hover { background: var(--bg-soft); }
+  .pricing-base-card.active { border-color: var(--brand) !important; background: var(--brand-soft); }
+  .pricing-base-card.active div:last-child { color: var(--brand) !important; font-weight: 700; }
+  .pricing-heatmap { display:none; flex-wrap:wrap; gap:3px; margin:10px 0 8px; min-height:22px; }
+  .pricing-base-card.active .pricing-heatmap { display:flex; }
+  #pricing-tip { position:fixed; background:var(--ink); color:#fff; font-size:11px; line-height:1.5; padding:5px 9px; border-radius:7px; pointer-events:none; display:none; z-index:9999; white-space:nowrap; }
+
+  /* ============ KPI ROW ============ */
+  .kpis {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 22px 24px;
+    position: relative; overflow: hidden;
+  }
+  .kpi.accent { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .kpi.accent .l, .kpi.accent .s { color: rgba(255,255,255,0.85); }
+  .kpi .l { font-size: 13px; color: var(--ink-dim); font-weight: 500; margin-bottom: 8px; }
+  .kpi .v {
+    font-size: 30px; font-weight: 800; letter-spacing: -0.02em;
+    line-height: 1.1; color: inherit;
+  }
+  .kpi .s {
+    font-size: 12.5px; color: var(--ink-dim);
+    margin-top: 8px; display: flex; align-items: center; gap: 5px;
+  }
+  .kpi .s.up { color: var(--ok); }
+  .kpi .s.down { color: var(--bad); }
+  .kpi.accent .s.up { color: #c8ffd9; }
+  .kpi .icon {
+    position: absolute; top: 18px; right: 18px;
+    width: 38px; height: 38px; border-radius: 12px;
+    background: var(--brand-soft); color: var(--brand);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .kpi.accent .icon { background: rgba(255,255,255,0.18); color: #fff; }
+
+  /* ============ GRID ============ */
+  .row { display: grid; gap: 16px; margin-bottom: 16px; }
+  .row.r-7-5 { grid-template-columns: 7fr 5fr; }
+  .row.r-5-7 { grid-template-columns: 5fr 7fr; }
+  .row.r-6-6 { grid-template-columns: 1fr 1fr; }
+  .row.r-8-4 { grid-template-columns: 8fr 4fr; }
+  @media (max-width: 1100px) { .row.r-7-5, .row.r-5-7, .row.r-6-6, .row.r-8-4 { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+  }
+  .panel.pastel-blue   { background: var(--pastel-blue); border-color: transparent; }
+  .panel.pastel-mint   { background: var(--pastel-mint); border-color: transparent; }
+  .panel.pastel-peach  { background: var(--pastel-peach); border-color: transparent; }
+  .panel.pastel-lemon  { background: var(--pastel-lemon); border-color: transparent; }
+  .panel.pastel-lilac  { background: var(--pastel-lilac); border-color: transparent; }
+  .panel.pastel-rose   { background: var(--pastel-rose); border-color: transparent; }
+
+  .panel-head {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+  }
+  .panel-head h3 {
+    font-size: 16px; font-weight: 700; letter-spacing: -0.01em;
+    margin: 0; color: var(--ink);
+  }
+  .panel-head .sub {
+    font-size: 13px; color: var(--ink-dim); margin-left: 4px;
+  }
+  .panel-head .right { margin-left: auto; display: flex; gap: 8px; }
+  .panel-head .right a {
+    font-size: 13px; color: var(--brand); font-weight: 600;
+  }
+
+  /* ============ CHART ============ */
+  .chart {
+    height: 220px;
+    display: flex; align-items: flex-end; gap: 6px;
+    padding: 12px 0;
+    position: relative;
+  }
+  .chart svg { display: block; width: 100%; height: 100%; }
+  .chart .col {
+    flex: 1; display: flex; flex-direction: column; justify-content: flex-end;
+    gap: 2px; position: relative; cursor: pointer;
+  }
+  .chart .col .bar {
+    background: var(--brand); border-radius: 4px 4px 0 0;
+    transition: opacity 160ms;
+  }
+  .chart .col:hover .bar { opacity: 0.7; }
+  .chart .col .bar.b1 { background: #2b6df6; }
+  .chart .col .bar.b2 { background: #9d6bff; }
+  .chart .col .bar.b3 { background: #ff7a5c; }
+  .chart .col .bar.b4 { background: #1aa377; }
+  .chart-x {
+    display: flex; gap: 6px; padding-top: 8px;
+    border-top: 1px solid var(--line);
+  }
+  .chart-x .l {
+    flex: 1; text-align: center; font-size: 11px; color: var(--ink-mute);
+  }
+  .legend {
+    display: flex; gap: 18px; margin-top: 14px; flex-wrap: wrap;
+    font-size: 13px;
+  }
+  .legend .it { display: inline-flex; align-items: center; gap: 7px; }
+  .legend .it .dot {
+    width: 10px; height: 10px; border-radius: 3px;
+  }
+
+  /* ============ BOT LIST ============ */
+  .bot-list { display: flex; flex-direction: column; gap: 12px; }
+  .bot-row {
+    display: grid; grid-template-columns: 36px 1fr auto auto; gap: 14px;
+    align-items: center;
+  }
+  .bot-avatar {
+    width: 36px; height: 36px; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px; color: #fff;
+  }
+  .bot-row .meta .name {
+    font-size: 14px; font-weight: 700; color: var(--ink);
+  }
+  .bot-row .meta .ua {
+    font-family: var(--mono); font-size: 11px; color: var(--ink-mute);
+    margin-top: 1px;
+  }
+  .bot-row .req { text-align: right; }
+  .bot-row .req .n { font-weight: 700; font-size: 14px; }
+  .bot-row .req .s { font-size: 11.5px; color: var(--ink-dim); }
+  .bot-row .rev {
+    background: var(--brand-soft); color: var(--brand);
+    padding: 6px 11px; border-radius: 999px;
+    font-weight: 700; font-size: 13px;
+    min-width: 90px; text-align: right;
+  }
+  .bot-row.bg-blocked .rev { background: #ffe1e1; color: var(--bad); }
+
+  /* ============ RULES ============ */
+  .rules { display: flex; flex-direction: column; gap: 8px; }
+  .rule {
+    display: grid; grid-template-columns: 80px 1fr auto auto; gap: 14px;
+    align-items: center;
+    padding: 12px 14px;
+    background: var(--bg-soft);
+    border-radius: 12px;
+    font-size: 14px;
+  }
+  .rule:hover { background: #eef1f6; }
+  .badge {
+    font-size: 11.5px; font-weight: 700;
+    padding: 4px 10px; border-radius: 999px;
+    text-align: center;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .badge.free { background: var(--pastel-mint); color: var(--ok); }
+  .badge.paid { background: var(--brand-soft); color: var(--brand); }
+  .badge.block { background: #ffd9d3; color: var(--bad); }
+  .rule .path { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+  .rule .price { font-weight: 700; color: var(--ink); font-size: 13px; }
+  .rule .ax { color: var(--ink-mute); cursor: pointer; padding: 4px; }
+  .rule .ax:hover { color: var(--ink); }
+
+  .add-rule {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 12px;
+    padding: 9px 14px; background: #fff;
+    border: 1px dashed var(--line-2);
+    border-radius: 12px;
+    font-size: 13.5px; font-weight: 600;
+    color: var(--ink-2); cursor: pointer;
+  }
+  .add-rule:hover { border-color: var(--brand); color: var(--brand); }
+
+  /* ============ EVENTS ============ */
+  .events { display: flex; flex-direction: column; gap: 10px; }
+  .event {
+    display: grid; grid-template-columns: 8px 1fr auto; gap: 12px;
+    align-items: center;
+    padding: 11px 14px;
+    background: var(--bg-soft);
+    border-radius: 12px;
+    font-size: 13.5px;
+  }
+  .event .pin {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--brand);
+  }
+  .event.ev-ok .pin   { background: var(--ok); }
+  .event.ev-bad .pin  { background: var(--bad); }
+  .event.ev-warn .pin { background: var(--warn); }
+  .event .msg { color: var(--ink); }
+  .event .msg b { color: var(--ink); font-weight: 700; }
+  .event .msg .ua { font-family: var(--mono); font-size: 12px; color: var(--ink-dim); }
+  .event time { font-size: 12px; color: var(--ink-mute); white-space: nowrap; }
+
+  /* ============ payout banner ============ */
+  .payout-banner {
+    background: linear-gradient(120deg, var(--pastel-lemon) 0%, var(--pastel-peach) 100%);
+    border-radius: var(--radius-lg);
+    padding: 22px 26px;
+    display: flex; align-items: center; gap: 18px;
+    margin-bottom: 16px;
+  }
+  .payout-banner .ico {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+  }
+  .payout-banner .body { flex: 1; }
+  .payout-banner .body .h {
+    font-size: 15px; font-weight: 700; color: var(--ink);
+    margin-bottom: 3px;
+  }
+  .payout-banner .body .p {
+    font-size: 13.5px; color: var(--ink-2);
+  }
+  .payout-banner .v {
+    font-size: 24px; font-weight: 800; color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+
+  /* sparkline ring */
+  .ring {
+    position: relative; width: 160px; height: 160px;
+    margin: 0 auto;
+  }
+  .ring svg { transform: rotate(-90deg); }
+  .ring .center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center;
+  }
+  .ring .center .v {
+    font-size: 26px; font-weight: 800; letter-spacing: -0.02em;
+  }
+  .ring .center .l { font-size: 12px; color: var(--ink-dim); }
+
+  /* segment legend table */
+  .seg-legend { margin-top: 18px; display: flex; flex-direction: column; gap: 9px; }
+  .seg-legend .row-l {
+    display: grid; grid-template-columns: 14px 1fr auto; gap: 10px;
+    align-items: center; font-size: 13px;
+  }
+  .seg-legend .dot { width: 10px; height: 10px; border-radius: 3px; }
+  .seg-legend .name { color: var(--ink); }
+  .seg-legend .pct { font-weight: 700; color: var(--ink); }
+
+  @media (max-width: 980px) {
+    .app-shell { grid-template-columns: 1fr; }
+    .side { position: relative; height: auto; flex-direction: row; overflow-x: auto; padding: 12px; }
+    .side-section, .side-foot { display: none; }
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    main { padding: 20px; }
+  }
+
+  /* ============ SPA NAV ============ */
+  .page-section { display: none; }
+  .page-section.active { display: block; }
+
+  /* ============ TABLE ============ */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .tbl th {
+    padding: 10px 14px; text-align: left;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink-mute); background: var(--bg-soft); border-bottom: 1px solid var(--line);
+  }
+  .tbl td { padding: 12px 14px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: middle; }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl tr:hover td { background: var(--bg-soft); }
+  .tbl .mono { font-family: var(--mono); font-size: 12px; color: var(--ink-dim); }
+
+  /* ============ STATUS DOT ============ */
+  .sdot { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+  .sdot::before { content:''; display:inline-block; width:7px; height:7px; border-radius:50%; }
+  .sdot.on::before { background: var(--ok); }
+  .sdot.off::before { background: var(--ink-mute); }
+
+  /* ============ LIVE LOG ============ */
+  .log-wrap { overflow-x: auto; }
+  .log-hd, .log-row { display: grid; grid-template-columns: 90px 80px 70px 160px 130px 1fr 80px; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line); align-items: center; font-family: var(--mono); font-size: 12px; }
+  .log-hd { background: var(--bg-soft); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-mute); }
+  .log-row:hover { background: var(--bg-soft); }
+  .log-ok  { color: var(--ok); }
+  .log-bad { color: var(--bad); }
+  .log-dim { color: var(--ink-mute); }
+
+  /* ============ DOMAIN STAT ============ */
+  .dbar { height: 8px; background: var(--bg-soft); border-radius: 4px; overflow: hidden; margin-top: 4px; }
+  .dbar-fill { height: 100%; background: var(--brand); border-radius: 4px; }
+
+  /* ============ STUB ============ */
+  .stub { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:360px; gap:14px; }
+  .stub .ico { font-size:48px; }
+  .stub h2 { font-size:20px; font-weight:800; color:var(--ink); margin:0; }
+  .stub p { font-size:14px; color:var(--ink-dim); margin:0; text-align:center; max-width:360px; line-height:1.6; }
+  .stub .chip { background:var(--pastel-lemon); color:var(--ink); font-size:12px; font-weight:700; padding:5px 14px; border-radius:999px; letter-spacing:0.04em; }
+
+  /* inline btn variants */
+  .btn-sm { font-size:12px; font-weight:600; padding:5px 12px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink-2); cursor:pointer; }
+  .btn-sm:hover { border-color:var(--brand); color:var(--brand); }
+  .btn-sm.danger:hover { border-color:var(--bad); color:var(--bad); }
+
+  /* ============ CHANNEL SELECTOR ============ */
+  .ch-select {
+    padding: 6px 28px 6px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;
+    color: var(--ink); cursor: pointer; appearance: none; min-width: 150px;
+  }
+  .ch-select:focus { outline: none; border-color: var(--brand); }
+
+</style>
+</head>
+<body>
+
+<!-- ── 로그인 오버레이 ───────────────────────────────────── -->
+<div id="login-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;padding:40px 36px;width:360px;box-shadow:0 24px 80px rgba(0,0,0,.25);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px;">
+      <span style="width:32px;height:32px;background:var(--brand);border-radius:9px;display:flex;align-items:center;justify-content:center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 3l8 4v5c0 4.5-3.5 8.5-8 9-4.5-.5-8-4.5-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+      </span>
+      <span style="font-size:20px;font-weight:800;letter-spacing:-.02em;">botgate</span>
+    </div>
+    <div style="font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px;">관리자 로그인</div>
+    <div style="font-size:14px;color:var(--ink-dim);margin-bottom:24px;">계속하려면 비밀번호를 입력하세요.</div>
+    <input id="login-pw" type="password" placeholder="비밀번호"
+      style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:var(--sans);box-sizing:border-box;margin-bottom:10px;outline:none;"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()"
+      style="width:100%;padding:11px;background:var(--brand);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--sans);">
+      로그인
+    </button>
+    <div id="login-error" style="color:var(--bad);font-size:13px;margin-top:10px;display:none;">비밀번호가 틀렸습니다.</div>
+  </div>
+</div>
+
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="side">
+    <a href="/" class="side-logo">
+      <span class="logo-mark">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 4.5-3.5 8.5-8 9-4.5-.5-8-4.5-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+      </span>
+      <span>botgate</span>
+    </a>
+
+    <!-- 긴급 바이패스 킬 스위치 -->
+    <div id="bypass-banner" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:10px 12px;margin-bottom:4px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#dc2626;margin-bottom:4px;">⚠ 바이패스 활성</div>
+      <div style="font-size:11px;color:#7f1d1d;line-height:1.4;margin-bottom:8px;">봇 필터링이 중단되었습니다. 모든 트래픽이 그대로 통과 중.</div>
+      <button onclick="toggleBypass(false)" style="width:100%;padding:5px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">필터링 재개</button>
+    </div>
+    <div id="bypass-off-banner" style="background:var(--bg-soft);border-radius:10px;padding:8px 12px;margin-bottom:4px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-mute);margin-bottom:5px;">긴급 킬 스위치</div>
+      <button onclick="toggleBypass(true)" style="width:100%;padding:5px;background:var(--bad);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">필터링 중단</button>
+    </div>
+
+    <!-- 파트너 모드 배너 (URL ?partner= 시 표시) -->
+    <div id="partner-mode-banner" style="display:none;background:var(--brand-soft);border-radius:10px;padding:10px 12px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--brand);margin-bottom:3px;">파트너 모드</div>
+      <div id="partner-mode-domain" style="font-size:12px;color:var(--ink-2);font-family:var(--mono);word-break:break-all;"></div>
+      <a href="/portal-app.html" style="font-size:11px;color:var(--ink-mute);text-decoration:none;display:inline-block;margin-top:5px;">← 전체 보기</a>
+    </div>
+
+    <div class="side-section">
+      <span class="h">메인</span>
+      <a class="active" onclick="nav(event,'page-dashboard')" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        대시보드
+      </a>
+      <a onclick="nav(event,'page-analytics')" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/></svg>
+        분석 리포트
+      </a>
+      <a onclick="nav(event,'page-traffic')" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M5 9l7-7 7 7M5 15l7 7 7-7"/></svg>
+        실시간 트래픽
+      </a>
+    </div>
+
+    <div class="side-section">
+      <span class="h">설정</span>
+      <a onclick="nav(event,'page-pricing')" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        경로 규칙
+      </a>
+      <a onclick="nav(event,'page-tokens')" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        봇 화이트리스트
+      </a>
+      <a onclick="nav(event,'page-domains')" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+        채널 등록/관리
+      </a>
+      <a onclick="nav(event,'page-catalog')" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        봇 카탈로그
+      </a>
+      <a onclick="nav(event,'page-policies')" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        봇 정책
+      </a>
+    </div>
+
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+  <section id="page-dashboard" class="page-section active">
+    <div class="page-head">
+      <div>
+        <h1>안녕하세요, 패스트뷰 님</h1>
+        <div class="greeting">봇 트래픽 현황을 실시간으로 확인하세요.</div>
+      </div>
+      <div class="right" style="gap:14px;align-items:center;">
+        <label id="strict-toggle-wrap"
+          style="display:none;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);cursor:pointer;user-select:none;"
+          title="ON: rDNS 검증 실패 시 차단 / OFF: 통과시키되 verified=false 마킹">
+          <span>엄격 모드</span>
+          <span id="strict-toggle"
+            style="position:relative;display:inline-block;width:38px;height:22px;background:var(--ink-mute);border-radius:999px;transition:background 160ms;">
+            <span id="strict-toggle-knob"
+              style="position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform 160ms;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>
+          </span>
+        </label>
+        <select id="dash-ch-select" class="ch-select ch-selector" onchange="onChannelChange(this)">
+          <option value="">전체 채널</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- KPI -->
+    <div class="kpis" style="grid-template-columns:repeat(4,1fr);">
+      <div class="kpi accent">
+        <div class="icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0zM12 7v5l3 2"/></svg></div>
+        <div class="l">AI 봇 요청</div>
+        <div class="v" id="kpi-requests">—</div>
+        <div class="s" id="kpi-requests-sub">rDNS 검증 대상</div>
+      </div>
+      <div class="kpi">
+        <div class="icon" style="background:var(--bg-soft);color:var(--ink-2);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
+        <div class="l">기타 봇</div>
+        <div class="v" id="kpi-otherbot">—</div>
+        <div class="s">Slackbot · 크롤러 등</div>
+      </div>
+      <div class="kpi" style="background:#ffe1e1;border-color:transparent;">
+        <div class="icon" style="background:#fff;color:var(--bad);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg></div>
+        <div class="l">차단된 악성</div>
+        <div class="v" id="kpi-malicious" style="color:var(--bad);">—</div>
+        <div class="s">스캐너 · 자동화 도구</div>
+      </div>
+      <div class="kpi">
+        <div class="icon" style="background:var(--pastel-mint); color:var(--ok);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></div>
+        <div class="l">활성 토큰</div>
+        <div class="v" id="kpi-tokens">—</div>
+        <div class="s">화이트리스트 등록</div>
+      </div>
+    </div>
+
+    <!-- AI 봇별 + 기타 봇 요청 현황 -->
+    <div class="row r-6-6" style="margin-bottom:14px;">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>AI 회사별 요청 현황</h3>
+          <span class="sub">학습·검색·어시스턴트 봇 누적</span>
+          <div class="right"><a onclick="nav(event,'page-analytics')" href="#">자세히 →</a></div>
+        </div>
+        <div id="dash-bot-list" class="bot-list">
+          <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>기타 봇 요청 현황</h3>
+          <span class="sub">누적 · Slackbot · 크롤러 등</span>
+          <div class="right"><a onclick="dashboardJumpTrafficOtherBot(event)" href="#">기타 봇 로그 →</a></div>
+        </div>
+        <div id="dash-otherbot-list" class="bot-list">
+          <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- chart (일별 추이 — 전체 너비) -->
+    <div class="panel" style="margin-bottom:14px;">
+      <div class="panel-head">
+        <h3>일별 AI 봇 요청 추이</h3>
+        <span class="sub">최근 14일</span>
+        <div class="right"><a onclick="nav(event,'page-analytics')" href="#">자세히 보기 →</a></div>
+      </div>
+      <div class="chart" id="chart" style="height:200px;">
+        <!-- bars filled by JS -->
+      </div>
+      <div class="chart-x" id="chartx"></div>
+    </div>
+
+    <!-- events -->
+    <div class="row r-8-4">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>최근 이벤트</h3>
+          <span class="sub">실시간</span>
+          <div class="right"><a onclick="nav(event,'page-traffic')" href="#">전체 로그 →</a></div>
+        </div>
+        <div class="events" id="dash-events">
+          <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:24px;">로딩중…</div>
+        </div>
+      </div>
+    </div>
+  </section><!-- /page-dashboard -->
+
+  <!-- ======================================================
+       분석 리포트
+  ====================================================== -->
+  <section id="page-analytics" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>분석 리포트</h1>
+        <div class="greeting" id="analytics-greeting">봇 종류별 요청 현황과 일별 추이를 확인하세요.</div>
+      </div>
+      <div class="right" style="gap:10px;">
+        <select id="analytics-ch-select" class="ch-select ch-selector" onchange="onChannelChange(this)">
+          <option value="">전체 채널</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Tab switcher -->
+    <div class="range-pill" style="margin-bottom:20px;">
+      <button id="atab-btn-bots" class="active" onclick="switchAnalyticsTab('bots')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;margin-right:5px;"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>Bots
+      </button>
+      <button id="atab-btn-pages" onclick="switchAnalyticsTab('pages')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;margin-right:5px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Pages
+      </button>
+      <button id="atab-btn-platforms" onclick="switchAnalyticsTab('platforms')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;margin-right:5px;"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Platforms
+      </button>
+      <button id="atab-btn-pricing" onclick="switchAnalyticsTab('pricing')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;margin-right:5px;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>예상 수익 계산기
+      </button>
+    </div>
+
+    <!-- ── BOTS TAB ── -->
+    <div id="analytics-tab-bots">
+      <div class="row r-7-5" style="margin-bottom:16px;">
+        <div class="panel">
+          <div class="panel-head">
+            <h3 id="analytics-chart-title">일별 요청 추이</h3>
+            <span class="sub" id="analytics-chart-sub">최근 30일</span>
+            <div class="right">
+              <button id="analytics-back-btn"
+                onclick="analyticsBackToDaily()"
+                style="display:none;font-size:12px;font-weight:600;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink-2);cursor:pointer;">
+                ← 30일 보기
+              </button>
+            </div>
+          </div>
+          <div class="chart" id="analytics-chart" style="height:240px;"></div>
+          <div class="chart-x" id="analytics-chartx"></div>
+          <div id="analytics-chart-legend" style="display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:10px;"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>봇 종류별 요청 수</h3><span class="sub">누적</span></div>
+          <div id="analytics-bot-bars" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>봇 상세 테이블</h3><button class="csv-btn" onclick="downloadBotsCsv()">↓ CSV</button></div>
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead><tr><th>Bot UA</th><th>요청 수</th><th>비율</th></tr></thead>
+            <tbody id="analytics-tbl-body">
+              <tr><td colspan="3" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGES TAB ── -->
+    <div id="analytics-tab-pages" style="display:none;">
+      <div class="panel">
+        <div class="panel-head">
+          <h3>경로별 요청 현황</h3>
+          <span class="sub">AI 봇 기준 · 상위 50개 경로 · 클릭하면 세부 봇 목록</span>
+          <button class="csv-btn" onclick="downloadPagesCsv()">↓ CSV</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th style="width:24px;"></th>
+                <th>경로</th>
+                <th style="text-align:right;">요청 수</th>
+                <th>비율</th>
+              </tr>
+            </thead>
+            <tbody id="analytics-pages-tbl-body">
+              <tr><td colspan="4" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PLATFORMS TAB ── -->
+    <div id="analytics-tab-platforms" style="display:none;">
+      <div class="row r-6-6" style="margin-bottom:16px;">
+        <div class="panel">
+          <div class="panel-head"><h3>플랫폼별 봇 목록</h3><span class="sub">purpose 기준 상위 봇</span></div>
+          <div id="analytics-platforms-bot-list" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
+            <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>봇 카테고리별 비중</h3><span class="sub">전체 봇 트래픽</span></div>
+          <div id="analytics-platforms-bars" style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
+            <div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>AI 회사별 요청 현황</h3><span class="sub">bot_name 기준 누적</span><button class="csv-btn" onclick="downloadPlatformsCsv()">↓ CSV</button></div>
+        <div id="platforms-purpose-filter" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+          <button class="purpose-pill active" data-purpose="all" onclick="filterPlatformsByPurpose('all')">전체</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>AI 회사 / 봇</th>
+                <th>Purpose</th>
+                <th style="text-align:right;">요청 수</th>
+                <th>비율</th>
+              </tr>
+            </thead>
+            <tbody id="analytics-platforms-tbl-body">
+              <tr><td colspan="4" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PRICING TAB ── -->
+    <div id="analytics-tab-pricing" style="display:none;">
+      <div class="panel">
+        <div class="panel-head" style="margin-bottom:20px;">
+          <h3>예상 수익 계산기</h3>
+          <span class="sub">기준 데이터를 선택하고 단가를 입력하세요</span>
+          <span style="margin-left:8px;font-size:10px;font-weight:700;background:rgba(26,163,119,.15);color:var(--ok);padding:3px 8px;border-radius:6px;">PREVIEW</span>
+        </div>
+
+        <!-- 기준 데이터 선택 -->
+        <div style="font-size:11px;font-weight:700;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">기준 데이터</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px;">
+          <div id="pricing-base-total" class="pricing-base-card" onclick="applyPricingBase('total')" style="cursor:pointer;border:2px solid var(--line);border-radius:12px;padding:14px 16px;transition:border-color 150ms,background 150ms;">
+            <div style="font-size:11px;font-weight:700;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">전체 AI봇 요청</div>
+            <div id="pricing-stat-total" style="font-size:26px;font-weight:800;letter-spacing:-.02em;color:var(--ink);margin-bottom:4px;">—</div>
+            <div id="pricing-heat-total" class="pricing-heatmap"></div>
+            <div style="font-size:11px;color:var(--ink-mute);">누적 전체 · 통과 + 차단 포함</div>
+            <div style="font-size:10px;color:var(--ink-mute);margin-top:4px;">검색봇·기타봇 포함, 일부는 무료 통과</div>
+            <div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--ink-dim);">계산에 적용 →</div>
+          </div>
+          <div id="pricing-base-month" class="pricing-base-card" onclick="applyPricingBase('month')" style="cursor:pointer;border:2px solid var(--line);border-radius:12px;padding:14px 16px;transition:border-color 150ms,background 150ms;">
+            <div style="font-size:11px;font-weight:700;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">이번달 요청</div>
+            <div id="pricing-stat-month" style="font-size:26px;font-weight:800;letter-spacing:-.02em;color:var(--brand);margin-bottom:4px;">—</div>
+            <div id="pricing-heat-month" class="pricing-heatmap"></div>
+            <div style="font-size:11px;color:var(--ink-mute);">최근 30일 · 통과 + 차단 포함</div>
+            <div style="font-size:10px;color:var(--ink-mute);margin-top:4px;">월별 트래픽 규모 파악용</div>
+            <div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--ink-dim);">계산에 적용 →</div>
+          </div>
+          <div id="pricing-base-billed" class="pricing-base-card" onclick="applyPricingBase('billed')" style="cursor:pointer;border:2px solid var(--line);border-radius:12px;padding:14px 16px;transition:border-color 150ms,background 150ms;">
+            <div style="font-size:11px;font-weight:700;color:var(--ok);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">과금 대상</div>
+            <div id="pricing-stat-billed" style="font-size:26px;font-weight:800;letter-spacing:-.02em;color:var(--ok);margin-bottom:4px;">—</div>
+            <div id="pricing-heat-billed" class="pricing-heatmap"></div>
+            <div style="font-size:11px;color:var(--ink-mute);">meter 정책 적용 요청만</div>
+            <div style="font-size:10px;color:var(--ink-mute);margin-top:4px;">실제 수익화 대상 — 전체보다 적음</div>
+            <div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--ok);">계산에 적용 →</div>
+          </div>
+        </div>
+
+        <!-- 구분선 -->
+        <div style="border-top:1px solid var(--line);margin-bottom:20px;"></div>
+
+        <!-- 단가 + 결과 -->
+        <div style="font-size:11px;font-weight:700;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">단가 설정</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:20px;flex-wrap:wrap;">
+          <button onclick="stepPricingRate(-0.1)" style="width:36px;height:44px;border-radius:8px;border:1px solid var(--line);background:var(--bg-soft);color:var(--ink);font-size:18px;cursor:pointer;font-weight:400;">−</button>
+          <div style="display:flex;align-items:center;background:var(--ink);border-radius:8px;padding:0 14px;">
+            <span style="font-size:16px;font-weight:600;color:rgba(255,255,255,.5);">$</span>
+            <input id="pricing-rate" type="number" step="0.01" min="0" value="0.00"
+              oninput="updatePricingPreview()"
+              style="background:transparent;color:#fff;border:none;font-size:22px;font-weight:700;font-family:var(--mono);width:100px;outline:none;padding:10px 6px;"/>
+          </div>
+          <button onclick="stepPricingRate(0.1)" style="width:36px;height:44px;border-radius:8px;border:1px solid var(--line);background:var(--bg-soft);color:var(--ink);font-size:18px;cursor:pointer;font-weight:400;">+</button>
+          <span style="font-size:13px;color:var(--ink-dim);">/1,000 pages</span>
+          <div style="margin-left:24px;">
+            <div id="pricing-amount-display" style="font-size:32px;font-weight:800;color:var(--brand);letter-spacing:-0.02em;line-height:1.1;">₩0</div>
+            <div id="pricing-sub-display" style="font-size:12px;color:var(--ink-dim);margin-top:2px;">기준 0건 × ₩0</div>
+          </div>
+        </div>
+
+        <!-- 결과 타일 -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+          <div style="background:var(--ink);border-radius:10px;padding:14px 16px;">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.4);margin-bottom:6px;">예상 수익 (KRW)</div>
+            <div id="pricing-krw-val" style="font-size:18px;font-weight:700;color:#1aa377;font-family:var(--mono);">₩0</div>
+          </div>
+          <div style="background:var(--ink);border-radius:10px;padding:14px 16px;">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.4);margin-bottom:6px;">건당 단가</div>
+            <div id="pricing-per-val" style="font-size:18px;font-weight:700;color:#fff;font-family:var(--mono);">₩0</div>
+          </div>
+          <div style="background:var(--ink);border-radius:10px;padding:14px 16px;">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.4);margin-bottom:6px;">예상 수익 (USD)</div>
+            <div id="pricing-usd-val" style="font-size:18px;font-weight:700;color:#fff;font-family:var(--mono);">$0.00</div>
+          </div>
+          <div style="background:var(--ink);border-radius:10px;padding:14px 16px;">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.4);margin-bottom:6px;">기준 요청 수</div>
+            <div id="pricing-total-val" style="font-size:18px;font-weight:700;color:#fff;font-family:var(--mono);">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 히트맵 툴팁 (전역) -->
+  <div id="pricing-tip"></div>
+
+  <!-- ======================================================
+       실시간 트래픽
+  ====================================================== -->
+  <section id="page-traffic" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>실시간 트래픽</h1>
+        <div class="greeting">최근 접근 로그를 3초마다 자동 갱신합니다.</div>
+      </div>
+      <div class="right">
+        <select id="traffic-cat-select" class="ch-select" onchange="onTrafficCatChange(this)" style="margin-right:8px;">
+          <option value="all">전체 트래픽</option>
+          <option value="bot" selected>AI 봇만</option>
+          <option value="other_bot">기타 봇만</option>
+          <option value="malicious">차단된 악성만</option>
+          <option value="user">사용자만</option>
+        </select>
+        <select id="traffic-ch-select" class="ch-select ch-selector" onchange="onChannelChange(this)">
+          <option value="">전체 채널</option>
+        </select>
+        <div style="position:relative;display:inline-block;">
+          <button class="csv-btn" onclick="toggleTrafficExportMenu(event)" style="display:flex;align-items:center;gap:5px;">↓ CSV <span style="font-size:9px;opacity:.7;">▾</span></button>
+          <div id="traffic-export-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden;z-index:200;min-width:140px;box-shadow:0 6px 20px rgba(0,0,0,.12);">
+            <button onclick="downloadTrafficCsv()" style="display:block;width:100%;text-align:left;padding:9px 14px;font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;color:var(--ink);" onmouseover="this.style.background='var(--bg-soft)'" onmouseout="this.style.background='none'">실시간 (현재 화면)</button>
+            <div style="height:1px;background:var(--line);margin:0 10px;"></div>
+            <button onclick="exportTrafficByPeriod('day')"   style="display:block;width:100%;text-align:left;padding:9px 14px;font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;color:var(--ink);" onmouseover="this.style.background='var(--bg-soft)'" onmouseout="this.style.background='none'">오늘</button>
+            <button onclick="exportTrafficByPeriod('week')"  style="display:block;width:100%;text-align:left;padding:9px 14px;font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;color:var(--ink);" onmouseover="this.style.background='var(--bg-soft)'" onmouseout="this.style.background='none'">최근 7일</button>
+            <button onclick="exportTrafficByPeriod('month')" style="display:block;width:100%;text-align:left;padding:9px 14px;font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;color:var(--ink);" onmouseover="this.style.background='var(--bg-soft)'" onmouseout="this.style.background='none'">최근 30일</button>
+          </div>
+        </div>
+        <span id="traffic-status" style="font-size:13px;color:var(--ok);font-weight:600;">● 라이브</span>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:0;overflow:hidden;">
+      <div class="log-hd" style="grid-template-columns:90px 80px 70px 160px 130px 1fr 80px;">
+        <span>시각</span><span>분류</span><span>검증</span><span>UA</span><span>도메인</span><span>경로</span><span>IP</span>
+      </div>
+      <div id="traffic-rows" style="max-height:calc(100vh - 240px);overflow-y:auto;"></div>
+    </div>
+  </section>
+
+  <!-- ======================================================
+       봇 화이트리스트 (토큰 관리)
+  ====================================================== -->
+  <section id="page-tokens" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>봇 화이트리스트</h1>
+        <div class="greeting">발급된 API 토큰을 관리하세요. 토큰이 있는 봇만 유료 콘텐츠에 접근할 수 있어요.</div>
+      </div>
+      <div class="right">
+        <button class="btn" onclick="issueToken()">+ 토큰 발급</button>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:0;overflow:hidden;">
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead><tr><th>소유자</th><th>플랜</th><th>토큰</th><th>만료일</th><th>상태</th><th style="text-align:right;">관리</th></tr></thead>
+          <tbody id="tokens-tbl-body">
+            <tr><td colspan="6" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================
+       채널 등록/관리
+  ====================================================== -->
+  <section id="page-domains" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>채널 등록/관리</h1>
+        <div class="greeting">내 사이트를 채널로 등록하면 AI 봇 트래픽을 리버스 프록시로 받을 수 있어요.</div>
+      </div>
+      <div class="right">
+        <button class="btn" onclick="showAddChannel()">+ 채널 추가</button>
+      </div>
+    </div>
+
+    <!-- 채널 추가 폼 (숨김) -->
+    <div id="channel-form" style="display:none; margin-bottom:16px;">
+      <div class="panel" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:160px;">
+          <label style="font-size:12px;color:var(--ink-dim);font-weight:600;">채널 이름</label>
+          <input id="ch-name" type="text" placeholder="내 뉴스 사이트"
+            style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px;">
+          <label style="font-size:12px;color:var(--ink-dim);font-weight:600;">도메인 (Host 헤더 매칭)</label>
+          <input id="ch-domain" type="text" placeholder="news.example.com"
+            style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:var(--mono);">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:220px;">
+          <label style="font-size:12px;color:var(--ink-dim);font-weight:600;">업스트림 URL (실제 서버)</label>
+          <input id="ch-upstream" type="text" placeholder="http://origin.example.com"
+            style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:var(--mono);">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" onclick="submitChannel()">저장</button>
+          <button class="btn" style="background:#fff;color:var(--ink-2);" onclick="hideAddChannel()">취소</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 채널 목록 -->
+    <div class="panel" style="padding:0;overflow:hidden;margin-bottom:16px;">
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>채널 이름</th>
+              <th>도메인</th>
+              <th>업스트림 URL</th>
+              <th style="text-align:right;">사용자</th>
+              <th style="text-align:right;">기타 봇</th>
+              <th style="text-align:right;">AI 봇</th>
+              <th style="text-align:right;" title="rDNS 또는 토큰 통과">검증</th>
+              <th style="text-align:right;" title="검증 실패했지만 lenient 모드로 통과">미검증 통과</th>
+              <th style="text-align:right;" title="실제 차단된 요청">차단</th>
+              <th style="text-align:right;">봇 종류</th>
+              <th>DNS</th>
+              <th>상태</th>
+              <th style="text-align:right;">액션</th>
+            </tr>
+          </thead>
+          <tbody id="channels-tbl-body">
+            <tr><td colspan="5" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 도메인별 트래픽 현황 -->
+    <div class="panel">
+      <div class="panel-head"><h3>도메인별 요청 현황</h3><span class="sub">누적</span></div>
+      <div id="domains-list" style="display:flex;flex-direction:column;gap:14px;">
+        <div style="color:var(--ink-mute);font-size:14px;text-align:center;padding:24px;">로딩중…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================
+       봇 카탈로그
+  ====================================================== -->
+  <section id="page-catalog" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>봇 카탈로그</h1>
+        <div class="greeting">DB에서 관리 · 변경사항은 OpenResty에 5분 내 자동 반영.</div>
+      </div>
+      <div class="right" style="gap:8px;">
+        <select id="catalog-purpose-filter" class="ch-select" onchange="renderCatalog()">
+          <option value="">모든 카테고리</option>
+        </select>
+        <select id="catalog-vendor-filter" class="ch-select" onchange="renderCatalog()">
+          <option value="">모든 벤더</option>
+        </select>
+        <input id="catalog-search" type="text" placeholder="검색..."
+          oninput="renderCatalog()"
+          style="padding:6px 12px;border:1px solid var(--line);border-radius:var(--radius-pill);font-size:13px;min-width:160px;">
+        <button class="btn" onclick="openBotModal()">+ 봇 추가</button>
+      </div>
+    </div>
+
+    <!-- 카테고리별 칩 -->
+    <div id="catalog-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;">
+      <div style="color:var(--ink-mute);font-size:13px;">로딩중…</div>
+    </div>
+
+    <!-- 봇 테이블 -->
+    <div class="panel" style="padding:0;overflow:hidden;">
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>크롤러</th>
+              <th>벤더</th>
+              <th>카테고리</th>
+              <th style="text-align:right;">누계</th>
+              <th style="text-align:center;">활성</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="catalog-tbl-body">
+            <tr><td colspan="6" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 악성 패턴 섹션 -->
+    <div style="margin-top:32px;">
+      <div class="page-head">
+        <div>
+          <h1 style="font-size:20px;color:var(--bad);">차단되는 악성 패턴</h1>
+          <div class="greeting">UA 패턴이 감지되면 즉시 403 차단됩니다.</div>
+        </div>
+        <div class="right">
+          <button class="btn" style="background:var(--bad);" onclick="openBotModal(null,true)">+ 악성 추가</button>
+        </div>
+      </div>
+
+      <div class="panel" style="padding:0;overflow:hidden;">
+        <div style="overflow-x:auto;">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th>이름</th>
+                <th>분류</th>
+                <th class="mono">UA 패턴</th>
+                <th style="text-align:right;">차단 누계</th>
+                <th style="text-align:center;">활성</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="malicious-tbl-body">
+              <tr><td colspan="6" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 봇 추가/수정 모달 -->
+  <div id="bot-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:28px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <h2 id="bot-modal-title" style="font-size:18px;font-weight:700;">봇 추가</h2>
+        <button onclick="closeBotModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-mute);">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--ink-dim);display:block;margin-bottom:4px;">봇 이름 (UA 식별자)</label>
+          <input id="bm-name" type="text" placeholder="예: GrokBot" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--ink-dim);display:block;margin-bottom:4px;">벤더 (회사)</label>
+            <input id="bm-vendor" type="text" placeholder="예: xAI" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;">
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--ink-dim);display:block;margin-bottom:4px;">카테고리</label>
+            <select id="bm-purpose" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:#fff;">
+              <option value="ai_training">AI Crawler</option>
+              <option value="ai_search">AI Search</option>
+              <option value="ai_assistant">AI Assistant</option>
+              <option value="search_engine">Search Engine</option>
+              <option value="seo">SEO Crawler</option>
+              <option value="social">Social Preview</option>
+              <option value="generic">Generic Bot</option>
+              <option value="malicious">Malicious (차단)</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--ink-dim);display:block;margin-bottom:4px;">UA 매칭 패턴 <span style="font-weight:400;">(쉼표로 구분, 소문자 substring 매칭)</span></label>
+          <input id="bm-patterns" type="text" placeholder="예: GrokBot, grok-bot" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:var(--mono);">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <label style="font-size:13px;font-weight:600;color:var(--ink-dim);">활성</label>
+          <input id="bm-enabled" type="checkbox" checked style="width:16px;height:16px;cursor:pointer;">
+        </div>
+        <div id="bm-error" style="display:none;color:var(--bad);font-size:13px;padding:8px 12px;background:#fff0f0;border-radius:8px;"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px;">
+          <button onclick="closeBotModal()" style="padding:9px 20px;border:1px solid var(--line);border-radius:8px;background:#fff;font-size:14px;cursor:pointer;">취소</button>
+          <button id="bm-save" onclick="saveBotModal()" class="btn" style="padding:9px 24px;">저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================
+       봇 정책 (목적별)
+  ====================================================== -->
+  <section id="page-policies" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>봇 정책</h1>
+        <div class="greeting">봇 카테고리(목적)별로 어떻게 처리할지 설정해요. 즉시 반영됩니다.</div>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:0;overflow:hidden;">
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>카테고리</th>
+              <th>설명</th>
+              <th style="width:200px;">정책</th>
+              <th>의미</th>
+            </tr>
+          </thead>
+          <tbody id="policies-tbl-body">
+            <tr><td colspan="4" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;padding:14px 16px;background:var(--pastel-blue);border-radius:var(--radius-lg);font-size:13px;color:var(--ink-2);line-height:1.7;">
+      <strong>액션 설명:</strong><br>
+      <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;">pass</code> 그냥 통과 /
+      <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;">meter</code> 통과 + 과금 /
+      <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;">verify</code> rDNS·토큰 검증 (실패 시 엄격모드 따름) /
+      <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;">token_only</code> 토큰만 통과 /
+      <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;">block</code> 403 차단 /
+      <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;">gone</code> 410 (SEO 친화 — 검색엔진 색인 회수)<br>
+      <strong>참고:</strong> 경로 규칙(path_rules) 의 <code>block</code> 은 정책보다 우선합니다. 악성 봇은 정책 무관 항상 차단.
+    </div>
+  </section>
+
+  <!-- ======================================================
+       경로 규칙 관리
+  ====================================================== -->
+  <section id="page-pricing" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>경로 규칙</h1>
+        <div class="greeting">허용·차단·과금 경로를 관리하세요. 규칙은 60초마다 게이트웨이에 반영됩니다.</div>
+      </div>
+      <div class="right">
+        <button class="btn" onclick="showAddRule()">+ 규칙 추가</button>
+      </div>
+    </div>
+
+    <!-- 추가 폼 (숨김) -->
+    <div id="rule-form" style="display:none; margin-bottom:16px;">
+      <div class="panel" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px;">
+          <label style="font-size:12px;color:var(--ink-dim);font-weight:600;">경로 패턴</label>
+          <input id="rule-pattern" type="text" placeholder="/articles/*"
+            style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-family:var(--mono);">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:130px;">
+          <label style="font-size:12px;color:var(--ink-dim);font-weight:600;">액션</label>
+          <select id="rule-action"
+            style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:#fff;">
+            <option value="meter">meter (과금)</option>
+            <option value="allow">allow (무료)</option>
+            <option value="block">block (차단)</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:150px;">
+          <label style="font-size:12px;color:var(--ink-dim);font-weight:600;">메모</label>
+          <input id="rule-note" type="text" placeholder="설명 (선택)"
+            style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" onclick="submitRule()">저장</button>
+          <button class="btn" style="background:#fff;color:var(--ink-2);" onclick="hideAddRule()">취소</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:0;overflow:hidden;">
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th style="width:180px;">경로 패턴</th>
+              <th style="width:100px;">액션</th>
+              <th>메모</th>
+              <th style="width:80px;">상태</th>
+              <th style="text-align:right;width:120px;">관리</th>
+            </tr>
+          </thead>
+          <tbody id="rules-tbl-body">
+            <tr><td colspan="5" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;padding:14px 16px;background:var(--pastel-blue);border-radius:var(--radius-lg);font-size:13px;color:var(--ink-2);line-height:1.7;">
+      <strong>패턴 규칙:</strong>
+      <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;font-family:var(--mono);">/admin/*</code> 형태로 뒤에 <code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:4px;font-family:var(--mono);">*</code>를 붙이면 하위 경로 전체에 적용됩니다.
+      더 긴 패턴이 우선 적용되며, 매칭되는 규칙이 없으면 <strong>meter</strong>(과금)가 기본값입니다.
+    </div>
+  </section>
+
+
+  <!-- ======================================================
+       사용자 관리
+  ====================================================== -->
+  <section id="page-users" class="page-section">
+    <div class="page-head">
+      <div>
+        <h1>사용자 관리</h1>
+        <div class="greeting">가입한 채널 오너 계정을 확인하고 관리하세요.</div>
+      </div>
+    </div>
+
+    <div class="panel" style="padding:0;overflow:hidden;">
+      <div style="overflow-x:auto;">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>이름</th>
+              <th>이메일</th>
+              <th>가입일</th>
+              <th>상태</th>
+              <th style="text-align:right;">관리</th>
+            </tr>
+          </thead>
+          <tbody id="users-tbl-body">
+            <tr><td colspan="5" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  </main>
+</div>
+
+<script>
+  const API = window.location.origin;
+
+  /* ─── 인증 ────────────────────────────────────────── */
+  function adminKey() { return localStorage.getItem('portalToken') || '' }
+
+  function apiFetch(url, opts = {}) {
+    const key = adminKey()
+    return fetch(url, {
+      ...opts,
+      headers: { ...opts.headers, ...(key ? { 'Authorization': `Bearer ${key}` } : {}) },
+    }).then(r => {
+      if (r.status === 401) { showLogin(); throw new Error('unauthorized') }
+      return r
+    })
+  }
+
+  function showLogin() {
+    // 채널 오너 포털: 빌트인 오버레이 대신 Next.js /login 페이지로 이동
+    localStorage.removeItem('portalToken')
+    window.location.href = '/login'
+  }
+  function hideLogin() {
+    document.getElementById('login-overlay').style.display = 'none'
+    document.getElementById('login-error').style.display = 'none'
+    document.getElementById('login-pw').value = ''
+  }
+  async function doLogin() {
+    const pw = document.getElementById('login-pw').value.trim()
+    if (!pw) return
+    localStorage.setItem('portalToken', pw)
+    try {
+      await apiFetch(`${API}/me/tokens`)
+      hideLogin()
+      populateSelectors()
+      loadDashboard()
+    } catch(e) {
+      if (e.message === 'unauthorized') {
+        localStorage.removeItem('portalToken')
+        document.getElementById('login-error').style.display = 'block'
+      }
+    }
+  }
+
+  /* ─── helpers ─────────────────────────────────────── */
+  function fmt(n) {
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return String(n);
+  }
+  function fmtTime(iso) {
+    const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    const ss = String(d.getSeconds()).padStart(2,'0');
+    return `${hh}:${mm}:${ss}`;
+  }
+  function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* ─── 전역 채널 상태 ───────────────────────────────── */
+  let _selectedChannel = null;   // null = 전체, string = domain
+  let _channelCache    = null;   // 채널 목록 캐시
+
+  async function fetchChannelList() {
+    if (_channelCache) return _channelCache;
+    try {
+      _channelCache = await apiFetch(`${API}/me/channels`).then(r => r.json());
+    } catch(_) { _channelCache = []; }
+    return _channelCache;
+  }
+
+  async function populateSelectors() {
+    const channels = await fetchChannelList();
+    const opts = `<option value="">전체 채널</option>` +
+      channels.filter(c => c.active).map(c =>
+        `<option value="${esc(c.domain)}">${esc(c.name)}</option>`
+      ).join('');
+    document.querySelectorAll('.ch-selector').forEach(sel => {
+      sel.innerHTML = opts;
+      sel.value = _selectedChannel || '';
+    });
+  }
+
+  function onChannelChange(sel) {
+    _selectedChannel = sel.value || null;
+    // 다른 선택기도 동기화
+    document.querySelectorAll('.ch-selector').forEach(s => {
+      if (s !== sel) s.value = _selectedChannel || '';
+    });
+    // 현재 페이지 데이터 재로드
+    const activeId = document.querySelector('.page-section.active')?.id;
+    if (activeId === 'page-dashboard') loadDashboard();
+    if (activeId === 'page-analytics') { _analyticsDailyBotsCache = null; loadAnalytics(); }
+    if (activeId === 'page-traffic')   { if (trafficTimer) { clearInterval(trafficTimer); trafficTimer = null; } startTraffic(); }
+  }
+
+  function chParam() {
+    return _selectedChannel ? `&domain=${encodeURIComponent(_selectedChannel)}` : '';
+  }
+
+  /* ─── SPA navigation ──────────────────────────────── */
+  let trafficTimer = null;
+
+  function nav(e, pageId) {
+    e.preventDefault();
+    // deactivate all sections and links
+    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.side a').forEach(a => a.classList.remove('active'));
+    // activate target
+    document.getElementById(pageId).classList.add('active');
+    e.currentTarget.classList.add('active');
+
+    // stop any running traffic poll
+    if (trafficTimer) { clearInterval(trafficTimer); trafficTimer = null; }
+
+    // lazy-load page data
+    populateSelectors();
+    if (pageId === 'page-analytics') loadAnalytics();
+    if (pageId === 'page-traffic')   startTraffic();
+    if (pageId === 'page-tokens')    loadTokens();
+    if (pageId === 'page-domains')   { loadChannels(); loadDomains(); }
+    if (pageId === 'page-pricing')   loadRules();
+    if (pageId === 'page-users')     loadUsers();
+    if (pageId === 'page-catalog')   loadCatalog();
+    if (pageId === 'page-policies')  loadPolicies();
+  }
+
+  /* ─── CHART helper (스택 영역 차트) ────────────────── */
+  // series: [{ data: [{date,count},...], color: '#xxx', label: '...' }, ...]
+  // 아래에서 위로 누적되는 스택 영역. 총 높이 = sum 모든 시리즈
+  function buildChart(chartId, chartxId, series, days) {
+    const chart  = document.getElementById(chartId);
+    const chartx = document.getElementById(chartxId);
+    if (!chart) return;
+    chart.innerHTML = ''; chartx.innerHTML = '';
+
+    if (!Array.isArray(series) || (series[0] && !series[0].data)) {
+      series = [{ data: series, color: '#2b6df6', label: 'AI 봇' }];
+    }
+
+    const today = new Date();
+    const allSlots = series.map(s =>
+      Array.from({length: days}, (_, i) => {
+        const d = new Date(today);
+        d.setDate(today.getDate() - (days - 1 - i));
+        const key = d.toISOString().slice(0, 10);
+        const found = (s.data || []).find(r => r.date === key);
+        return { count: found ? found.count : 0, label: `${d.getMonth()+1}/${d.getDate()}` };
+      })
+    );
+
+    // 누적값 계산 — stackedSlots[i] = [{count, cumulative}, ...] (i 일자, 시리즈 순서)
+    const stackedTotals = [];
+    for (let i = 0; i < days; i++) {
+      let cum = 0;
+      stackedTotals.push(allSlots.map(slots => {
+        cum += slots[i].count;
+        return cum;
+      }));
+    }
+    const max = Math.max(1, ...stackedTotals.map(t => t[t.length - 1]));
+
+    const w = chart.clientWidth  || 600;
+    const h = chart.clientHeight || 220;
+    const pad = { top: 16, right: 10, bottom: 6, left: 10 };
+    const innerW = w - pad.left - pad.right;
+    const innerH = h - pad.top - pad.bottom;
+
+    const xAt = i => pad.left + (days === 1 ? innerW/2 : (i / (days - 1)) * innerW);
+    const yAt = v => pad.top + innerH - (v / max) * innerH;
+
+    // Monotone cubic interpolation — overshoot 없는 부드러운 곡선
+    // 0 → 큰값 급변에도 음수 dip 없이 자연스럽게 올라감
+    function smoothPath(p) {
+      if (p.length < 2) return '';
+      const n = p.length;
+      const dx = [], dy = [], slope = [];
+      for (let i = 0; i < n - 1; i++) {
+        dx[i] = p[i+1].x - p[i].x;
+        dy[i] = p[i+1].y - p[i].y;
+        slope[i] = dx[i] === 0 ? 0 : dy[i] / dx[i];
+      }
+      const m = [];
+      m[0]     = slope[0];
+      m[n-1]   = slope[n-2];
+      for (let i = 1; i < n - 1; i++) {
+        // 부호 바뀌면 tangent=0 (overshoot 방지)
+        if (slope[i-1] * slope[i] <= 0) m[i] = 0;
+        else                            m[i] = (slope[i-1] + slope[i]) / 2;
+      }
+      let d = `M ${p[0].x.toFixed(2)},${p[0].y.toFixed(2)}`;
+      for (let i = 0; i < n - 1; i++) {
+        const cp1x = p[i].x   + dx[i] / 3;
+        const cp1y = p[i].y   + m[i]   * dx[i] / 3;
+        const cp2x = p[i+1].x - dx[i] / 3;
+        const cp2y = p[i+1].y - m[i+1] * dx[i] / 3;
+        d += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${p[i+1].x.toFixed(2)},${p[i+1].y.toFixed(2)}`;
+      }
+      return d;
+    }
+
+    function smoothPathReverse(p) {
+      const r = p.slice().reverse();
+      return smoothPath(r).replace(/^M /, 'L ');
+    }
+
+    // 시리즈별 path (스택 누적)
+    const seriesSvg = series.map((s, idx) => {
+      // 위 경계 점 (현재 시리즈 누적)
+      const topPts = stackedTotals.map((t, i) => ({
+        x: xAt(i), y: yAt(t[idx]),
+        count: allSlots[idx][i].count, label: allSlots[idx][i].label,
+      }));
+      // 아래 경계 점 (이전 시리즈까지 누적, 없으면 baseline)
+      const bottomPts = stackedTotals.map((t, i) => ({
+        x: xAt(i),
+        y: idx === 0 ? pad.top + innerH : yAt(t[idx - 1]),
+      }));
+
+      const topLine = smoothPath(topPts);
+      const bottomLineReverse = smoothPathReverse(bottomPts);
+      const areaPath = `${topLine} ${bottomLineReverse} Z`;
+
+      const gradId = `${chartId}-grad-${idx}`;
+      return `
+        <defs>
+          <linearGradient id="${gradId}" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%"  stop-color="${s.color}" stop-opacity="0.55"/>
+            <stop offset="100%" stop-color="${s.color}" stop-opacity="0.15"/>
+          </linearGradient>
+        </defs>
+        <path d="${areaPath}" fill="url(#${gradId})"/>
+        <path d="${topLine}" fill="none" stroke="${s.color}" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        ${topPts.map(p =>
+          `<circle cx="${p.x.toFixed(2)}" cy="${p.y.toFixed(2)}" r="3"
+                   fill="#fff" stroke="${s.color}" stroke-width="1.8">
+             <title>${esc(s.label)} · ${p.label} · ${p.count.toLocaleString()}</title>
+           </circle>`
+        ).join('')}
+      `;
+    }).join('');
+
+    const grid = [0.25, 0.5, 0.75].map(r => {
+      const y = (pad.top + innerH * r).toFixed(2);
+      return `<line x1="${pad.left}" y1="${y}" x2="${pad.left + innerW}" y2="${y}" stroke="var(--line)" stroke-dasharray="2,4"/>`;
+    }).join('');
+
+    // 범례 (우측 상단)
+    const legend = series.map(s =>
+      `<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);">
+        <span style="width:10px;height:10px;border-radius:2px;background:${s.color};"></span>
+        ${esc(s.label)}
+       </span>`
+    ).join('<span style="margin:0 8px;"></span>');
+
+    chart.innerHTML = `
+      <div style="position:absolute;top:6px;right:10px;display:flex;align-items:center;gap:4px;background:rgba(255,255,255,0.85);padding:4px 10px;border-radius:999px;">
+        ${legend}
+      </div>
+      <svg width="100%" height="100%" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="overflow:visible;display:block;">
+        ${grid}
+        ${seriesSvg}
+      </svg>
+    `;
+
+    // X 축 라벨
+    allSlots[0].forEach((s, i) => {
+      const lbl = document.createElement('div');
+      lbl.className = 'l';
+      lbl.textContent = (i % 2 === 0) ? s.label : '';
+      chartx.appendChild(lbl);
+    });
+  }
+
+  /* ─── VENDOR 매핑 ──────────────────────────────────── */
+  const VENDOR_MAP = {
+    'GPTBot':'OpenAI','OAI-SearchBot':'OpenAI','ChatGPT-User':'OpenAI',
+    'ClaudeBot':'Anthropic','Claude-Web':'Anthropic','Anthropic-AI':'Anthropic',
+    'Googlebot':'Google','Google-Extended':'Google',
+    'Meta-ExternalAgent':'Meta','Meta-ExternalFetcher':'Meta','FacebookBot':'Meta','FacebookExternalHit':'Meta','WhatsApp':'Meta',
+    'BingBot':'Microsoft',
+    'PerplexityBot':'Perplexity','Perplexity-User':'Perplexity',
+    'Bytespider':'ByteDance','TikTokSpider':'ByteDance',
+    'Amazonbot':'Amazon',
+    'Applebot':'Apple','Applebot-Extended':'Apple',
+    'DeepSeekBot':'DeepSeek',
+    'Qwenbot':'Alibaba','Qwen-Bot':'Alibaba',
+    'MistralBot':'Mistral',
+    'xAI-SearchBot':'xAI',
+    'Brave SearchBot':'Brave',
+    'Screaming Frog':'Screaming Frog',
+    'Pinterestbot':'Pinterest',
+    'Baiduspider':'Baidu',
+    'YandexBot':'Yandex',
+    'DuckDuckBot':'DuckDuckGo','DuckAssistBot':'DuckDuckGo',
+    'Yeti':'Naver',
+    'CCBot':'CommonCrawl',
+    'Cohere-AI':'Cohere',
+    'SemrushBot':'Semrush','AhrefsBot':'Ahrefs','MJ12bot':'Majestic','DotBot':'Moz',
+    'BLEXBot':'WebMeUp','DataForSEOBot':'DataForSEO','serpstatbot':'Serpstat',
+    'Slackbot':'Slack','Twitterbot':'Twitter/X','LinkedInBot':'LinkedIn',
+    'TelegramBot':'Telegram','Discordbot':'Discord','KakaoTalk-scrap':'Kakao',
+    'PetalBot':'Huawei','Diffbot':'Diffbot','Omgili':'Webz.io',
+    'YouBot':'You.com','Manus Bot':'Manus',
+  };
+  const VENDOR_META = {
+    'OpenAI':     { color:'#10a37f' },
+    'Anthropic':  { color:'#c96a2e' },
+    'Google':     { color:'#4285f4' },
+    'Meta':       { color:'#1877f2' },
+    'Microsoft':  { color:'#00a4ef' },
+    'Perplexity': { color:'#20808d' },
+    'ByteDance':  { color:'#000000' },
+    'Amazon':     { color:'#ff9900' },
+    'Apple':      { color:'#555555' },
+    'Baidu':      { color:'#2932e1' },
+    'Yandex':     { color:'#f94e3c' },
+    'DuckDuckGo': { color:'#de5833' },
+    'Naver':      { color:'#03c75a' },
+    'CommonCrawl':{ color:'#666666' },
+    'Cohere':     { color:'#39594a' },
+    'Semrush':    { color:'#ff6347' },
+    'Ahrefs':     { color:'#f5a623' },
+    'Slack':      { color:'#4a154b' },
+    'Twitter/X':  { color:'#000000' },
+    'Kakao':      { color:'#fee500' },
+    'DeepSeek':   { color:'#4d6bfe' },
+    'Alibaba':    { color:'#ff6a00' },
+    'Mistral':    { color:'#f54e42' },
+    'xAI':        { color:'#1a1a1a' },
+    'Brave':      { color:'#fb542b' },
+    'Screaming Frog': { color:'#7dc143' },
+    'Pinterest':  { color:'#e60023' },
+  };
+  function vendorColor(v) { return (VENDOR_META[v] || {}).color || '#9aa1ad'; }
+  function groupByVendor(rows, nameField) {
+    const map = {};
+    for (const r of rows) {
+      const botName = r[nameField] || r.bot_name || r.bot_ua || '알 수 없음';
+      const v = VENDOR_MAP[botName] || botName;
+      if (!map[v]) map[v] = { vendor: v, count: 0, bots: [] };
+      map[v].count += r.count;
+      map[v].bots.push({ name: botName, count: r.count });
+    }
+    return Object.values(map).sort((a, b) => b.count - a.count);
+  }
+
+  /* ─── DASHBOARD ────────────────────────────────────── */
+  const BOT_COLORS = ['#2b6df6','#9d6bff','#ff7a5c','#1aa377','#c4a01a','#e95c99','#00bcd4'];
+
+  /* ─── PLATFORMS PURPOSE FILTER ─────────────────────── */
+  let _platformsBotNames = [];
+
+  function _buildPlatformPills() {
+    const container = document.getElementById('platforms-purpose-filter');
+    if (!container) return;
+    const purposes = [...new Set(_platformsBotNames.map(b => b.bot_purpose).filter(Boolean))];
+    const order = ['ai_training','ai_search','ai_assistant','search_engine','seo','social','generic'];
+    const sorted = order.filter(p => purposes.includes(p));
+    container.innerHTML = `<button class="purpose-pill active" data-purpose="all" onclick="filterPlatformsByPurpose('all')" style="background:var(--ink);color:#fff;">전체</button>`
+      + sorted.map(p => {
+          const meta = PURPOSE_META[p] || PURPOSE_META.generic;
+          return `<button class="purpose-pill" data-purpose="${p}" onclick="filterPlatformsByPurpose('${p}')" style="--pill-color:${meta.color};">${esc(meta.label)}</button>`;
+        }).join('');
+  }
+
+  function filterPlatformsByPurpose(purpose) {
+    document.querySelectorAll('.purpose-pill').forEach(btn => {
+      const isActive = btn.dataset.purpose === purpose;
+      btn.classList.toggle('active', isActive);
+      const meta = PURPOSE_META[btn.dataset.purpose] || {};
+      btn.style.background = isActive ? (btn.dataset.purpose === 'all' ? 'var(--ink)' : (meta.color || 'var(--ink)')) : 'var(--bg-soft)';
+      btn.style.color = isActive ? '#fff' : 'var(--ink-2)';
+    });
+    renderPlatformsTbl(purpose);
+  }
+
+  function renderPlatformsTbl(purposeFilter) {
+    const tbody = document.getElementById('analytics-platforms-tbl-body');
+    if (!tbody) return;
+    const rows = purposeFilter === 'all' ? _platformsBotNames : _platformsBotNames.filter(b => b.bot_purpose === purposeFilter);
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="color:var(--ink-mute);text-align:center;padding:24px;">데이터 없음</td></tr>';
+      return;
+    }
+    const vendors = groupByVendor(rows, 'bot_name');
+    const total = vendors.reduce((a, v) => a + v.count, 0);
+    tbody.innerHTML = vendors.map(v => {
+      const color = vendorColor(v.vendor);
+      const pct   = total ? (v.count / total * 100).toFixed(1) : 0;
+      const subtitle = v.bots.map(b => b.name).join(' · ');
+      return `<tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:7px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></span>
+            <div>
+              <div style="font-weight:700;">${esc(v.vendor)}</div>
+              <div style="font-size:11px;color:var(--ink-mute);">${esc(subtitle)}</div>
+            </div>
+          </div>
+        </td>
+        <td style="text-align:right;font-weight:700;">${fmt(v.count)}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:80px;height:6px;background:var(--bg-soft);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;"></div>
+            </div>
+            <span style="font-size:12px;color:var(--ink-dim);">${pct}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  /* ─── PRICING TAB ──────────────────────────────────── */
+  let _pricingBilledCount = 0;
+  let _pricingStatValues  = { total: 0, month: 0, billed: 0 };
+  let _pricingActiveBase  = 'billed';
+  const KRW_PER_USD = 1380;
+
+  function stepPricingRate(delta) {
+    const input = document.getElementById('pricing-rate');
+    if (!input) return;
+    const cur = parseFloat(input.value) || 0;
+    input.value = Math.max(0, cur + delta).toFixed(2);
+    updatePricingPreview();
+  }
+
+  function applyPricingBase(key) {
+    _pricingActiveBase  = key;
+    _pricingBilledCount = _pricingStatValues[key] || 0;
+    ['total','month','billed'].forEach(k => {
+      const el = document.getElementById(`pricing-base-${k}`);
+      if (el) el.classList.toggle('active', k === key);
+    });
+    updatePricingPreview();
+  }
+
+  // 히트맵 박스 렌더링 (elId, [{date,count}] 30일치)
+  function renderPricingHeatmap(elId, dailyRows) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const today = new Date();
+    const days = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+      const row = dailyRows.find(r => r.date === dateStr);
+      days.push({ date: dateStr, count: row?.count || 0 });
+    }
+    const maxCount = Math.max(...days.map(d => d.count), 1);
+    el.innerHTML = days.map(d => {
+      const t = d.count / maxCount;
+      const bg = t === 0
+        ? 'var(--bg-soft)'
+        : `rgba(26,113,200,${(0.15 + t * 0.85).toFixed(2)})`;
+      const label = `${d.date}\n${fmt(d.count)}건`;
+      return `<div data-tip="${label}" style="width:9px;height:9px;border-radius:2px;background:${bg};flex-shrink:0;" onclick="event.stopPropagation()"></div>`;
+    }).join('');
+  }
+
+  // 히트맵 툴팁 이벤트 (전역 위임)
+  ;(function() {
+    const tip = document.getElementById('pricing-tip');
+    if (!tip) return;
+    document.addEventListener('mouseover', e => {
+      const box = e.target.closest('[data-tip]');
+      if (!box) return;
+      const [dateLine, cntLine] = box.dataset.tip.split('\n');
+      tip.innerHTML = `<span style="color:rgba(255,255,255,.55);font-size:10px;">${dateLine}</span><br><b style="font-size:13px;">${cntLine}</b>`;
+      tip.style.display = 'block';
+    });
+    document.addEventListener('mousemove', e => {
+      if (tip.style.display === 'none') return;
+      tip.style.left = (e.clientX + 14) + 'px';
+      tip.style.top  = (e.clientY - 10) + 'px';
+    });
+    document.addEventListener('mouseout', e => {
+      if (e.target.closest('[data-tip]')) tip.style.display = 'none';
+    });
+  })();
+
+  async function loadPricingTab() {
+    const cp = chParam();
+    try {
+      const [category, daily, dailyBilled, billing] = await Promise.all([
+        apiFetch(`${API}/me/stats/category${cp ? '?_=1'+cp : '?_=1'}`).then(r => r.json()),
+        apiFetch(`${API}/me/stats/daily?category=bot${cp}`).then(r => r.json()),
+        apiFetch(`${API}/me/stats/daily?category=bot&billed=1${cp}`).then(r => r.json()).catch(() => []),
+        apiFetch(`${API}/me/stats/billing?_=1${cp}`).then(r => r.json()).catch(() => null),
+      ]);
+
+      _pricingStatValues.total  = category.bot || 0;
+      _pricingStatValues.month  = daily.reduce((a, d) => a + d.count, 0);
+      _pricingStatValues.billed = billing?.billed || 0;
+
+      const $s = id => document.getElementById(id);
+      if ($s('pricing-stat-total'))  $s('pricing-stat-total').textContent  = fmt(_pricingStatValues.total);
+      if ($s('pricing-stat-month'))  $s('pricing-stat-month').textContent  = fmt(_pricingStatValues.month);
+      if ($s('pricing-stat-billed')) $s('pricing-stat-billed').textContent = fmt(_pricingStatValues.billed);
+
+      renderPricingHeatmap('pricing-heat-total',  daily);
+      renderPricingHeatmap('pricing-heat-month',  daily);
+      renderPricingHeatmap('pricing-heat-billed', dailyBilled);
+
+      applyPricingBase(_pricingActiveBase);
+    } catch(e) {
+      console.warn('loadPricingTab 실패:', e.message);
+    }
+  }
+
+  function updatePricingPreview() {
+    const rateUsd   = parseFloat(document.getElementById('pricing-rate')?.value) || 0;
+    const billed    = _pricingBilledCount;
+    const krwPer1000 = rateUsd * KRW_PER_USD;
+    const krwPerReq  = krwPer1000 / 1000;
+    const totalKrw   = Math.round(billed * krwPerReq);
+    const totalUsd   = (billed * rateUsd / 1000).toFixed(2);
+
+    const $ = id => document.getElementById(id);
+    if ($('pricing-amount-display')) $('pricing-amount-display').textContent = `₩${totalKrw.toLocaleString()}`;
+    if ($('pricing-sub-display'))    $('pricing-sub-display').textContent    = `과금 ${fmt(billed)}건 × ₩${Math.round(krwPerReq)} (임시)`;
+    if ($('pricing-krw-val'))        $('pricing-krw-val').textContent        = `₩${totalKrw.toLocaleString()}`;
+    if ($('pricing-per-val'))        $('pricing-per-val').textContent        = `₩${Math.round(krwPerReq).toLocaleString()}`;
+    if ($('pricing-usd-val'))        $('pricing-usd-val').textContent        = `$${totalUsd}`;
+    if ($('pricing-total-val'))      $('pricing-total-val').textContent      = billed ? fmt(billed) : '—';
+  }
+
+  async function loadDashboard() {
+    try {
+      const cp = chParam();
+      const [bots, otherBots, dailyBot, dailyUser, tokens, billing, categoryStats] = await Promise.all([
+        apiFetch(`${API}/me/stats/bots?category=bot${cp}`).then(r => r.json()),
+        apiFetch(`${API}/me/stats/bots?category=other_bot${cp}`).then(r => r.json()),
+        apiFetch(`${API}/me/stats/daily?category=bot${cp}`).then(r => r.json()),
+        apiFetch(`${API}/me/stats/daily?category=user${cp}`).then(r => r.json()),
+        apiFetch(`${API}/me/tokens`).then(r => r.json()),
+        apiFetch(`${API}/me/stats/billing?_=1${cp}`).then(r => r.json()).catch(() => null),
+        apiFetch(`${API}/me/stats/category?_=1${cp}`).then(r => r.json()).catch(() => ({bot:0,other_bot:0,user:0})),
+      ]);
+
+      const aiBotTotal    = categoryStats.bot       || 0;
+      const otherBotTotal = categoryStats.other_bot || 0;
+      const activeTokens  = tokens.filter(t => t.active).length;
+      const el = id => document.getElementById(id);
+
+      if (el('kpi-requests'))     el('kpi-requests').textContent = fmt(aiBotTotal);
+      if (el('kpi-requests-sub')) el('kpi-requests-sub').textContent = `${bots.length}개 종류`;
+      if (el('kpi-otherbot'))     el('kpi-otherbot').textContent = fmt(otherBotTotal);
+      if (el('kpi-malicious'))    el('kpi-malicious').textContent = fmt(categoryStats.malicious || 0);
+      if (el('kpi-tokens'))       el('kpi-tokens').textContent = `${activeTokens}개`;
+
+      // Pricing 카드 업데이트
+      if (billing) {
+        _pricingBilledCount = billing.billed || 0;
+        updatePricingPreview();
+      }
+
+      buildChart('chart', 'chartx', [
+        { data: dailyBot,  color: '#2b6df6', label: 'AI 봇' },
+        { data: dailyUser, color: '#1aa377', label: '사용자' },
+      ], 14);
+      renderDashBotList(bots);
+      renderDashUaList('dash-otherbot-list', otherBots, '#9d6bff');
+      loadRecentEvents();
+    } catch(e) {
+      console.warn('Dashboard API 실패:', e.message);
+      buildChart('chart', 'chartx', [
+        { data: [], color: '#2b6df6', label: 'AI 봇' },
+        { data: [], color: '#1aa377', label: '사용자' },
+      ], 14);
+    }
+  }
+
+  // 봇 목적별 메타 (bot_classifier 와 동기화)
+  const PURPOSE_META = {
+    ai_training:   { label: 'AI Crawler',           color: '#2b6df6', desc: '학습용' },
+    ai_search:     { label: 'AI Search',            color: '#9d6bff', desc: 'RAG 인덱싱' },
+    ai_assistant:  { label: 'AI Assistant',         color: '#1aa377', desc: '사용자 트리거' },
+    search_engine: { label: 'Search Engine',        color: '#0078d4', desc: '검색엔진' },
+    seo:           { label: 'SEO',                  color: '#ff7a5c', desc: '분석 도구' },
+    social:        { label: 'Social Preview',       color: '#c4a01a', desc: '링크 미리보기' },
+    generic:       { label: 'Generic Bot',          color: '#9aa1ad', desc: '기타' },
+  };
+  function renderDashBotBars(bots) {
+    const el = document.getElementById('dash-bot-bars');
+    if (!el) return;
+    if (!bots.length) { el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>'; return; }
+    const total = bots.reduce((a, b) => a + b.count, 0);
+    el.innerHTML = bots.slice(0, 7).map((b, i) => {
+      const pct  = total ? Math.round(b.count / total * 100) : 0;
+      const [name, ver] = b.bot_ua.split('/');
+      const label = ver
+        ? `${esc(name)} <span style="font-weight:400;color:var(--ink-mute);font-size:11px;">/${esc(ver)}</span>`
+        : esc(name);
+      return `<div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+          <span style="color:var(--ink);font-weight:600;">${label}</span>
+          <span style="color:var(--ink-dim);">${fmt(b.count)} · ${pct}%</span>
+        </div>
+        <div style="height:8px;background:var(--bg-soft);border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${BOT_COLORS[i%BOT_COLORS.length]};border-radius:4px;transition:width 400ms;"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderDashBotList(bots) {
+    const el = document.getElementById('dash-bot-list');
+    if (!el) return;
+    if (!bots.length) { el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>'; return; }
+    const vendors = groupByVendor(bots, 'bot_ua');
+    el.innerHTML = vendors.slice(0, 5).map((v) => {
+      const color = vendorColor(v.vendor);
+      const initials = v.vendor.slice(0, 1).toUpperCase();
+      const subtitle = v.bots.map(b => b.name.split('/')[0]).join(' · ');
+      return `<div class="bot-row">
+        <div class="bot-avatar" style="background:${color};">${esc(initials)}</div>
+        <div class="meta">
+          <div class="name">${esc(v.vendor)}</div>
+          <div class="ua">${esc(subtitle)}</div>
+        </div>
+        <div class="req"><div class="n">${fmt(v.count)}</div><div class="s">요청</div></div>
+      </div>`;
+    }).join('');
+  }
+
+  // 기타 봇 UA 리스트 (TOP 5)
+  function renderDashUaList(elId, list, color) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!list || !list.length) {
+      el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>';
+      return;
+    }
+    el.innerHTML = list.slice(0, 5).map(b => {
+      const ua = b.bot_ua || '—';
+      const [name, ver] = ua.split('/');
+      const initials = (name || '?').slice(0, 1).toUpperCase();
+      return `<div class="bot-row">
+        <div class="bot-avatar" style="background:${color};">${esc(initials)}</div>
+        <div class="meta">
+          <div class="name">${esc(name)}${ver ? ` <span style="font-size:11px;font-weight:400;color:var(--ink-mute);">/${esc(ver)}</span>` : ''}</div>
+          <div class="ua">${esc(ua)}</div>
+        </div>
+        <div class="req"><div class="n">${fmt(b.count)}</div><div class="s">요청</div></div>
+      </div>`;
+    }).join('');
+  }
+
+  // 사용자 패널 — UA 를 브라우저 패밀리로 그룹핑
+  const BROWSER_COLORS = {
+    'Chrome':  '#4285f4',
+    'Safari':  '#1a73e8',
+    'Firefox': '#ff7139',
+    'Edge':    '#0078d4',
+    '모바일':  '#9d6bff',
+    '기타':    '#9aa1ad',
+  };
+  function classifyBrowser(ua) {
+    if (!ua) return '기타';
+    if (/iPhone|Android|Mobile/i.test(ua)) return '모바일';
+    if (/Edg\//.test(ua)) return 'Edge';
+    if (/Firefox/i.test(ua)) return 'Firefox';
+    if (/Chrome/i.test(ua)) return 'Chrome';
+    if (/Safari/i.test(ua)) return 'Safari';
+    return '기타';
+  }
+  function renderDashUserPanel(list) {
+    const el = document.getElementById('dash-user-list');
+    const subEl = document.getElementById('dash-user-sub');
+    if (!el) return;
+    if (!list || !list.length) {
+      el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>';
+      return;
+    }
+    // 브라우저 패밀리별 합산
+    const buckets = {};
+    let total = 0;
+    for (const r of list) {
+      const fam = classifyBrowser(r.bot_ua);
+      buckets[fam] = (buckets[fam] || 0) + r.count;
+      total += r.count;
+    }
+    const order = ['Chrome','Safari','Firefox','Edge','모바일','기타'];
+    const rows = order.filter(k => buckets[k]).map(k => {
+      const cnt = buckets[k];
+      const pct = total ? Math.round(cnt/total*100) : 0;
+      const color = BROWSER_COLORS[k];
+      return `<div class="bot-row">
+        <div class="bot-avatar" style="background:${color};">${esc(k.slice(0,1).toUpperCase())}</div>
+        <div class="meta">
+          <div class="name">${esc(k)}</div>
+          <div class="ua">${pct}% 비중</div>
+        </div>
+        <div class="req"><div class="n">${fmt(cnt)}</div><div class="s">요청</div></div>
+      </div>`;
+    }).join('');
+    el.innerHTML = rows;
+    if (subEl) subEl.textContent = `누적 ${fmt(total)}건 · 브라우저별`;
+  }
+
+  function renderDashRules(rules) {
+    const el = document.getElementById('dash-rules');
+    if (!el) return;
+    const active = rules.filter(r => r.active);
+    if (!active.length) { el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:24px;">규칙 없음</div>'; return; }
+    el.innerHTML = `<div class="rules">${active.map(r => {
+      const badge = r.action === 'allow'
+        ? '<span class="badge free">allow</span>'
+        : r.action === 'block'
+        ? '<span class="badge block">block</span>'
+        : '<span class="badge paid">meter</span>';
+      return `<div class="rule">
+        ${badge}
+        <span class="path">${esc(r.pattern)}</span>
+        <span style="font-size:12px;color:var(--ink-dim);">${esc(r.note || '')}</span>
+        <span></span>
+      </div>`;
+    }).join('')}</div>`;
+  }
+
+  async function loadRecentEvents() {
+    try {
+      const logs = await apiFetch(`${API}/me/logs?limit=8${chParam()}`).then(r => r.json());
+      const el = document.getElementById('dash-events');
+      if (!el) return;
+      if (!logs.length) { el.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:24px;">로그 없음</div>'; return; }
+      el.innerHTML = logs.map(l => {
+        const cls = l.verified ? 'ev-ok' : 'ev-bad';
+        const ua     = esc((l.bot_ua || 'unknown').split('/')[0]);
+        const path   = l.path ? `<span class="ua">${esc(l.path)}</span>` : '';
+        const billed = l.billed ? ` <span style="font-size:10px;color:var(--brand);font-weight:700;">●과금</span>` : '';
+        const domain = esc(l.domain || '—');
+        const ts  = fmtTime(l.ts);
+        const msg = l.verified
+          ? `<b>${ua}</b> → ${domain} ${path}${billed}`
+          : `미검증 <span class="ua">${esc(l.bot_ua || 'unknown')}</span> (${domain})`;
+        return `<div class="event ${cls}"><span class="pin"></span><span class="msg">${msg}</span><time>${ts}</time></div>`;
+      }).join('');
+    } catch(_) {}
+  }
+
+  /* ─── ANALYTICS ────────────────────────────────────── */
+  let _analyticsDailyBotsCache = null;
+  let _analyticsActiveTab  = 'bots';
+  let _analyticsPagePaths  = [];
+
+  // ── CSV 캐시 ──────────────────────────────────────────
+  let _csvBotsData      = [];
+  let _csvPagesData     = [];
+  let _csvPlatformsData = [];
+
+  function downloadCSV(rows, filename) {
+    if (!rows.length) return alert('다운로드할 데이터가 없습니다.');
+    const keys = Object.keys(rows[0]);
+    const escape = v => {
+      const s = String(v ?? '');
+      return s.includes(',') || s.includes('"') || s.includes('\n')
+        ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = [keys.join(','), ...rows.map(r => keys.map(k => escape(r[k])).join(','))].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
+  function downloadBotsCsv() {
+    const total = _csvBotsData.reduce((a, b) => a + b.count, 0);
+    downloadCSV(_csvBotsData.map(b => ({
+      bot_ua:  b.bot_ua || b.name || '',
+      vendor:  VENDOR_MAP[b.bot_ua || b.name] || '',
+      count:   b.count,
+      pct:     total ? (b.count / total * 100).toFixed(1) : '0',
+    })), `bots_${new Date().toISOString().slice(0,10)}.csv`);
+  }
+
+  function downloadPagesCsv() {
+    const total = _csvPagesData.reduce((a, p) => a + p.count, 0);
+    downloadCSV(_csvPagesData.map(p => ({
+      path:  p.path || '/',
+      count: p.count,
+      pct:   total ? (p.count / total * 100).toFixed(1) : '0',
+    })), `pages_${new Date().toISOString().slice(0,10)}.csv`);
+  }
+
+  function downloadPlatformsCsv() {
+    downloadCSV(_csvPlatformsData.map(r => ({
+      vendor:  r.vendor  || '',
+      bot_name: r.bot_name || '',
+      purpose: r.purpose || '',
+      count:   r.count,
+    })), `platforms_${new Date().toISOString().slice(0,10)}.csv`);
+  }
+
+  function _trafficRowsToCsv(rows) {
+    return rows.map(l => ({
+      ts:          l.ts          || '',
+      category:    l.category    || '',
+      bot_purpose: l.bot_purpose || '',
+      bot_name:    l.bot_name    || '',
+      bot_ua:      l.bot_ua      || '',
+      domain:      l.domain      || '',
+      path:        l.path        || '',
+      ip:          l.ip          || '',
+      verified:    l.verified ? 'Y' : 'N',
+      blocked:     l.blocked  ? 'Y' : 'N',
+    }));
+  }
+
+  function downloadTrafficCsv() {
+    downloadCSV(_trafficRowsToCsv(trafficRows), `traffic_live_${new Date().toISOString().slice(0,10)}.csv`);
+  }
+
+  function toggleTrafficExportMenu(e) {
+    e.stopPropagation();
+    const menu = document.getElementById('traffic-export-menu');
+    if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  }
+
+  document.addEventListener('click', () => {
+    const menu = document.getElementById('traffic-export-menu');
+    if (menu) menu.style.display = 'none';
+  });
+
+  async function exportTrafficByPeriod(period) {
+    const menu = document.getElementById('traffic-export-menu');
+    if (menu) menu.style.display = 'none';
+    const cp   = chParam();
+    const cat  = document.getElementById('traffic-cat-select')?.value || 'all';
+    const label = { day: '오늘', week: '7일', month: '30일' }[period];
+    const statusEl = document.getElementById('traffic-status');
+    const prev = statusEl?.innerHTML;
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--brand);">⏳ ${label} 로딩중…</span>`;
+    try {
+      const rows = await apiFetch(
+        `${API}/me/logs/export?period=${period}&category=${cat}${cp}`
+      ).then(r => r.json());
+      downloadCSV(_trafficRowsToCsv(rows), `traffic_${period}_${new Date().toISOString().slice(0,10)}.csv`);
+      if (statusEl) statusEl.innerHTML = `<span style="color:var(--ok);">✓ ${fmt(rows.length)}건 다운로드</span>`;
+      setTimeout(() => { if (statusEl) statusEl.innerHTML = prev; }, 3000);
+    } catch(e) {
+      if (statusEl) statusEl.innerHTML = prev;
+      alert('다운로드 실패: ' + e.message);
+    }
+  }
+
+  function switchAnalyticsTab(tab) {
+    _analyticsActiveTab = tab;
+    ['bots','pages','platforms','pricing'].forEach(t => {
+      const el  = document.getElementById(`analytics-tab-${t}`);
+      const btn = document.getElementById(`atab-btn-${t}`);
+      if (el)  el.style.display  = (t === tab) ? '' : 'none';
+      if (btn) btn.classList.toggle('active', t === tab);
+    });
+    if (tab === 'bots')      loadAnalyticsBots();
+    if (tab === 'pages')     loadAnalyticsPages();
+    if (tab === 'platforms') loadAnalyticsPlatforms();
+    if (tab === 'pricing')   loadPricingTab();
+  }
+
+  async function loadAnalytics() {
+    switchAnalyticsTab(_analyticsActiveTab);
+  }
+
+  async function loadAnalyticsBots() {
+    try {
+      const cp = chParam();
+      const [bots, dailyBots] = await Promise.all([
+        apiFetch(`${API}/me/stats/bots?_=1${cp}`).then(r => r.json()),
+        apiFetch(`${API}/me/stats/daily/bots?_=1${cp}`).then(r => r.json()),
+      ]);
+      _analyticsDailyBotsCache = dailyBots;
+      _csvBotsData = bots;
+      renderDailyChart(dailyBots);
+      renderBotBars(bots);
+      renderBotTable(bots);
+    } catch(e) {
+      console.warn('Analytics Bots 로드 실패:', e.message);
+    }
+  }
+
+  async function loadAnalyticsPages() {
+    const tbody = document.getElementById('analytics-pages-tbl-body');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="color:var(--ink-mute);text-align:center;padding:24px;">로딩중…</td></tr>';
+    try {
+      const cp = chParam();
+      const pages = await apiFetch(`${API}/me/stats/pages?category=bot${cp}`).then(r => r.json());
+      if (!tbody) return;
+      if (!pages.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--ink-mute);text-align:center;padding:24px;">데이터 없음</td></tr>';
+        return;
+      }
+      const total  = pages.reduce((a, p) => a + p.count, 0);
+      const colors = ['#2b6df6','#9d6bff','#ff7a5c','#1aa377','#c4a01a','#e95c99','#00bcd4'];
+      _analyticsPagePaths = pages.map(p => p.path || '/');
+      _csvPagesData = pages;
+      tbody.innerHTML = pages.map((p, i) => {
+        const pct = total ? (p.count / total * 100).toFixed(1) : 0;
+        const rowId = `page-sub-${i}`;
+        return `<tr style="cursor:pointer;" onclick="togglePageSub(${i})">
+          <td style="color:var(--ink-mute);font-size:13px;text-align:center;user-select:none;" id="${rowId}-toggle">▶</td>
+          <td class="mono" style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.path || '/')}</td>
+          <td style="text-align:right;font-weight:700;">${fmt(p.count)}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:100px;height:6px;background:var(--bg-soft);border-radius:3px;overflow:hidden;">
+                <div style="height:100%;width:${pct}%;background:${colors[i % colors.length]};border-radius:3px;"></div>
+              </div>
+              <span style="font-size:12px;color:var(--ink-dim);">${pct}%</span>
+            </div>
+          </td>
+        </tr>
+        <tr id="${rowId}" style="display:none;">
+          <td></td>
+          <td colspan="3" style="padding:0 0 8px 0;">
+            <div id="${rowId}-content" style="background:var(--bg-soft);border-radius:8px;padding:12px 14px;font-size:13px;">로딩중…</div>
+          </td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="color:var(--bad);text-align:center;padding:24px;">로드 실패</td></tr>`;
+    }
+  }
+
+  async function togglePageSub(idx) {
+    const path   = _analyticsPagePaths[idx];
+    const rowId  = `page-sub-${idx}`;
+    const subRow = document.getElementById(rowId);
+    const toggle = document.getElementById(`${rowId}-toggle`);
+    const content= document.getElementById(`${rowId}-content`);
+    if (!subRow) return;
+    const isOpen = subRow.style.display !== 'none';
+    subRow.style.display = isOpen ? 'none' : '';
+    if (toggle) toggle.textContent = isOpen ? '▶' : '▼';
+    if (!isOpen && content && content.dataset.loaded !== '1') {
+      try {
+        const cp = chParam();
+        const bots = await apiFetch(`${API}/me/stats/pages/bots?path=${encodeURIComponent(path)}&category=bot${cp}`).then(r => r.json());
+        content.dataset.loaded = '1';
+        if (!bots.length) { content.textContent = '봇 데이터 없음'; return; }
+        const subTotal = bots.reduce((a, b) => a + b.count, 0);
+        content.innerHTML = bots.map(b => {
+          const pct    = subTotal ? Math.round(b.count / subTotal * 100) : 0;
+          const botName = b.bot_name || '알 수 없음';
+          const vendor  = VENDOR_MAP[botName] || '';
+          const color   = vendorColor(vendor || botName);
+          return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <div style="min-width:160px;">
+              <div style="font-weight:600;color:var(--ink);display:flex;align-items:center;gap:5px;">
+                <span style="width:7px;height:7px;border-radius:50%;background:${color};flex-shrink:0;"></span>
+                ${esc(botName.split('/')[0])}
+              </div>
+              ${vendor ? `<div style="font-size:11px;color:var(--ink-mute);padding-left:12px;">${esc(vendor)}</div>` : ''}
+            </div>
+            <div style="flex:1;height:5px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;"></div>
+            </div>
+            <span style="min-width:60px;text-align:right;color:var(--ink-dim);">${fmt(b.count)} · ${pct}%</span>
+          </div>`;
+        }).join('');
+      } catch(e) {
+        content.textContent = '로드 실패';
+      }
+    }
+  }
+
+  async function loadAnalyticsPlatforms() {
+    const barsEl  = document.getElementById('analytics-platforms-bars');
+    const botEl   = document.getElementById('analytics-platforms-bot-list');
+    const tbody   = document.getElementById('analytics-platforms-tbl-body');
+    try {
+      const cp = chParam();
+      const [purpose, botNames] = await Promise.all([
+        apiFetch(`${API}/me/stats/purpose?_=1${cp}`).then(r => r.json()),
+        apiFetch(`${API}/me/stats/bot-names${cp ? '?_=1'+cp : '?_=1'}`).then(r => r.json()),
+      ]);
+
+      // purpose 바
+      if (barsEl) {
+        if (!purpose.length) {
+          barsEl.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>';
+        } else {
+          const total = purpose.reduce((a, b) => a + b.count, 0);
+          const order = ['ai_training','ai_search','ai_assistant','search_engine','seo','social','generic'];
+          const sorted = order.map(p => purpose.find(r => r.bot_purpose === p)).filter(Boolean);
+          barsEl.innerHTML = sorted.map(r => {
+            const meta = PURPOSE_META[r.bot_purpose] || PURPOSE_META.generic;
+            const pct  = total ? Math.round(r.count / total * 100) : 0;
+            return `<div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+                <span style="color:var(--ink);font-weight:600;">${esc(meta.label)}
+                  <span style="font-size:11px;font-weight:400;color:var(--ink-mute);">· ${esc(meta.desc)}</span>
+                </span>
+                <span style="color:var(--ink-dim);">${fmt(r.count)} · ${pct}%</span>
+              </div>
+              <div style="height:8px;background:var(--bg-soft);border-radius:4px;overflow:hidden;">
+                <div style="height:100%;width:${pct}%;background:${meta.color};border-radius:4px;transition:width 400ms;"></div>
+              </div>
+            </div>`;
+          }).join('');
+        }
+      }
+
+      // 회사별 상위 봇
+      if (botEl) {
+        const vendors = groupByVendor(botNames, 'bot_name');
+        if (!vendors.length) {
+          botEl.innerHTML = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">데이터 없음</div>';
+        } else {
+          botEl.innerHTML = vendors.slice(0, 7).map(v => {
+            const color = vendorColor(v.vendor);
+            const subtitle = v.bots.map(b => b.name).join(' · ');
+            return `<div class="bot-row">
+              <div class="bot-avatar" style="background:${color};">${esc(v.vendor.slice(0,1).toUpperCase())}</div>
+              <div class="meta">
+                <div class="name">${esc(v.vendor)}</div>
+                <div class="ua">${esc(subtitle)}</div>
+              </div>
+              <div class="req"><div class="n">${fmt(v.count)}</div><div class="s">요청</div></div>
+            </div>`;
+          }).join('');
+        }
+      }
+
+      // AI 회사별 상세 테이블
+      _platformsBotNames = botNames;
+      _csvPlatformsData = botNames.map(r => ({
+        vendor:   VENDOR_MAP[r.bot_name] || r.bot_name || '',
+        bot_name: r.bot_name || '',
+        purpose:  r.bot_purpose || '',
+        count:    r.count,
+      }));
+      _buildPlatformPills();
+      renderPlatformsTbl('all');
+    } catch(e) {
+      console.warn('Analytics Platforms 로드 실패:', e.message);
+    }
+  }
+
+  // 30일 차트 렌더 (클릭 시 시간별 드릴다운)
+  function renderDailyChart(dailyBots) {
+    const chart   = document.getElementById('analytics-chart');
+    const chartx  = document.getElementById('analytics-chartx');
+    const legendEl= document.getElementById('analytics-chart-legend');
+    document.getElementById('analytics-chart-title').textContent = '일별 요청 추이';
+    document.getElementById('analytics-chart-sub').textContent   = '최근 30일 · AI 회사별 · 막대 클릭 시 시간별 상세';
+    document.getElementById('analytics-back-btn').style.display  = 'none';
+    chart.innerHTML = ''; chartx.innerHTML = '';
+    if (legendEl) legendEl.innerHTML = '';
+
+    const today = new Date();
+    const dates = Array.from({ length: 30 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() - (29 - i));
+      return { key: d.toISOString().slice(0, 10), label: `${d.getMonth()+1}/${d.getDate()}` };
+    });
+
+    // 날짜별 봇 rows 인덱싱
+    const byDate = {};
+    for (const r of dailyBots) {
+      if (!byDate[r.date]) byDate[r.date] = [];
+      byDate[r.date].push(r);
+    }
+
+    // 전체 기간 벤더 총합 → 상위 6개
+    const vendorTotals = {};
+    for (const r of dailyBots) {
+      const v = VENDOR_MAP[r.bot_name] || r.bot_name || '알 수 없음';
+      vendorTotals[v] = (vendorTotals[v] || 0) + r.count;
+    }
+    const topVendors = Object.entries(vendorTotals)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([v]) => v);
+
+    const dayTotals = dates.map(d =>
+      (byDate[d.key] || []).reduce((a, r) => a + r.count, 0)
+    );
+    const max    = Math.max(...dayTotals, 1);
+    const chartH = chart.clientHeight || 220;
+
+    dates.forEach((d, i) => {
+      const rows    = byDate[d.key] || [];
+      const vendors = groupByVendor(rows, 'bot_name');
+      const total   = dayTotals[i];
+      const barH    = Math.max(Math.round((total / max) * (chartH - 20)), total ? 2 : 0);
+
+      const col = document.createElement('div');
+      col.className = 'col';
+      col.title = `${d.label} · ${total.toLocaleString()}건`;
+      col.style.cursor = 'pointer';
+      col.addEventListener('click', () => drillToHourly(d.key, d.label));
+
+      const barWrap = document.createElement('div');
+      barWrap.style.cssText = `height:${barH}px;display:flex;flex-direction:column-reverse;overflow:hidden;border-radius:3px 3px 0 0;`;
+
+      let used = 0;
+      for (const vName of topVendors) {
+        const entry = vendors.find(v => v.vendor === vName);
+        if (!entry || !entry.count) continue;
+        const segH = total ? Math.round((entry.count / total) * barH) : 0;
+        if (!segH) continue;
+        const seg = document.createElement('div');
+        seg.style.cssText = `height:${segH}px;background:${vendorColor(vName)};flex-shrink:0;`;
+        barWrap.appendChild(seg);
+        used += entry.count;
+      }
+      const remaining = total - used;
+      if (remaining > 0 && barH) {
+        const segH = Math.max(1, Math.round((remaining / total) * barH));
+        const seg  = document.createElement('div');
+        seg.style.cssText = `height:${segH}px;background:#c8cdd5;flex-shrink:0;`;
+        barWrap.appendChild(seg);
+      }
+
+      col.appendChild(barWrap);
+      chart.appendChild(col);
+
+      const lbl = document.createElement('div');
+      lbl.className = 'l';
+      lbl.textContent = (i % 3 === 0) ? d.label : '';
+      chartx.appendChild(lbl);
+    });
+
+    // 범례
+    if (legendEl) {
+      legendEl.innerHTML = topVendors.map(v =>
+        `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-dim);">
+          <span style="width:10px;height:10px;border-radius:2px;background:${vendorColor(v)};flex-shrink:0;"></span>
+          ${esc(v)}
+        </span>`
+      ).join('') +
+      `<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink-dim);">
+        <span style="width:10px;height:10px;border-radius:2px;background:#c8cdd5;flex-shrink:0;"></span>기타
+      </span>`;
+    }
+  }
+
+  // 시간별 드릴다운
+  async function drillToHourly(date, label) {
+    const chart  = document.getElementById('analytics-chart');
+    const chartx = document.getElementById('analytics-chartx');
+    chart.innerHTML  = `<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--ink-mute);font-size:13px;">로딩중…</div>`;
+    chartx.innerHTML = '';
+
+    document.getElementById('analytics-chart-title').textContent = `시간별 요청 추이`;
+    document.getElementById('analytics-chart-sub').textContent   = `${date} (${label})`;
+    document.getElementById('analytics-back-btn').style.display  = 'inline-flex';
+
+    try {
+      const hours = await apiFetch(`${API}/me/stats/hourly?date=${date}${chParam()}`).then(r => r.json());
+      chart.innerHTML = ''; chartx.innerHTML = '';
+
+      const max = Math.max(...hours.map(h => h.count), 1);
+      const chartH = chart.clientHeight || 220;
+
+      hours.forEach((h, i) => {
+        const barH = Math.max(Math.round((h.count / max) * (chartH - 20)), h.count ? 2 : 0);
+        const col = document.createElement('div');
+        col.className = 'col';
+        col.title = `${h.hour}시 · ${h.count.toLocaleString()}건`;
+        col.innerHTML = `<div class="bar b2" style="height:${barH}px;"></div>`;
+        chart.appendChild(col);
+
+        const lbl = document.createElement('div');
+        lbl.className = 'l';
+        lbl.textContent = (i % 3 === 0) ? `${h.hour}시` : '';
+        chartx.appendChild(lbl);
+      });
+    } catch(e) {
+      chart.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--bad);font-size:13px;">로드 실패</div>`;
+    }
+  }
+
+  function analyticsBackToDaily() {
+    if (_analyticsDailyBotsCache) renderDailyChart(_analyticsDailyBotsCache);
+  }
+
+  function renderBotBars(bots) {
+    const el = document.getElementById('analytics-bot-bars');
+    if (!el) return;
+    const total = bots.reduce((a, b) => a + b.count, 0);
+    el.innerHTML = bots.slice(0, 8).map((b) => {
+      const pct = total ? Math.round(b.count / total * 100) : 0;
+      const botName = b.bot_ua || b.name || '알 수 없음';
+      const vendor = VENDOR_MAP[botName] || '';
+      const color = vendorColor(vendor || botName);
+      return `
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:2px;">
+            <span style="color:var(--ink);font-weight:600;">${esc(botName.split('/')[0])}</span>
+            <span style="color:var(--ink-dim);">${fmt(b.count)}</span>
+          </div>
+          ${vendor ? `<div style="font-size:11px;color:var(--ink-mute);margin-bottom:4px;">${esc(vendor)}</div>` : ''}
+          <div style="height:8px;background:var(--bg-soft);border-radius:4px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;transition:width 400ms;"></div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderBotTable(bots) {
+    const tbody = document.getElementById('analytics-tbl-body');
+    if (!tbody) return;
+    const total = bots.reduce((a, b) => a + b.count, 0);
+    tbody.innerHTML = bots.map((b) => {
+      const pct = total ? (b.count / total * 100).toFixed(1) : 0;
+      const botName = b.bot_ua || b.name || '알 수 없음';
+      const vendor = VENDOR_MAP[botName] || '';
+      const color = vendorColor(vendor || botName);
+      return `<tr>
+        <td>
+          <div style="font-weight:700;">${esc(botName.split('/')[0])}</div>
+          ${vendor ? `<div style="font-size:11px;color:var(--ink-mute);">${esc(vendor)}</div>` : ''}
+        </td>
+        <td style="font-weight:700;">${fmt(b.count)}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:80px;height:6px;background:var(--bg-soft);border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;"></div>
+            </div>
+            <span style="font-size:12px;color:var(--ink-dim);">${pct}%</span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--ink-mute);padding:24px;">데이터 없음</td></tr>';
+  }
+
+  /* ─── TRAFFIC ──────────────────────────────────────── */
+  let trafficLastId = 0;
+  let trafficRows = [];
+  let _trafficCategory = 'bot';   // 기본: AI 봇만
+
+  function onTrafficCatChange(sel) {
+    _trafficCategory = sel.value;
+    if (trafficTimer) { clearInterval(trafficTimer); trafficTimer = null; }
+    startTraffic();
+  }
+
+  function catBadge(cat, purpose) {
+    const purposeLabel = {
+      ai_training:   'Crawler',
+      ai_search:     'Search',
+      ai_assistant:  'Assistant',
+      search_engine: 'SE',
+      seo:           'SEO',
+      social:        'Social',
+      generic:       '일반',
+      user:          '',
+    }[purpose] || '';
+    const tip = purpose ? ` title="목적: ${purposeLabel}"` : '';
+    if (cat === 'malicious')
+      return `<span${tip} style="font-size:10px;font-weight:700;background:#ffe1e1;color:var(--bad);padding:2px 7px;border-radius:6px;">⛔ 악성</span>`;
+    if (cat === 'bot')
+      return `<span${tip} style="font-size:10px;font-weight:700;background:var(--brand-soft);color:var(--brand);padding:2px 7px;border-radius:6px;">AI·${esc(purposeLabel)}</span>`;
+    if (cat === 'other_bot')
+      return `<span${tip} style="font-size:10px;font-weight:700;background:var(--bg-soft);color:var(--ink-2);padding:2px 7px;border-radius:6px;">${esc(purposeLabel || '봇')}</span>`;
+    if (cat === 'user')
+      return '<span style="font-size:10px;font-weight:700;background:var(--pastel-mint);color:var(--ok);padding:2px 7px;border-radius:6px;">사용자</span>';
+    return '<span style="font-size:10px;color:var(--ink-mute);">—</span>';
+  }
+
+  async function fetchTraffic() {
+    try {
+      const logs = await apiFetch(`${API}/me/logs?limit=50&category=${_trafficCategory}${chParam()}`).then(r => r.json());
+      const newLogs = logs.filter(l => l.id > trafficLastId);
+      if (!newLogs.length) return;
+      trafficLastId = Math.max(...newLogs.map(l => l.id));
+      trafficRows = [...newLogs, ...trafficRows].slice(0, 200);
+      renderTrafficRows();
+    } catch(_) {}
+  }
+
+  function renderTrafficRows() {
+    const el = document.getElementById('traffic-rows');
+    if (!el) return;
+    el.innerHTML = trafficRows.map(l => {
+      // 사용자/기타 봇은 verified 컬럼 의미가 없어서 dim 처리
+      const isBot = l.category === 'bot';
+      const vLabel = isBot
+        ? (l.verified ? '<span class="log-ok" style="font-weight:700;">✓ 검증</span>' : '<span class="log-bad" style="font-weight:700;">✗ 실패</span>')
+        : '<span class="log-dim">—</span>';
+      const billed = l.billed ? ' <span style="color:var(--brand);font-size:10px;font-weight:700;">●</span>' : '';
+      return `<div class="log-row">
+        <span class="log-dim">${fmtTime(l.ts)}</span>
+        <span>${catBadge(l.category, l.bot_purpose)}</span>
+        ${vLabel}
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.bot_name || (l.bot_ua||'').split('/')[0] || '—')}</span>
+        <span style="color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.domain || '—')}</span>
+        <span style="color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(l.path || '—')}${billed}</span>
+        <span class="log-dim">${esc(l.ip || '—')}</span>
+      </div>`;
+    }).join('') || '<div style="padding:24px;text-align:center;color:var(--ink-mute);font-size:14px;">로그가 없어요</div>';
+  }
+
+  function startTraffic() {
+    trafficRows = []; trafficLastId = 0;
+    fetchTraffic();
+    trafficTimer = setInterval(fetchTraffic, 3000);
+  }
+
+  /* ─── TOKENS ───────────────────────────────────────── */
+  async function loadTokens() {
+    const tbody = document.getElementById('tokens-tbl-body');
+    if (!tbody) return;
+    try {
+      const tokens = await apiFetch(`${API}/me/tokens`).then(r => r.json());
+      if (!tokens.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-mute);padding:24px;">발급된 토큰이 없어요</td></tr>';
+        return;
+      }
+      tbody.innerHTML = tokens.map(t => {
+        const status = t.active ? '<span class="sdot on">활성</span>' : '<span class="sdot off">비활성</span>';
+        const exp = t.expires_at ? t.expires_at.slice(0,10) : '—';
+        return `<tr>
+          <td style="font-weight:600;">${esc(t.owner || '—')}</td>
+          <td><span class="badge paid">${esc(t.plan || 'basic')}</span></td>
+          <td class="mono">${esc(t.token)}</td>
+          <td style="font-size:13px;color:var(--ink-dim);">${exp}</td>
+          <td>${status}</td>
+          <td style="text-align:right;">
+            ${t.active
+              ? `<button class="btn-sm danger" onclick="toggleToken('${t.id}',false)">비활성화</button>`
+              : `<button class="btn-sm" onclick="toggleToken('${t.id}',true)">활성화</button>`}
+          </td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--bad);padding:24px;">API 연결 실패</td></tr>`;
+    }
+  }
+
+  async function issueToken() {
+    const owner = prompt('소유자(봇 업체명)를 입력하세요:');
+    if (!owner) return;
+    const plan  = prompt('플랜을 입력하세요 (free / paid):', 'paid');
+    try {
+      const res = await apiFetch(`${API}/me/tokens`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ owner, plan: plan || 'paid' })
+      }).then(r => r.json());
+      alert(`토큰 발급 완료:\n${res.token}`);
+      loadTokens();
+    } catch(e) { alert('발급 실패: ' + e.message); }
+  }
+
+  async function toggleToken(id, active) {
+    try {
+      await apiFetch(`${API}/me/tokens/${id}`, {
+        method:'PATCH',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ active })
+      });
+      loadTokens();
+    } catch(e) { alert('변경 실패: ' + e.message); }
+  }
+
+  /* ─── CHANNELS ─────────────────────────────────────── */
+  // DNS 정보 표시 (직접매칭/간접/CDN 등 — 좋고 나쁨이 아닌 라우팅 방식 정보)
+  function dnsBadge(dns) {
+    if (!dns) return '<span style="font-size:11px;color:var(--ink-mute);">확인중…</span>';
+    const cname = dns.cname || '';
+    const ips   = (dns.ips || []).join(', ');
+    const tip   = `CNAME: ${cname || '없음'} / IP: ${ips || '없음'}`;
+    if (dns.status === 'unresolved')
+      return `<span style="font-size:12px;color:var(--bad);" title="${esc(tip)}">미해석</span>`;
+    // 그 외는 모두 "응답함" (직접/간접/CDN 등은 라우팅 방식의 차이일 뿐)
+    let label = '응답';
+    if (cname.includes('cloudflare') || /104\.|172\.6[4-9]|172\.7\d/.test(ips)) label = 'Cloudflare';
+    else if (dns.status === 'connected') label = 'ALB 직결';
+    else if (cname || ips) label = '응답';
+    return `<span style="font-size:12px;color:var(--ink-dim);" title="${esc(tip)}">${label}</span>`;
+  }
+
+  async function loadChannels() {
+    const tbody = document.getElementById('channels-tbl-body');
+    if (!tbody) return;
+    try {
+      const [channels, stats, dnsList] = await Promise.all([
+        apiFetch(`${API}/me/channels`).then(r => r.json()),
+        apiFetch(`${API}/me/stats/channels`).then(r => r.json()),
+        apiFetch(`${API}/me/channels/dns-status`).then(r => r.json()).catch(() => []),
+      ]);
+      // 캐시 무효화 (채널 변경 후 selector 갱신)
+      _channelCache = channels;
+      populateSelectors();
+
+      if (!channels.length) {
+        tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:var(--ink-mute);padding:24px;">등록된 채널이 없어요. 채널을 추가해보세요.</td></tr>';
+        return;
+      }
+      const statsMap = Object.fromEntries(stats.map(s => [s.id, s]));
+      const dnsMap   = Object.fromEntries(dnsList.map(d => [d.id, d]));
+      tbody.innerHTML = channels.map(c => {
+        const s   = statsMap[c.id] || {};
+        const dns = dnsMap[c.id];
+        // 운영 상태는 active 토글이 결정. DNS 는 별도 정보 컬럼.
+        const status = c.active
+          ? '<span class="sdot on">운영 중</span>'
+          : '<span class="sdot off">비활성</span>';
+        return `<tr>
+          <td style="font-weight:600;">${esc(c.name)}</td>
+          <td class="mono">${esc(c.domain)}</td>
+          <td class="mono" style="color:var(--ink-dim);font-size:12px;">${esc(c.upstream)}</td>
+          <td style="text-align:right;color:var(--ink-2);">${fmt(s.user_total || 0)}</td>
+          <td style="text-align:right;color:var(--ink-2);">${fmt(s.other_bot_total || 0)}</td>
+          <td style="text-align:right;font-weight:700;">${fmt(s.bot_total || 0)}</td>
+          <td style="text-align:right;color:var(--ok);">${fmt(s.verified || 0)}</td>
+          <td style="text-align:right;color:var(--ink-dim);">${fmt(s.lenient_pass || 0)}</td>
+          <td style="text-align:right;color:var(--bad);">${fmt(s.blocked || 0)}</td>
+          <td style="text-align:right;color:var(--ink-dim);">${s.bot_types || 0}개</td>
+          <td>${dnsBadge(dns)}</td>
+          <td>${status}</td>
+          <td style="text-align:right;">
+            <div style="display:flex;gap:6px;justify-content:flex-end;">
+              <button class="btn-sm" onclick="toggleChannel('${c.id}',${!c.active})">
+                ${c.active ? '잠그기' : '풀기'}
+              </button>
+              <button class="btn-sm danger" onclick="deleteChannel('${c.id}')">삭제</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;color:var(--bad);padding:24px;">API 연결 실패</td></tr>`;
+    }
+  }
+
+  function showAddChannel() {
+    document.getElementById('channel-form').style.display = 'block';
+    document.getElementById('ch-name').focus();
+  }
+  function hideAddChannel() {
+    document.getElementById('channel-form').style.display = 'none';
+    ['ch-name','ch-domain','ch-upstream'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+  }
+
+  async function submitChannel() {
+    const name     = document.getElementById('ch-name').value.trim();
+    const domain   = document.getElementById('ch-domain').value.trim();
+    const upstream = document.getElementById('ch-upstream').value.trim();
+    if (!name)     { alert('채널 이름을 입력하세요.'); return; }
+    if (!domain)   { alert('도메인을 입력하세요. (예: news.example.com)'); return; }
+    if (!upstream) { alert('업스트림 URL을 입력하세요. (예: http://origin.example.com)'); return; }
+    // upstream URL 형식 간단 검증
+    if (!/^https?:\/\/.+/.test(upstream)) {
+      alert('업스트림 URL은 http:// 또는 https:// 로 시작해야 해요.');
+      return;
+    }
+    try {
+      const res = await apiFetch(`${API}/me/channels`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, domain, upstream }),
+      });
+      if (res.status === 409) { alert('이미 등록된 도메인이에요.'); return; }
+      if (!res.ok) throw new Error(res.status);
+      hideAddChannel();
+      loadChannels();
+    } catch(e) { alert('저장 실패: ' + e.message); }
+  }
+
+  async function toggleChannel(id, active) {
+    await apiFetch(`${API}/me/channels/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active }),
+    });
+    _channelCache = null;
+    loadChannels();
+  }
+
+  async function deleteChannel(id) {
+    if (!confirm('이 채널을 삭제할까요?')) return;
+    await apiFetch(`${API}/me/channels/${id}`, { method: 'DELETE' });
+    _channelCache = null;
+    loadChannels();
+  }
+
+  /* ─── DOMAINS ──────────────────────────────────────── */
+  async function loadDomains() {
+    const el = document.getElementById('domains-list');
+    if (!el) return;
+    try {
+      const domains = await apiFetch(`${API}/me/stats/domains`).then(r => r.json());
+      if (!domains.length) {
+        el.innerHTML = '<div style="text-align:center;color:var(--ink-mute);padding:24px;">데이터가 없어요</div>';
+        return;
+      }
+      const max = Math.max(...domains.map(d => d.count), 1);
+      el.innerHTML = domains.map(d => {
+        const pct = Math.round(d.count / max * 100);
+        return `
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:14px;font-weight:600;color:var(--ink);">${esc(d.domain)}</span>
+              <span style="font-size:13px;color:var(--ink-dim);">${fmt(d.count)}건</span>
+            </div>
+            <div class="dbar"><div class="dbar-fill" style="width:${pct}%;"></div></div>
+          </div>`;
+      }).join('');
+    } catch(e) {
+      el.innerHTML = `<div style="text-align:center;color:var(--bad);padding:24px;">API 연결 실패</div>`;
+    }
+  }
+
+  /* ─── PATH RULES ───────────────────────────────────────── */
+  const ACTION_BADGE = {
+    allow: `<span class="badge free">allow</span>`,
+    block: `<span class="badge block">block</span>`,
+    meter: `<span class="badge paid">meter</span>`,
+  };
+
+  async function loadRules() {
+    const tbody = document.getElementById('rules-tbl-body');
+    if (!tbody) return;
+    try {
+      const rules = await apiFetch(`${API}/me/path-rules`).then(r => r.json());
+      if (!rules.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-mute);padding:24px;">규칙이 없어요</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rules.map(r => `
+        <tr>
+          <td class="mono" style="font-weight:600;">${esc(r.pattern)}</td>
+          <td>${ACTION_BADGE[r.action] || esc(r.action)}</td>
+          <td style="color:var(--ink-dim);font-size:13px;">${esc(r.note || '—')}</td>
+          <td>
+            ${r.active
+              ? '<span class="sdot on" style="font-size:12px;">활성</span>'
+              : '<span class="sdot off" style="font-size:12px;">비활성</span>'}
+          </td>
+          <td style="text-align:right;">
+            <div style="display:flex;gap:6px;justify-content:flex-end;">
+              <button class="btn-sm" onclick="toggleRule('${r.id}',${!r.active})">
+                ${r.active ? '비활성화' : '활성화'}
+              </button>
+              <button class="btn-sm danger" onclick="deleteRule('${r.id}')">삭제</button>
+            </div>
+          </td>
+        </tr>`).join('');
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--bad);padding:24px;">API 연결 실패</td></tr>`;
+    }
+  }
+
+  function showAddRule() {
+    document.getElementById('rule-form').style.display = 'block';
+    document.getElementById('rule-pattern').focus();
+  }
+  function hideAddRule() {
+    document.getElementById('rule-form').style.display = 'none';
+    document.getElementById('rule-pattern').value = '';
+    document.getElementById('rule-note').value = '';
+  }
+
+  async function submitRule() {
+    const pattern = document.getElementById('rule-pattern').value.trim();
+    const action  = document.getElementById('rule-action').value;
+    const note    = document.getElementById('rule-note').value.trim();
+    if (!pattern) { alert('경로 패턴을 입력하세요.'); return; }
+    try {
+      const res = await apiFetch(`${API}/me/path-rules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pattern, action, note }),
+      });
+      if (res.status === 409) { alert('이미 존재하는 패턴이에요.'); return; }
+      if (!res.ok) throw new Error(res.status);
+      hideAddRule();
+      loadRules();
+    } catch(e) { alert('저장 실패: ' + e.message); }
+  }
+
+  async function toggleRule(id, active) {
+    await apiFetch(`${API}/me/path-rules/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active }),
+    });
+    loadRules();
+  }
+
+  async function deleteRule(id) {
+    if (!confirm('이 규칙을 삭제할까요?')) return;
+    await apiFetch(`${API}/me/path-rules/${id}`, { method: 'DELETE' });
+    loadRules();
+  }
+
+  /* ─── SETTINGS (strict mode 토글) ──────────────────────── */
+  let _strictMode = true;
+
+  function renderStrictToggle() {
+    const wrap = document.getElementById('strict-toggle-wrap');
+    const sw   = document.getElementById('strict-toggle');
+    const knob = document.getElementById('strict-toggle-knob');
+    if (!wrap || !sw || !knob) return;
+    wrap.style.display = 'inline-flex';
+    sw.style.background = _strictMode ? 'var(--brand)' : 'var(--ink-mute)';
+    knob.style.transform = _strictMode ? 'translateX(16px)' : 'translateX(0)';
+    wrap.onclick = toggleStrictMode;
+  }
+
+  let _bypassMode = false;
+
+  async function loadSettings() {
+    try {
+      const s = await apiFetch(`${API}/admin/settings`).then(r => r.json());
+      _strictMode = (s.strict_mode ?? '1') !== '0';
+      renderStrictToggle();
+      _bypassMode = s.bypass_mode === '1';
+      renderBypassBanner();
+    } catch(_) {}
+  }
+
+  function renderBypassBanner() {
+    const on  = document.getElementById('bypass-banner');
+    const off = document.getElementById('bypass-off-banner');
+    if (on)  on.style.display  = _bypassMode ? 'block' : 'none';
+    if (off) off.style.display = _bypassMode ? 'none'  : 'block';
+  }
+
+  async function toggleBypass(enable) {
+    if (enable && !confirm('모든 채널의 봇 필터링이 중단됩니다.\n정말 활성화하시겠습니까?')) return;
+    try {
+      await apiFetch(`${API}/admin/settings/bypass_mode`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: enable ? '1' : '0' }),
+      });
+      _bypassMode = enable;
+      renderBypassBanner();
+    } catch(e) { alert('변경 실패: ' + e.message); }
+  }
+
+  async function toggleStrictMode() {
+    const newVal = _strictMode ? '0' : '1';
+    try {
+      await apiFetch(`${API}/admin/settings/strict_mode`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: newVal }),
+      });
+      _strictMode = (newVal === '1');
+      renderStrictToggle();
+    } catch(e) { alert('변경 실패: ' + e.message); }
+  }
+
+  /* ─── 대시보드 → 트래픽 로그 카테고리별 점프 ──────────── */
+  function dashboardJumpTrafficUser(e) {
+    _trafficCategory = 'user';
+    nav(e, 'page-traffic');
+    const sel = document.getElementById('traffic-cat-select');
+    if (sel) sel.value = 'user';
+  }
+  function dashboardJumpTrafficOtherBot(e) {
+    _trafficCategory = 'other_bot';
+    nav(e, 'page-traffic');
+    const sel = document.getElementById('traffic-cat-select');
+    if (sel) sel.value = 'other_bot';
+  }
+
+  /* ─── BOT POLICIES (목적별) ────────────────────────────── */
+  const POLICY_ACTIONS = ['pass','meter','verify','token_only','block','gone'];
+  const POLICY_LABELS  = {
+    pass:       '그냥 통과',
+    meter:      '통과 + 과금',
+    verify:     'rDNS/토큰 검증',
+    token_only: '토큰 필수',
+    block:      '403 차단',
+    gone:       '410 차단 (SEO)',
+  };
+  const POLICY_PURPOSES = [
+    { key: 'ai_training',   label: 'AI Crawler',           desc: '학습 데이터 수집 (GPTBot, ClaudeBot)' },
+    { key: 'ai_search',     label: 'AI Search',            desc: 'RAG 인덱싱 (PerplexityBot, OAI-Search)' },
+    { key: 'ai_assistant',  label: 'AI Assistant',         desc: '사용자 트리거 fetch (ChatGPT-User, Manus)' },
+    { key: 'search_engine', label: 'Search Engine',        desc: '전통 검색엔진 (Googlebot, Bingbot)' },
+    { key: 'seo',           label: 'SEO Crawler',          desc: '분석 도구 (SemrushBot, AhrefsBot)' },
+    { key: 'social',        label: 'Social Preview',       desc: '링크 미리보기 (Slackbot, Twitterbot)' },
+    { key: 'generic',       label: 'Generic Bot',          desc: '미분류 / 알 수 없는 봇' },
+  ];
+
+  async function loadPolicies() {
+    try {
+      const policies = await apiFetch(`${API}/me/purpose-policies`).then(r => r.json());
+      renderPolicies(policies);
+    } catch(e) {
+      document.getElementById('policies-tbl-body').innerHTML =
+        `<tr><td colspan="4" style="text-align:center;color:var(--bad);padding:24px;">로드 실패</td></tr>`;
+    }
+  }
+
+  function renderPolicies(policies) {
+    const tbody = document.getElementById('policies-tbl-body');
+    tbody.innerHTML = POLICY_PURPOSES.map(p => {
+      const cur = policies[p.key] || 'pass';
+      const opts = POLICY_ACTIONS.map(a =>
+        `<option value="${a}" ${a===cur?'selected':''}>${a}</option>`
+      ).join('');
+      return `<tr>
+        <td style="font-weight:700;">${esc(p.label)}</td>
+        <td style="color:var(--ink-2);">${esc(p.desc)}</td>
+        <td>
+          <select onchange="updatePolicy('${p.key}', this.value)"
+            style="padding:6px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:#fff;width:100%;">
+            ${opts}
+          </select>
+        </td>
+        <td style="font-size:13px;color:var(--ink-dim);" id="policy-meaning-${p.key}">
+          ${esc(POLICY_LABELS[cur])}
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  async function updatePolicy(purpose, action) {
+    try {
+      await apiFetch(`${API}/me/purpose-policies/${purpose}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      const meaningEl = document.getElementById(`policy-meaning-${purpose}`);
+      if (meaningEl) meaningEl.textContent = POLICY_LABELS[action];
+    } catch(e) { alert('변경 실패: ' + e.message); }
+  }
+
+  /* ─── BOT CATALOG ─────────────────────────────────────── */
+  let _catalog = null;
+  let _catalogStats = {};
+  let _maliciousStats = {};
+  let _botModalId = null;
+
+  const PURPOSE_COLORS = {
+    ai_training:   '#2b6df6',
+    ai_search:     '#9d6bff',
+    ai_assistant:  '#1aa377',
+    search_engine: '#0078d4',
+    seo:           '#ff7a5c',
+    social:        '#c4a01a',
+    generic:       '#9aa1ad',
+    malicious:     '#dc2626',
+  };
+
+  async function loadCatalog() {
+    try {
+      const [catData, statsData, malStatsData] = await Promise.all([
+        apiFetch(`${API}/me/bot-catalog`).then(r => r.json()),
+        apiFetch(`${API}/me/stats/bot-names`).then(r => r.json()),
+        apiFetch(`${API}/me/stats/malicious`).then(r => r.json()),
+      ]);
+      _catalog = catData;
+      _catalogStats    = Object.fromEntries(statsData.map(s => [s.bot_name, s.count]));
+      _maliciousStats  = Object.fromEntries(malStatsData.map(s => [s.bot_name, s]));
+
+      const meta = _catalog.purpose_meta || {};
+      const purposeSel = document.getElementById('catalog-purpose-filter');
+      const vendorSel  = document.getElementById('catalog-vendor-filter');
+      purposeSel.innerHTML = '<option value="">모든 카테고리</option>'
+        + Object.entries(meta).map(([k,v]) => `<option value="${k}">${esc(v.label)}</option>`).join('');
+      const vendors = [...new Set(_catalog.bots.map(b => b.vendor))].filter(Boolean).sort();
+      vendorSel.innerHTML = '<option value="">모든 벤더</option>'
+        + vendors.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+
+      renderCatalog();
+      renderMalicious();
+    } catch(e) {
+      document.getElementById('catalog-tbl-body').innerHTML =
+        `<tr><td colspan="6" style="text-align:center;color:var(--bad);padding:24px;">로드 실패</td></tr>`;
+    }
+  }
+
+  function renderMalicious() {
+    if (!_catalog?.malicious) return;
+    const tbody = document.getElementById('malicious-tbl-body');
+    if (!tbody) return;
+    const VENDOR_COLOR = { Attack: '#dc2626', Scraper: '#ea580c', Library: '#9aa1ad' };
+    tbody.innerHTML = _catalog.malicious.map(m => {
+      const stats = _maliciousStats[m.name] || {};
+      const cnt   = stats.count || 0;
+      const color = VENDOR_COLOR[m.vendor] || '#9aa1ad';
+      const enabledDot = m.enabled !== 0
+        ? `<span style="color:var(--ok);font-size:16px;">●</span>`
+        : `<span style="color:var(--ink-mute);font-size:16px;">○</span>`;
+      return `<tr>
+        <td style="font-weight:700;">${esc(m.name)}</td>
+        <td>
+          <span style="padding:3px 10px;background:#ffe1e1;color:${color};border-radius:999px;font-size:11.5px;font-weight:600;">${esc(m.vendor)}</span>
+        </td>
+        <td class="mono" style="font-size:12px;color:var(--ink-mute);">${(m.patterns||[]).join(', ')}</td>
+        <td style="text-align:right;font-weight:${cnt?700:400};color:${cnt?'var(--bad)':'var(--ink-mute)'};">${cnt?fmt(cnt):'—'}</td>
+        <td style="text-align:center;">${enabledDot}</td>
+        <td style="text-align:right;white-space:nowrap;">
+          <button onclick="openBotModal(${m.id},true)" style="font-size:12px;padding:3px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer;margin-right:4px;">수정</button>
+          <button onclick="deleteBot(${m.id})" style="font-size:12px;padding:3px 10px;border:1px solid #fca5a5;border-radius:6px;background:#fff;color:var(--bad);cursor:pointer;">삭제</button>
+        </td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--ink-mute);padding:24px;">없음</td></tr>';
+  }
+
+  function renderCatalog() {
+    if (!_catalog) return;
+    const purpose = document.getElementById('catalog-purpose-filter').value;
+    const vendor  = document.getElementById('catalog-vendor-filter').value;
+    const search  = document.getElementById('catalog-search').value.toLowerCase();
+
+    let bots = _catalog.bots || [];
+    if (purpose) bots = bots.filter(b => b.purpose === purpose);
+    if (vendor)  bots = bots.filter(b => b.vendor === vendor);
+    if (search)  bots = bots.filter(b =>
+      b.name.toLowerCase().includes(search) || b.vendor.toLowerCase().includes(search)
+    );
+
+    const counts = {};
+    bots.forEach(b => counts[b.purpose] = (counts[b.purpose]||0) + 1);
+
+    const meta = _catalog.purpose_meta || {};
+    const summaryEl = document.getElementById('catalog-summary');
+    summaryEl.innerHTML = Object.entries(meta).map(([k, m]) => {
+      const cnt = counts[k] || 0;
+      if (!cnt) return '';
+      const color = PURPOSE_COLORS[k] || '#9aa1ad';
+      return `<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:#fff;border:1px solid var(--line);border-radius:999px;font-size:13px;cursor:pointer;"
+        onclick="document.getElementById('catalog-purpose-filter').value='${k}';renderCatalog();">
+        <span style="width:8px;height:8px;border-radius:50%;background:${color};"></span>
+        <span style="font-weight:600;">${esc(m.label)}</span>
+        <span style="color:var(--ink-dim);">${cnt}</span>
+      </span>`;
+    }).join('');
+
+    const tbody = document.getElementById('catalog-tbl-body');
+    if (!bots.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--ink-mute);padding:24px;">매칭 봇 없음</td></tr>';
+      return;
+    }
+    tbody.innerHTML = bots.map(b => {
+      const m     = meta[b.purpose] || { label: b.purpose };
+      const color = PURPOSE_COLORS[b.purpose] || '#9aa1ad';
+      const seen  = _catalogStats[b.name] || 0;
+      const enabledDot = b.enabled !== 0
+        ? `<span style="color:var(--ok);font-size:16px;">●</span>`
+        : `<span style="color:var(--ink-mute);font-size:16px;">○</span>`;
+      return `<tr>
+        <td>
+          <div style="font-weight:700;color:var(--ink);">${esc(b.name)}</div>
+          <div style="font-size:11.5px;color:var(--ink-mute);font-family:var(--mono);">${(b.patterns||[]).join(', ')}</div>
+        </td>
+        <td style="color:var(--ink-2);">${esc(b.vendor)}</td>
+        <td>
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:var(--bg-soft);border-radius:999px;font-size:11.5px;font-weight:600;">
+            <span style="width:7px;height:7px;border-radius:50%;background:${color};"></span>
+            ${esc(m.label)}
+          </span>
+        </td>
+        <td style="text-align:right;font-weight:${seen?700:400};color:${seen?'var(--ink)':'var(--ink-mute)'};">${seen?fmt(seen):'—'}</td>
+        <td style="text-align:center;">${enabledDot}</td>
+        <td style="text-align:right;white-space:nowrap;">
+          <button onclick="openBotModal(${b.id})" style="font-size:12px;padding:3px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer;margin-right:4px;">수정</button>
+          <button onclick="deleteBot(${b.id})" style="font-size:12px;padding:3px 10px;border:1px solid #fca5a5;border-radius:6px;background:#fff;color:var(--bad);cursor:pointer;">삭제</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function openBotModal(id = null, isMalicious = false) {
+    _botModalId = id;
+    const modal = document.getElementById('bot-modal');
+    document.getElementById('bot-modal-title').textContent = id ? '봇 수정' : (isMalicious ? '악성 봇 추가' : '봇 추가');
+    document.getElementById('bm-error').style.display = 'none';
+
+    if (id) {
+      const all = [...(_catalog?.bots||[]), ...(_catalog?.malicious||[])];
+      const bot = all.find(b => b.id === id);
+      if (bot) {
+        document.getElementById('bm-name').value    = bot.name;
+        document.getElementById('bm-vendor').value  = bot.vendor;
+        document.getElementById('bm-purpose').value = bot.purpose;
+        document.getElementById('bm-patterns').value = (bot.patterns||[]).join(', ');
+        document.getElementById('bm-enabled').checked = bot.enabled !== 0;
+      }
+    } else {
+      document.getElementById('bm-name').value     = '';
+      document.getElementById('bm-vendor').value   = '';
+      document.getElementById('bm-purpose').value  = isMalicious ? 'malicious' : 'ai_training';
+      document.getElementById('bm-patterns').value = '';
+      document.getElementById('bm-enabled').checked = true;
+    }
+    modal.style.display = 'flex';
+  }
+
+  function closeBotModal() {
+    document.getElementById('bot-modal').style.display = 'none';
+    _botModalId = null;
+  }
+
+  async function saveBotModal() {
+    const name     = document.getElementById('bm-name').value.trim();
+    const vendor   = document.getElementById('bm-vendor').value.trim();
+    const purpose  = document.getElementById('bm-purpose').value;
+    const patterns = document.getElementById('bm-patterns').value.split(',').map(s => s.trim()).filter(Boolean);
+    const enabled  = document.getElementById('bm-enabled').checked;
+    const isMal    = purpose === 'malicious';
+
+    if (!name || !vendor) {
+      const el = document.getElementById('bm-error');
+      el.textContent = '이름과 벤더는 필수입니다.';
+      el.style.display = 'block';
+      return;
+    }
+    try {
+      if (_botModalId) {
+        await apiFetch(`${API}/admin/bots/${_botModalId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, vendor, purpose, patterns, is_malicious: isMal ? 1 : 0, enabled: enabled ? 1 : 0 }),
+        });
+      } else {
+        await apiFetch(`${API}/admin/bots`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, vendor, purpose, patterns, is_malicious: isMal ? 1 : 0, enabled: enabled ? 1 : 0 }),
+        });
+      }
+      closeBotModal();
+      loadCatalog();
+    } catch(e) {
+      const el = document.getElementById('bm-error');
+      el.textContent = e.message || '저장 실패';
+      el.style.display = 'block';
+    }
+  }
+
+  async function deleteBot(id) {
+    if (!confirm('이 봇을 삭제하시겠습니까?')) return;
+    await apiFetch(`${API}/admin/bots/${id}`, { method: 'DELETE' });
+    loadCatalog();
+  }
+
+  /* ─── USERS ───────────────────────────────────────────── */
+  async function loadUsers() {
+    const tbody = document.getElementById('users-tbl-body');
+    if (!tbody) return;
+    try {
+      const users = await apiFetch(`${API}/admin/users`).then(r => r.json());
+      if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-mute);padding:24px;">가입한 사용자가 없어요</td></tr>';
+        return;
+      }
+      tbody.innerHTML = users.map(u => {
+        const status = u.active
+          ? '<span class="sdot on">활성</span>'
+          : '<span class="sdot off">비활성</span>';
+        return `<tr>
+          <td style="font-weight:600;">${esc(u.name)}</td>
+          <td class="mono">${esc(u.email)}</td>
+          <td style="font-size:13px;color:var(--ink-dim);">${(u.created_at||'').slice(0,10)}</td>
+          <td>${status}</td>
+          <td style="text-align:right;">
+            <div style="display:flex;gap:6px;justify-content:flex-end;">
+              ${u.active
+                ? `<button class="btn-sm danger" onclick="toggleUser('${u.id}',false)">비활성화</button>`
+                : `<button class="btn-sm" onclick="toggleUser('${u.id}',true)">활성화</button>`}
+              <button class="btn-sm danger" onclick="deleteUser('${u.id}')">삭제</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--bad);padding:24px;">API 연결 실패</td></tr>`;
+    }
+  }
+
+  async function toggleUser(id, active) {
+    await apiFetch(`${API}/admin/users/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active }),
+    });
+    loadUsers();
+  }
+
+  async function deleteUser(id) {
+    if (!confirm('이 사용자를 삭제할까요? 세션도 함께 삭제됩니다.')) return;
+    await apiFetch(`${API}/admin/users/${id}`, { method: 'DELETE' });
+    loadUsers();
+  }
+
+  /* ─── 파트너 모드 초기화 ─────────────────────────── */
+  function initPartnerMode() {
+    const partnerDomain = new URLSearchParams(window.location.search).get('partner');
+    if (!partnerDomain) return;
+    _selectedChannel = partnerDomain;
+    const banner   = document.getElementById('partner-mode-banner');
+    const domainEl = document.getElementById('partner-mode-domain');
+    if (banner)   banner.style.display = 'block';
+    if (domainEl) domainEl.textContent = partnerDomain;
+  }
+
+  /* ─── INIT ──────────────────────────────────────────── */
+  (async () => {
+    initPartnerMode();
+    try {
+      await apiFetch(`${API}/me/tokens`)  // 인증 확인
+      hideLogin()
+      populateSelectors()
+      loadSettings()
+      loadDashboard()
+    } catch(e) {
+      if (e.message !== 'unauthorized') {
+        // ADMIN_KEY 없는 개발 환경: 그냥 진행
+        populateSelectors()
+        loadSettings()
+        loadDashboard()
+      }
+      // unauthorized: showLogin() 은 apiFetch 내부에서 이미 호출됨
+    }
+  })()
+</script>
+
+</body>
+</html>
