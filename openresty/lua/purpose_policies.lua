@@ -92,6 +92,10 @@ function _M.get(purpose)
     return p[purpose] or DEFAULTS[purpose] or "pass"
 end
 
+function _M.warm()
+    return load_policies()
+end
+
 function _M.invalidate()
     ngx.shared.rdns_cache:delete(CACHE_KEY)
 end

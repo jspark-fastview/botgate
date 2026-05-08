@@ -90,6 +90,10 @@ function _M.is_strict()
     return _M.get("strict_mode") ~= "0"
 end
 
+function _M.warm()
+    return load_settings()
+end
+
 function _M.invalidate()
     ngx.shared.rdns_cache:delete(CACHE_KEY)
 end

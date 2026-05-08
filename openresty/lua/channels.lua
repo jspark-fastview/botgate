@@ -90,6 +90,11 @@ local function load_channels()
         ngx.log(ngx.WARN, "[channels] fetch failed, falling back to stable cache")
         return cjson.decode(stable) or {}
     end
+
+    -- 4. 둘 다 비어있음 (cold start + admin-api 부팅 중) → 짧은 NEGATIVE 캐시로 부하 방지
+    -- 60초 동안 모든 요청이 fetch 시도하면 admin-api 폭주. 5초 빈 결과 캐시.
+    cache:set(CACHE_KEY, "[]", 5)
+    ngx.log(ngx.ERR, "[channels] cold start: no cache, admin-api unreachable")
     return {}
 end
 
@@ -131,6 +136,11 @@ function _M.get_upstream(host)
 end
 
 -- 캐시 강제 무효화 (채널 변경 직후 호출 가능)
+-- 캐시 강제 채우기 (시작 시 prefetch 용)
+function _M.warm()
+    return load_channels()
+end
+
 function _M.invalidate()
     ngx.shared.rdns_cache:delete(CACHE_KEY)
 end

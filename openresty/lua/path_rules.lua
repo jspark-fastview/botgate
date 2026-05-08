@@ -125,6 +125,10 @@ function _M.match(path)
 end
 
 -- 캐시 강제 무효화 (룰 변경 직후 호출 가능)
+function _M.warm()
+    return load_rules()
+end
+
 function _M.invalidate()
     local cache = ngx.shared.rdns_cache
     cache:delete(CACHE_KEY)
