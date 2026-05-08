@@ -200,8 +200,13 @@ function _M.run()
             return
         end
 
-        -- verify (default for AI training) — 기존 로직: rDNS 우선, 실패 시 토큰
-        local _, verified, detail = rdns.verify(raw_ua, ip)
+        -- verify (default for AI training)
+        -- rDNS 검증 불가능한 봇 (ai_assistant: 사용자 IP / generic: 미분류)은 rDNS 스킵
+        local rdns_verifiable = (cls.purpose ~= "ai_assistant" and cls.purpose ~= "generic")
+        local verified, detail = false, "skipped (non-verifiable)"
+        if rdns_verifiable then
+            _, verified, detail = rdns.verify(raw_ua, ip)
+        end
         if verified then
             json_log({ bot_category = "real_ai_bot", action = "pass", path = path,
                        detail = detail, bot_name = cls.name, bot_purpose = cls.purpose })

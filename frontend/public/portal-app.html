@@ -1017,11 +1017,12 @@
               <th>크롤러</th>
               <th>벤더</th>
               <th>카테고리</th>
+              <th style="text-align:center;" title="rDNS로 신원 검증 가능한 봇 (공식 IP 보유)">rDNS 검증</th>
               <th style="text-align:right;">내 채널 누계</th>
             </tr>
           </thead>
           <tbody id="catalog-tbl-body">
-            <tr><td colspan="4" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
+            <tr><td colspan="5" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>
           </tbody>
         </table>
       </div>
@@ -3104,13 +3105,17 @@
 
     const tbody = document.getElementById('catalog-tbl-body');
     if (!bots.length) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-mute);padding:24px;">매칭 봇 없음</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-mute);padding:24px;">매칭 봇 없음</td></tr>';
       return;
     }
     tbody.innerHTML = bots.filter(b => b.enabled !== 0).map(b => {
       const m     = meta[b.purpose] || { label: b.purpose };
       const color = PURPOSE_COLORS[b.purpose] || '#9aa1ad';
       const seen  = _catalogStats[b.name] || 0;
+      const verifiable = b.rdns_verifiable !== 0;
+      const verifyBadge = verifiable
+        ? '<span title="공식 rDNS로 IP 신원 검증 가능" style="color:var(--ok);font-weight:700;">✓</span>'
+        : '<span title="UA만 매칭 — 사용자 트리거 또는 미분류" style="color:var(--ink-mute);">—</span>';
       return `<tr>
         <td><div style="font-weight:700;color:var(--ink);">${esc(b.name)}</div></td>
         <td style="color:var(--ink-2);">${esc(b.vendor)}</td>
@@ -3120,6 +3125,7 @@
             ${esc(m.label)}
           </span>
         </td>
+        <td style="text-align:center;">${verifyBadge}</td>
         <td style="text-align:right;font-weight:${seen?700:400};color:${seen?'var(--ink)':'var(--ink-mute)'};">${seen?fmt(seen):'—'}</td>
       </tr>`;
     }).join('');
