@@ -6,7 +6,8 @@ name: guardus-new
 services:
   internal-api:
     build: ./internal-api
-    # 외부 포트 노출 불필요 — OpenResty가 botgate_default 네트워크로 직접 접근
+    ports:
+      - "3001:3001"
     volumes:
       - token-data:/app/data
     restart: unless-stopped
@@ -17,7 +18,7 @@ services:
   admin-api:
     build: ./admin-api
     ports:
-      - "3001:3002"   # 호스트 3001 → 컨테이너 3002 (ALB 타겟: :3001)
+      - "3002:3002"
     environment:
       - ADMIN_KEY=${ADMIN_KEY}
       - STATS_KEY=${STATS_KEY:-}
