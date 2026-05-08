@@ -14,7 +14,7 @@ local function fetch_from_api()
     local key  = os.getenv("ADMIN_KEY") or ""
 
     local sock = ngx.socket.tcp()
-    sock:settimeout(300)
+    sock:settimeout(5000)
     local ok, err = sock:connect(host, port)
     if not ok then
         ngx.log(ngx.ERR, "[purpose_policies] connect failed: ", err)

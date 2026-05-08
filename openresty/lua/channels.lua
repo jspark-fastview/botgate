@@ -15,7 +15,7 @@ local function fetch_channels_from_api()
     local key  = os.getenv("ADMIN_KEY") or ""
 
     local sock = ngx.socket.tcp()
-    sock:settimeout(300)
+    sock:settimeout(5000)   -- cold start 시 JVM 첫 응답이 ~500ms 까지 갈 수 있음
 
     local ok, err = sock:connect(host, port)
     if not ok then
