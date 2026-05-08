@@ -8,8 +8,8 @@ RUN apk add --no-cache curl \
            -o "/usr/local/openresty/lualib/resty/$f"; \
     done \
  # nginx-lua-prometheus (메트릭 노출, tag 0.20240525)
- && curl -fsSL "https://raw.githubusercontent.com/knyar/nginx-lua-prometheus/0.20240525/prometheus.lua" \
-        -o "/usr/local/openresty/lualib/prometheus.lua" \
- && curl -fsSL "https://raw.githubusercontent.com/knyar/nginx-lua-prometheus/0.20240525/prometheus_keys.lua" \
-        -o "/usr/local/openresty/lualib/prometheus_keys.lua" \
+ && for f in prometheus.lua prometheus_keys.lua prometheus_resty_counter.lua; do \
+      curl -fsSL "https://raw.githubusercontent.com/knyar/nginx-lua-prometheus/0.20240525/$f" \
+           -o "/usr/local/openresty/lualib/$f"; \
+    done \
  && apk del curl
