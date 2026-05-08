@@ -55,29 +55,37 @@ local function fetch_rules_from_api()
     return body
 end
 
--- ── 규칙 로드 (캐시 우선) ────────────────────────────────
+-- ── 규칙 로드 (캐시 우선 + last-known-good 폴백) ────────
+local STABLE_KEY = CACHE_KEY .. "_stable"
+local STABLE_TTL = 86400
+
 local function load_rules()
-    local cache = ngx.shared.rdns_cache   -- 기존 shared dict 재활용
+    local cache = ngx.shared.rdns_cache
 
     local cached = cache:get(CACHE_KEY)
-    if cached then
-        return cjson.decode(cached) or {}
-    end
+    if cached then return cjson.decode(cached) or {} end
 
     local body = fetch_rules_from_api()
-    if not body then return {} end
-
-    local rules = cjson.decode(body) or {}
-    -- active 만 필터링
-    local active = {}
-    for _, r in ipairs(rules) do
-        if r.active == 1 or r.active == true then
-            active[#active + 1] = r
+    if body then
+        local rules = cjson.decode(body) or {}
+        local active = {}
+        for _, r in ipairs(rules) do
+            if r.active == 1 or r.active == true then
+                active[#active + 1] = r
+            end
         end
+        local enc = cjson.encode(active)
+        cache:set(CACHE_KEY,  enc, CACHE_TTL)
+        cache:set(STABLE_KEY, enc, STABLE_TTL)
+        return active
     end
 
-    cache:set(CACHE_KEY, cjson.encode(active), CACHE_TTL)
-    return active
+    local stable = cache:get(STABLE_KEY)
+    if stable then
+        ngx.log(ngx.WARN, "[path_rules] fetch failed, falling back to stable cache")
+        return cjson.decode(stable) or {}
+    end
+    return {}
 end
 
 -- ── 패턴 매칭 (longest prefix, * 와일드카드) ─────────────

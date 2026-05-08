@@ -50,16 +50,29 @@ local function fetch_from_api()
     return body
 end
 
+local STABLE_KEY = CACHE_KEY .. "_stable"
+local STABLE_TTL = 86400
+
 local function load_policies()
     local cache = ngx.shared.rdns_cache
     local cached = cache:get(CACHE_KEY)
     if cached then return cjson.decode(cached) or {} end
 
     local body = fetch_from_api()
-    if not body then return {} end
-    local data = cjson.decode(body) or {}
-    cache:set(CACHE_KEY, cjson.encode(data), CACHE_TTL)
-    return data
+    if body then
+        local data = cjson.decode(body) or {}
+        local enc = cjson.encode(data)
+        cache:set(CACHE_KEY,  enc, CACHE_TTL)
+        cache:set(STABLE_KEY, enc, STABLE_TTL)
+        return data
+    end
+
+    local stable = cache:get(STABLE_KEY)
+    if stable then
+        ngx.log(ngx.WARN, "[purpose_policies] fetch failed, falling back to stable cache")
+        return cjson.decode(stable) or {}
+    end
+    return {}
 end
 
 -- 기본 fallback (DB 미세팅 시)

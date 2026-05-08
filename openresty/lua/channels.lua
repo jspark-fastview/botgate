@@ -55,29 +55,42 @@ local function fetch_channels_from_api()
     return body
 end
 
--- ── 채널 로드 (캐시 우선) ────────────────────────────────
+-- ── 채널 로드 (캐시 우선 + last-known-good 폴백) ────────
+-- fresh 캐시(60s) 만료 → admin-api fetch
+-- fetch 실패 시 stable 캐시(24h) 폴백 → admin-api 일시적 장애 시 트래픽 끊김 방지
+local STABLE_KEY = CACHE_KEY .. "_stable"
+local STABLE_TTL = 86400  -- 24h
+
 local function load_channels()
-    local cache = ngx.shared.rdns_cache   -- 기존 shared dict 재활용
+    local cache = ngx.shared.rdns_cache
 
+    -- 1. fresh cache (60s)
     local cached = cache:get(CACHE_KEY)
-    if cached then
-        return cjson.decode(cached) or {}
-    end
+    if cached then return cjson.decode(cached) or {} end
 
+    -- 2. fetch
     local body = fetch_channels_from_api()
-    if not body then return {} end
-
-    local channels = cjson.decode(body) or {}
-    -- active 만 필터링
-    local active = {}
-    for _, ch in ipairs(channels) do
-        if ch.active == 1 or ch.active == true then
-            active[#active + 1] = ch
+    if body then
+        local channels = cjson.decode(body) or {}
+        local active = {}
+        for _, ch in ipairs(channels) do
+            if ch.active == 1 or ch.active == true then
+                active[#active + 1] = ch
+            end
         end
+        local enc = cjson.encode(active)
+        cache:set(CACHE_KEY,  enc, CACHE_TTL)
+        cache:set(STABLE_KEY, enc, STABLE_TTL)
+        return active
     end
 
-    cache:set(CACHE_KEY, cjson.encode(active), CACHE_TTL)
-    return active
+    -- 3. fetch 실패 → stable 캐시 폴백
+    local stable = cache:get(STABLE_KEY)
+    if stable then
+        ngx.log(ngx.WARN, "[channels] fetch failed, falling back to stable cache")
+        return cjson.decode(stable) or {}
+    end
+    return {}
 end
 
 -- ── Host 헤더 → upstream URL ─────────────────────────────
