@@ -2955,18 +2955,26 @@
       }
     } catch(_) {}
   }
+  function _flashCacheBanner() {
+    const el = document.getElementById('cache-purge-active-banner');
+    if (!el) return;
+    el.style.transition = 'background 200ms';
+    const orig = el.style.background;
+    el.style.background = '#fde68a';
+    setTimeout(() => { el.style.background = orig || '#fffbeb'; }, 250);
+  }
   async function triggerCachePurge(isRestart) {
-    const msg = isRestart
-      ? '캐시 청소를 다시 1시간 연장합니다. 계속할까요?'
-      : '방문자 브라우저 캐시를 1시간 동안 강제 비웁니다.\n(Clear-Site-Data 헤더 부착)\n\n계속할까요?';
-    if (!confirm(msg)) return;
     try {
+      // 최초 활성화는 confirm — 다소 큰 영향 (전체 방문자 캐시 청소)
+      // 재시작은 confirm 없음 — reversible & 이미 active 상태
+      if (!isRestart && !confirm('방문자 브라우저 캐시를 1시간 강제 비웁니다 (Clear-Site-Data).\n계속할까요?')) return;
       await apiFetch(`${API}/me/cache-purge`, { method: 'POST' });
       refreshCachePurgeStatus();
+      if (isRestart) _flashCacheBanner();
     } catch(e) { alert('실패: ' + e.message); }
   }
   async function cancelCachePurge() {
-    if (!confirm('캐시 청소를 즉시 중단합니다. 계속할까요?')) return;
+    // 멈추기는 reversible 이므로 confirm 없음
     try {
       await apiFetch(`${API}/me/cache-purge`, { method: 'DELETE' });
       refreshCachePurgeStatus();
