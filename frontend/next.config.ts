@@ -16,6 +16,11 @@ const nextConfig: NextConfig = {
         { source: '/me/:path*',    destination: `${apiUrl}/me/:path*` },
         { source: '/auth/:path*',  destination: `${apiUrl}/auth/:path*` },
         { source: '/admin/:path*', destination: `${apiUrl}/admin/:path*` },
+        // Swagger / OpenAPI docs
+        { source: '/swagger-ui.html',  destination: `${apiUrl}/swagger-ui.html` },
+        { source: '/swagger-ui/:path*', destination: `${apiUrl}/swagger-ui/:path*` },
+        { source: '/v3/api-docs',      destination: `${apiUrl}/v3/api-docs` },
+        { source: '/v3/api-docs/:path*', destination: `${apiUrl}/v3/api-docs/:path*` },
       ],
       fallback: [],
     }

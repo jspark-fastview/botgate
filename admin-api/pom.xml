@@ -53,6 +53,12 @@
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-registry-prometheus</artifactId>
     </dependency>
+    <!-- OpenAPI / Swagger UI -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>2.6.0</version>
+    </dependency>
     <!-- scrypt (Node.js crypto.scrypt 호환 — 기존 패스워드 해시 검증용) -->
     <dependency>
       <groupId>org.bouncycastle</groupId>
