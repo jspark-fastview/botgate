@@ -212,6 +212,42 @@ public class UserController {
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
+    /** POST /me/cache-purge — 사용자 브라우저 캐시 강제 청소 모드 1시간 ON
+     *  (OpenResty 가 Clear-Site-Data 헤더 부착) */
+    @PostMapping("/me/cache-purge")
+    public ResponseEntity<Map<String, Object>> cachePurge(
+            @RequestHeader(value = "Authorization", required = false) String auth) {
+        Map<String, Object> user = sessions.validate(auth);
+        if (user == null) return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
+
+        long expiresAt = (System.currentTimeMillis() / 1000) + 3600;
+        db.update("""
+                INSERT INTO settings (key, value) VALUES (?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value
+                """, "cache_purge_expires_at", String.valueOf(expiresAt));
+        CacheInvalidator.invalidate();
+        return ResponseEntity.ok(Map.of("ok", true, "expires_at", expiresAt));
+    }
+
+    /** GET /me/cache-purge — 현재 상태 (남은 시간) */
+    @GetMapping("/me/cache-purge")
+    public ResponseEntity<Map<String, Object>> cachePurgeStatus(
+            @RequestHeader(value = "Authorization", required = false) String auth) {
+        if (sessions.validate(auth) == null) return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
+        try {
+            Map<String, Object> row = db.queryForMap(
+                    "SELECT value FROM settings WHERE key = ?", "cache_purge_expires_at");
+            long exp = Long.parseLong(row.get("value").toString());
+            long now = System.currentTimeMillis() / 1000;
+            return ResponseEntity.ok(Map.of(
+                    "active", exp > now,
+                    "expires_at", exp,
+                    "remaining_sec", Math.max(0, exp - now)));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("active", false, "expires_at", 0, "remaining_sec", 0));
+        }
+    }
+
     /** GET /me/bot-catalog — /admin/bots/catalog 와 동일 형식 (delegate) */
     @org.springframework.beans.factory.annotation.Autowired
     private BotAdminController botCtrl;
