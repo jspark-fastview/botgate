@@ -120,6 +120,9 @@ public class MyStatsController {
             catCond = " AND category = ?";
             params.add(category);
         }
+        // bot/other_bot 카테고리는 bot_name 으로 묶어야 같은 봇의 UA 변형이 한 줄로 집계됨.
+        // 과거엔 GROUP BY 가 base 컬럼 `bot_ua` 를 가리켜서 같은 봇이 UA 변형마다 별도 행으로 나왔음
+        // (프론트가 `name.split('/')[0]` 로 자른 뒤에야 같은 라벨 두 줄이 보이는 현상).
         String groupCol = "bot".equals(category) || "other_bot".equals(category)
                 ? "COALESCE(NULLIF(bot_name,''), bot_ua)"
                 : "bot_ua";
@@ -127,7 +130,7 @@ public class MyStatsController {
         return db.queryForList(
                 "SELECT " + groupCol + " AS bot_ua, COUNT(*) AS count " +
                 "FROM access_logs WHERE " + where + catCond +
-                " GROUP BY bot_ua ORDER BY count DESC LIMIT ?",
+                " GROUP BY " + groupCol + " ORDER BY count DESC LIMIT ?",
                 params.toArray());
     }
 
