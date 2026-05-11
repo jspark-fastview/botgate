@@ -229,6 +229,19 @@ public class UserController {
         return ResponseEntity.ok(Map.of("ok", true, "expires_at", expiresAt));
     }
 
+    /** DELETE /me/cache-purge — 즉시 종료 (남은 시간 0으로) */
+    @DeleteMapping("/me/cache-purge")
+    public ResponseEntity<Map<String, Object>> cachePurgeCancel(
+            @RequestHeader(value = "Authorization", required = false) String auth) {
+        if (sessions.validate(auth) == null) return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
+        db.update("""
+                INSERT INTO settings (key, value) VALUES (?, '0')
+                ON CONFLICT(key) DO UPDATE SET value = '0'
+                """, "cache_purge_expires_at");
+        CacheInvalidator.invalidate();
+        return ResponseEntity.ok(Map.of("ok", true, "active", false));
+    }
+
     /** GET /me/cache-purge — 현재 상태 (남은 시간) */
     @GetMapping("/me/cache-purge")
     public ResponseEntity<Map<String, Object>> cachePurgeStatus(
