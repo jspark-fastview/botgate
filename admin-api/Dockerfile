@@ -9,7 +9,8 @@ RUN --mount=type=cache,target=/root/.m2 mvn package -DskipTests -q
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 # OpenTelemetry Java agent (자동 계측)
-ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.10.0/opentelemetry-javaagent.jar /app/otel-javaagent.jar
+# --chmod=644: K8s 에서 non-root user (1000) 로 실행 시 읽기 가능. ADD 기본 0600 이라 explicit.
+ADD --chmod=644 https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.10.0/opentelemetry-javaagent.jar /app/otel-javaagent.jar
 COPY --from=build /build/target/*.jar app.jar
 EXPOSE 3002
 ENV JAVA_TOOL_OPTIONS="-javaagent:/app/otel-javaagent.jar"
