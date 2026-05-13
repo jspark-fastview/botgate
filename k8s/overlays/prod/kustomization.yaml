@@ -1,0 +1,45 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: guardus
+
+resources:
+  - ../../base
+  - external-secrets.yaml
+
+labels:
+  - includeSelectors: false
+    pairs:
+      guardus.io/env: prod
+
+images:
+  - name: guardus/admin-api
+    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/admin-api
+    newTag: prod
+  - name: guardus/internal-api
+    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/internal-api
+    newTag: prod
+  - name: guardus/openresty
+    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/openresty
+    newTag: prod
+  - name: guardus/frontend
+    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/frontend
+    newTag: prod
+
+patches:
+  - path: patches/openresty-prod.yaml
+    target:
+      kind: Deployment
+      name: openresty
+  - path: patches/frontend-prod.yaml
+    target:
+      kind: Deployment
+      name: frontend
+  - path: patches/ingress-prod.yaml
+    target:
+      kind: Ingress
+      name: guardus-ingress
+  - path: patches/openresty-hpa-prod.yaml
+    target:
+      kind: HorizontalPodAutoscaler
+      name: openresty

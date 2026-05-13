@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: guardus
+
+resources:
+  - namespace.yaml
+  - admin-api
+  - internal-api
+  - openresty
+  - frontend
+  - ingress
+
+# 공통 라벨 — 전체 리소스 추적용
+commonAnnotations:
+  guardus.io/managed-by: argocd
+  guardus.io/source: github.com/jspark-fastview/botgate

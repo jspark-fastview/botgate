@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: guardus
+  labels:
+    name: guardus
+    app.kubernetes.io/part-of: guardus

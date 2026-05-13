@@ -1,0 +1,26 @@
+# External Secrets Operator helm values
+# 인증: EKS Pod Identity (Terraform 의 aws_eks_pod_identity_association.external_secrets).
+# SA 이름이 'external-secrets' 로 고정되어야 매핑이 맞음 (chart 기본값).
+installCRDs: true
+
+serviceAccount:
+  create: true
+  name: external-secrets
+
+replicaCount: 1
+webhook:
+  replicaCount: 1
+certController:
+  replicaCount: 1
+
+serviceMonitor:
+  enabled: true
+  namespace: monitoring
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi

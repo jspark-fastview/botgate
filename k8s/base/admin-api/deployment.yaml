@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-api
+  labels:
+    app.kubernetes.io/name: admin-api
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: guardus
+spec:
+  # SQLite 단일 writer 제약 — replicas=1 강제
+  # 추후 RDS 이관 시 replicas 증가 가능
+  replicas: 1
+  strategy:
+    type: Recreate           # SQLite 동시 마운트 회피
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: admin-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: admin-api
+        app.kubernetes.io/component: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3002"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      serviceAccountName: admin-api          # IRSA 용
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsNonRoot: true
+      containers:
+        - name: admin-api
+          image: guardus/admin-api:latest    # overlay 에서 ECR 경로로 patch
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3002
+              protocol: TCP
+          env:
+            - name: SERVER_PORT
+              value: "3002"
+            - name: OTEL_SERVICE_NAME
+              value: admin-api
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.monitoring.svc:4317
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "deployment.environment=base"
+          envFrom:
+            - configMapRef:
+                name: admin-api-env
+            - secretRef:
+                name: admin-api-secrets
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              cpu: 1000m
+              memory: 768Mi
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 4
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          startupProbe:                    # JVM 부팅 시간 확보 (60s)
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 12
+          volumeMounts:
+            - name: sqlite-data
+              mountPath: /app/data
+            - name: web-static
+              mountPath: /app/web
+              readOnly: true
+      volumes:
+        - name: sqlite-data
+          persistentVolumeClaim:
+            claimName: guardus-db
+        - name: web-static
+          configMap:
+            name: web-static-placeholder
+            optional: true

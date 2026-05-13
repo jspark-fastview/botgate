@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-api
+  labels:
+    app.kubernetes.io/name: admin-api
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: admin-api
+  ports:
+    - name: http
+      port: 3002
+      targetPort: http
+      protocol: TCP

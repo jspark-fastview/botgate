@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# 모든 admin-api 매니페스트 한 묶음
+resources:
+  - serviceaccount.yaml
+  - configmap.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - pdb.yaml
+  - servicemonitor.yaml
+
+# 공통 label — 모든 리소스에 자동 부착
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/part-of: guardus
+
+# 외부 Secret 은 ExternalSecret 으로 생성 (별도 파일 X — overlay 에서 추가)

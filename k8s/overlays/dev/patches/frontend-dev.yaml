@@ -1,0 +1,4 @@
+# dev — 단일 replica
+- op: replace
+  path: /spec/replicas
+  value: 1

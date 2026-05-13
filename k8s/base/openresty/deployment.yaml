@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openresty
+  labels:
+    app.kubernetes.io/name: openresty
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/part-of: guardus
+spec:
+  # OpenResty 는 stateless — 다중 replica 가능 (각 워커 shared_dict 는 격리되지만 OK)
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: openresty
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: openresty
+        app.kubernetes.io/component: gateway
+    spec:
+      # admin-api/internal-api 와 다른 노드 분산 (anti-affinity 약하게)
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: openresty
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: openresty
+          image: guardus/openresty:latest
+          ports:
+            - name: http
+              containerPort: 80
+            - name: metrics
+              containerPort: 9145
+          env:
+            - name: INTERNAL_API_HOST
+              value: internal-api.guardus.svc.cluster.local
+            - name: INTERNAL_API_PORT
+              value: "3001"
+            - name: ADMIN_API_HOST
+              value: admin-api.guardus.svc.cluster.local
+            - name: ADMIN_API_PORT
+              value: "3002"
+          envFrom:
+            - secretRef:
+                name: openresty-secrets   # ADMIN_KEY, BOTGATE_BYPASS_KEY
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits:   { cpu: 1000m, memory: 256Mi }
+          livenessProbe:
+            httpGet: { path: /, port: http, httpHeaders: [ { name: Host, value: healthz } ] }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /, port: http, httpHeaders: [ { name: Host, value: healthz } ] }
+            initialDelaySeconds: 3
+            periodSeconds: 5

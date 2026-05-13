@@ -1,0 +1,83 @@
+# kube-prometheus-stack helm values
+fullnameOverride: kps
+
+# Prometheus
+prometheus:
+  prometheusSpec:
+    retention: 15d
+    retentionSize: "20GB"
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 30Gi
+    # 모든 namespace 의 ServiceMonitor 자동 발견
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+# Grafana
+grafana:
+  enabled: true
+  adminPassword: "CHANGE_ME_VIA_SECRET"     # 실제로는 ExternalSecret 으로 주입 권장
+  persistence:
+    enabled: true
+    storageClassName: gp3
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  # ALB Ingress 로 노출 (optional)
+  ingress:
+    enabled: false      # 일단 port-forward 로 접근. 필요시 true.
+
+# Alertmanager
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+
+# 노드 메트릭
+nodeExporter:
+  enabled: true
+
+# kube-state-metrics
+kubeStateMetrics:
+  enabled: true
+
+# EKS 환경에서 비활성화 권장 (control-plane 접근 불가)
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false

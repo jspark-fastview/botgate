@@ -1,0 +1,25 @@
+# ArgoCD 부트스트랩 — 1회성 수동 절차
+#
+# 실제 매니페스트는 k8s/bootstrap/argocd/kustomization.yaml 에 있음.
+# install manifest + argocd-cm 의 kustomize.buildOptions=--enable-helm 패치 한 묶음.
+#
+# 절차:
+#
+# 1) namespace + apply
+#   kubectl create namespace argocd
+#   kubectl apply -k k8s/bootstrap/argocd/
+#
+# 2) 초기 admin 비밀번호 확인
+#   kubectl -n argocd get secret argocd-initial-admin-secret \
+#     -o jsonpath='{.data.password}' | base64 -d; echo
+#
+# 3) UI 접근 (dev — port-forward)
+#   kubectl port-forward svc/argocd-server -n argocd 8080:443
+#   → https://localhost:8080  (admin / 위 비밀번호)
+#
+# 4) app-of-apps 적용 → 이후 자동 sync
+#   kubectl apply -f k8s/bootstrap/app-of-apps.yaml
+#
+# 향후 변경 (예: 추가 build option, RBAC ConfigMap 등) 은
+# k8s/bootstrap/argocd/kustomization.yaml 을 수정 후 같은 apply 재실행.
+# 자동화는 ArgoCD self-managed Application 으로 가능 (todo).

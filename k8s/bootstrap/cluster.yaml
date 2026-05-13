@@ -1,0 +1,61 @@
+# EKS 클러스터 정의 — eksctl 으로 생성
+# 학습용 설정: Spot 노드 + 작은 크기 + 최소 AZ
+# 사용: eksctl create cluster -f k8s/bootstrap/cluster.yaml
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: guardus-eks
+  region: ap-northeast-2
+  version: "1.31"
+  tags:
+    Project: GuardUs
+    Env: learn
+
+# OIDC + IRSA 활성화 (파드가 IAM Role 사용)
+iam:
+  withOIDC: true
+
+# VPC — NAT 미사용 (학습용, 비용 절감 ~$35/월)
+# 모든 노드를 public subnet 에 배치, public IP 자동 할당
+# 트레이드오프: 노드가 직접 인터넷에 노출 → SG 로 통제
+vpc:
+  nat:
+    gateway: Disable
+
+# 관리형 노드 그룹 — Spot 으로 비용 절감
+managedNodeGroups:
+  - name: ng-spot
+    instanceTypes:
+      - t4g.medium
+      - t4g.large       # spot fallback
+    spot: true
+    minSize: 1
+    desiredCapacity: 2
+    maxSize: 4
+    volumeType: gp3
+    volumeSize: 30
+    amiFamily: Bottlerocket
+    privateNetworking: false    # public subnet 배치 (NAT 없으니 필수)
+    availabilityZones:
+      - ap-northeast-2a
+      - ap-northeast-2c
+    labels:
+      role: workload
+    tags:
+      k8s.io/cluster-autoscaler/enabled: "true"
+      k8s.io/cluster-autoscaler/guardus-eks: "owned"
+
+# Add-ons — managed (EKS 가 직접 운영)
+addons:
+  - name: vpc-cni
+  - name: coredns
+  - name: kube-proxy
+  - name: aws-ebs-csi-driver
+    wellKnownPolicies:
+      ebsCSIController: true
+
+# CloudWatch 로그 옵션 (학습 시엔 꺼두면 무료, 활성화 시 비용)
+cloudWatch:
+  clusterLogging:
+    enableTypes: []   # ["audit", "api", "authenticator"] 로 켜면 청구

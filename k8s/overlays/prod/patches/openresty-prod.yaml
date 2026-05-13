@@ -1,0 +1,16 @@
+# prod — 더 큰 리소스 + 더 많은 replica baseline
+- op: replace
+  path: /spec/replicas
+  value: 3
+- op: replace
+  path: /spec/template/spec/containers/0/resources/requests/cpu
+  value: 200m
+- op: replace
+  path: /spec/template/spec/containers/0/resources/requests/memory
+  value: 256Mi
+- op: replace
+  path: /spec/template/spec/containers/0/resources/limits/cpu
+  value: 1000m
+- op: replace
+  path: /spec/template/spec/containers/0/resources/limits/memory
+  value: 512Mi

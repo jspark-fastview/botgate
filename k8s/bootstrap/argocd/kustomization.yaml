@@ -1,0 +1,29 @@
+# ArgoCD 부트스트랩 — install manifest + 우리 config 패치 한 묶음
+# 부트스트랩 명령:
+#   kubectl create namespace argocd
+#   kubectl apply -k k8s/bootstrap/argocd/
+#
+# 향후 변경 (helm options 추가 등) 은 이 파일을 수정 후 같은 명령 재실행하거나,
+# ArgoCD 가 자기자신을 sync 하도록 self-managed Application 추가 (todo).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # ArgoCD 안정 버전 핀 — 학습 후 주기적 bump 권장
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v2.12.4/manifests/install.yaml
+
+patches:
+  # argocd-cm 에 kustomize.buildOptions=--enable-helm 주입.
+  # 없으면 platform 의 helmCharts inflate 실패.
+  - target:
+      kind: ConfigMap
+      name: argocd-cm
+      namespace: argocd
+    patch: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-cm
+        namespace: argocd
+      data:
+        kustomize.buildOptions: --enable-helm

@@ -1,0 +1,16 @@
+# Prometheus Operator (kube-prometheus-stack) 가 자동 발견하여 스크레이핑
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: admin-api
+  labels:
+    release: kube-prometheus-stack   # operator 가 이 label 로 매칭
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: admin-api
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      scrapeTimeout: 10s

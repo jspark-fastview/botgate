@@ -1,0 +1,27 @@
+# AWS Load Balancer Controller 가 이 Ingress 를 보고 ALB 자동 생성
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: guardus-ingress
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    # 인증서: overlay 에서 cert ARN 또는 host 별 ACM 자동 발견 활성화
+    # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:...
+    alb.ingress.kubernetes.io/tags: Project=GuardUs,Env=base
+spec:
+  ingressClassName: alb
+  rules:
+    # 봇 트래픽 — Host 별로 OpenResty 가 채널 매칭
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: openresty
+                port: { number: 80 }
+  # host 별 routing 은 overlay 에서 (dev/prod 도메인 다름)

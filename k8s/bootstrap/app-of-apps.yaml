@@ -1,0 +1,26 @@
+# App-of-apps — 한 번 적용하면 ArgoCD 가 자식 Application 들을 자동 sync
+# kubectl apply -f k8s/bootstrap/app-of-apps.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-of-apps
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jspark-fastview/botgate
+    targetRevision: main
+    path: k8s/argocd/apps
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

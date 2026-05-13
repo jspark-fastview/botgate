@@ -1,0 +1,11 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: admin-api
+spec:
+  # replicas=1 이라 maxUnavailable=0 으로 노드 drain 시 보호
+  # (Recreate 전략과 함께 — 다운타임은 발생하지만 정책적으로 표시)
+  minAvailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: admin-api

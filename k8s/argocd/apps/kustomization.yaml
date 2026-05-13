@@ -1,0 +1,14 @@
+# app-of-apps 가 참조하는 디렉토리.
+# ArgoCD 가 이 kustomization 을 sync 하면 모든 Application 이 생성됨.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # 플랫폼 — Helm 차트 기반
+  - platform/aws-load-balancer-controller.yaml
+  - platform/external-secrets.yaml
+  - platform/cert-manager.yaml
+  - platform/kube-prometheus-stack.yaml
+  # 애플리케이션 — overlay 기반
+  - guardus/guardus-dev.yaml
+  - guardus/guardus-prod.yaml

@@ -1,0 +1,24 @@
+# cert-manager helm values
+# ALB 에서 ACM 인증서를 직접 사용하면 cert-manager 는 사실 불필요하지만,
+# 학습/내부 mTLS/추후 확장을 위해 설치.
+installCRDs: true
+
+replicaCount: 1
+webhook:
+  replicaCount: 1
+cainjector:
+  replicaCount: 1
+
+prometheus:
+  enabled: true
+  servicemonitor:
+    enabled: true
+    namespace: monitoring
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi

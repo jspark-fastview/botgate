@@ -1,0 +1,23 @@
+# ArgoCD Application — prod overlay
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guardus-prod
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jspark-fastview/botgate
+    targetRevision: main
+    path: k8s/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: guardus
+  syncPolicy:
+    # prod 는 prune/selfHeal 끄고 수동 sync — 안전 우선
+    automated: null
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
