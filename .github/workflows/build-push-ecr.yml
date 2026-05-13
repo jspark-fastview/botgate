@@ -9,6 +9,12 @@ name: Build → ECR → GitOps bump
 #   5. ArgoCD 가 폴링으로 sync → 자동 배포
 
 on:
+  workflow_dispatch:
+    inputs:
+      force_all:
+        description: '모든 컴포넌트 빌드 (paths-filter 무시)'
+        type: boolean
+        default: true
   push:
     branches: [main]
     paths:
@@ -33,12 +39,14 @@ jobs:
     name: Detect changed components
     runs-on: ubuntu-latest
     outputs:
-      admin-api:    ${{ steps.filter.outputs.admin-api }}
-      internal-api: ${{ steps.filter.outputs.internal-api }}
-      openresty:    ${{ steps.filter.outputs.openresty }}
-      frontend:     ${{ steps.filter.outputs.frontend }}
+      admin-api:    ${{ steps.force.outputs.all == 'true' || steps.filter.outputs.admin-api }}
+      internal-api: ${{ steps.force.outputs.all == 'true' || steps.filter.outputs.internal-api }}
+      openresty:    ${{ steps.force.outputs.all == 'true' || steps.filter.outputs.openresty }}
+      frontend:     ${{ steps.force.outputs.all == 'true' || steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
+      - id: force
+        run: echo "all=${{ inputs.force_all || 'false' }}" >> $GITHUB_OUTPUT
       - uses: dorny/paths-filter@v3
         id: filter
         with:
