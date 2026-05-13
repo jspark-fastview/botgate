@@ -51,11 +51,16 @@ public class ChannelAdminController {
         return db.queryForList(STATS_SQL);
     }
 
-    /** GET /admin/channels */
+    /**
+     * GET /admin/channels
+     * OpenResty channels.lua 가 이 응답으로 라우팅 결정 — integration_mode/verified_at 필수.
+     */
     @GetMapping("/admin/channels")
     public List<Map<String, Object>> listChannels() {
         return db.queryForList(
-                "SELECT id, name, domain, upstream, active, created_at FROM channels ORDER BY created_at DESC");
+                "SELECT id, name, domain, upstream, active, created_at," +
+                "       integration_mode, verified_at, verification_method" +
+                " FROM channels ORDER BY created_at DESC");
     }
 
     /** POST /admin/channels */

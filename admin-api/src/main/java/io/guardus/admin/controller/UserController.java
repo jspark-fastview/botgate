@@ -2,8 +2,10 @@ package io.guardus.admin.controller;
 
 import io.guardus.admin.service.DnsService;
 import io.guardus.admin.service.SessionService;
+import io.guardus.admin.service.SiteVerificationService;
 import io.guardus.admin.util.CacheInvalidator;
 import io.guardus.admin.util.NanoId;
+import io.guardus.admin.util.SiteKeys;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -18,14 +20,17 @@ import java.util.Map;
 @RestController
 public class UserController {
 
-    private final JdbcTemplate   db;
-    private final SessionService sessions;
-    private final DnsService     dns;
+    private final JdbcTemplate            db;
+    private final SessionService          sessions;
+    private final DnsService              dns;
+    private final SiteVerificationService siteVerify;
 
-    public UserController(JdbcTemplate db, SessionService sessions, DnsService dns) {
-        this.db       = db;
-        this.sessions = sessions;
-        this.dns      = dns;
+    public UserController(JdbcTemplate db, SessionService sessions,
+                          DnsService dns, SiteVerificationService siteVerify) {
+        this.db         = db;
+        this.sessions   = sessions;
+        this.dns        = dns;
+        this.siteVerify = siteVerify;
     }
 
     /** 본인 소유 채널 확인 */
@@ -73,12 +78,22 @@ public class UserController {
             @RequestHeader(value = "Authorization", required = false) String auth) {
         Map<String, Object> user = sessions.validate(auth);
         if (user == null) return List.of();
+        // site_key_hash 자체는 노출 X (보안). 발급 여부만 has_site_key 로 표현.
         return db.queryForList(
-                "SELECT id, name, domain, upstream, active, created_at" +
+                "SELECT id, name, domain, upstream, active, created_at," +
+                "       integration_mode, verified_at, verification_method," +
+                "       (site_key_hash IS NOT NULL) AS has_site_key" +
                 " FROM channels WHERE owner_id = ? ORDER BY created_at DESC", user.get("id"));
     }
 
-    /** POST /me/channels */
+    /**
+     * POST /me/channels — 신규 고객 채널 생성.
+     *
+     * 항상 external 모드. 퍼블리셔는 자기 server/edge 에 우리 site_key 박고
+     * /v1/verify 를 호출해서 봇 검증/과금. 우리는 데이터 경로 밖.
+     *
+     * reverse_proxy 모드는 우리 자체 플랫폼 (viewus/pikle/pure-beef 등) 전용 — /admin/channels 로만 생성.
+     */
     @PostMapping("/me/channels")
     public ResponseEntity<Map<String, Object>> createChannel(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -86,24 +101,112 @@ public class UserController {
         Map<String, Object> user = sessions.validate(auth);
         if (user == null) return ResponseEntity.status(401).body(Map.of("error", "not authenticated"));
 
-        String name     = (String) body.get("name");
-        String domain   = (String) body.get("domain");
-        String upstream = (String) body.get("upstream");
-        if (name == null || domain == null || upstream == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "name, domain, upstream 필수"));
+        String name   = (String) body.get("name");
+        String domain = (String) body.get("domain");
+        if (name == null || domain == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "name, domain 필수"));
         }
-        String id = "ch_" + NanoId.generate(8);
+
+        String id          = "ch_" + NanoId.generate(8);
+        String verifyToken = NanoId.generate(32);
+
         try {
-            db.update("INSERT INTO channels (id, name, domain, domain_canonical, upstream, owner_id) VALUES (?, ?, ?, ?, ?, ?)",
-                    id, name, domain, ChannelAdminController.canonicalDomain(domain), upstream, user.get("id"));
+            db.update("INSERT INTO channels " +
+                      "(id, name, domain, domain_canonical, upstream, owner_id, verify_token, integration_mode) " +
+                      "VALUES (?, ?, ?, ?, '', ?, ?, 'external')",
+                    id, name, domain,
+                    ChannelAdminController.canonicalDomain(domain),
+                    user.get("id"),
+                    verifyToken);
         } catch (Exception e) {
             if (e.getMessage() != null && e.getMessage().contains("UNIQUE")) {
                 return ResponseEntity.status(409).body(Map.of("error", "domain already exists"));
             }
             throw e;
         }
-        return ResponseEntity.status(201).body(
-                Map.of("id", id, "name", name, "domain", domain, "upstream", upstream, "active", 1));
+
+        // 검증 가이드 함께 반환 — 다음 단계 (verify → site-key) 안내
+        Map<String, Object> instructions = Map.of(
+                "verify_token", verifyToken,
+                "dns_txt", Map.of(
+                        "name",  "_guardus-verify." + domain,
+                        "type",  "TXT",
+                        "value", verifyToken),
+                "well_known", Map.of(
+                        "url",  "https://" + domain + "/.well-known/guardus-verify.txt",
+                        "body", verifyToken)
+        );
+
+        Map<String, Object> res = new LinkedHashMap<>();
+        res.put("id", id);
+        res.put("name", name);
+        res.put("domain", domain);
+        res.put("active", 1);
+        res.put("integration_mode", "external");
+        res.put("verified_at", null);
+        res.put("verification", instructions);
+        res.put("next_steps", List.of(
+                "1) DNS TXT 또는 well-known 으로 verify_token 노출",
+                "2) POST /me/channels/" + id + "/verify",
+                "3) POST /me/channels/" + id + "/site-key — site_key 발급",
+                "4) Worker/nginx/SDK 에 site_key 박고 /v1/verify 호출"));
+        return ResponseEntity.status(201).body(res);
+    }
+
+    /** POST /me/channels/:id/verify — 도메인 소유 검증 트리거 */
+    @PostMapping("/me/channels/{id}/verify")
+    public ResponseEntity<Map<String, Object>> verifyOwnership(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @PathVariable String id) {
+        Map<String, Object> user = sessions.validate(auth);
+        if (user == null) return ResponseEntity.status(401).body(Map.of("error", "not authenticated"));
+        if (!ownsChannel((String) user.get("id"), id))
+            return ResponseEntity.status(403).body(Map.of("error", "forbidden"));
+
+        Map<String, Object> ch = db.queryForList("SELECT * FROM channels WHERE id = ?", id).get(0);
+        String domain      = (String) ch.get("domain");
+        String verifyToken = (String) ch.get("verify_token");
+        if (verifyToken == null || verifyToken.isBlank()) {
+            return ResponseEntity.status(400).body(Map.of("error", "verify_token missing — 채널 재생성 필요"));
+        }
+
+        Map<String, Object> result = siteVerify.verify(domain, verifyToken);
+        if (Boolean.TRUE.equals(result.get("verified"))) {
+            db.update(
+                "UPDATE channels SET verified_at = datetime('now'), verification_method = ? WHERE id = ?",
+                result.get("method"), id);
+            CacheInvalidator.invalidate();
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * POST /me/channels/:id/site-key
+     * 처음 1회 또는 rotation. 평문은 응답에만, DB 엔 hash 만 저장.
+     */
+    @PostMapping("/me/channels/{id}/site-key")
+    public ResponseEntity<Map<String, Object>> createSiteKey(
+            @RequestHeader(value = "Authorization", required = false) String auth,
+            @PathVariable String id) {
+        Map<String, Object> user = sessions.validate(auth);
+        if (user == null) return ResponseEntity.status(401).body(Map.of("error", "not authenticated"));
+        if (!ownsChannel((String) user.get("id"), id))
+            return ResponseEntity.status(403).body(Map.of("error", "forbidden"));
+
+        Map<String, Object> ch = db.queryForList("SELECT verified_at FROM channels WHERE id = ?", id).get(0);
+        if (ch.get("verified_at") == null) {
+            return ResponseEntity.status(412).body(Map.of(
+                    "error", "도메인 소유 검증 먼저 통과해야 함 — POST /me/channels/" + id + "/verify"));
+        }
+
+        String key  = SiteKeys.generate();
+        String hash = SiteKeys.hash(key);
+        db.update("UPDATE channels SET site_key_hash = ? WHERE id = ?", hash, id);
+
+        // 평문은 이번 한 번만 노출
+        return ResponseEntity.status(201).body(Map.of(
+                "site_key", key,
+                "warning", "이 키는 다시 보여주지 않습니다. 안전한 곳에 저장하세요."));
     }
 
     /** PATCH /me/channels/:id — 본인 채널 수정 (active 토글, name/upstream 변경) */

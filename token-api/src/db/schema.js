@@ -21,6 +21,17 @@ for (const sql of [
   `ALTER TABLE access_logs ADD COLUMN blocked     INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE channels    ADD COLUMN owner_id TEXT`,
   `ALTER TABLE tokens      ADD COLUMN user_id  TEXT`,
+  // ── 외부 통합/사이트 검증 (Tollbit-style) ───────────────────────
+  // site_key_hash: 외부에서 /v1/verify 호출 시 X-Site-Key 검증 (bcrypt/sha256 해시)
+  // verify_token: 도메인 소유 검증용 nonce — DNS TXT 또는 well-known 으로 노출 요구
+  // verified_at:  소유 검증 통과 시점 (null = pending)
+  // verification_method: 'dns_txt' | 'well_known' | null
+  // integration_mode: 'reverse_proxy' (기본, 우리 ALB 가 origin) | 'external' (퍼블리셔가 SDK/Worker 로 호출)
+  `ALTER TABLE channels    ADD COLUMN site_key_hash       TEXT`,
+  `ALTER TABLE channels    ADD COLUMN verify_token        TEXT`,
+  `ALTER TABLE channels    ADD COLUMN verified_at         TEXT`,
+  `ALTER TABLE channels    ADD COLUMN verification_method TEXT`,
+  `ALTER TABLE channels    ADD COLUMN integration_mode    TEXT NOT NULL DEFAULT 'reverse_proxy'`,
 ]) {
   try { db.exec(sql) } catch (_) { /* 이미 있으면 무시 */ }
 }

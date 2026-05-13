@@ -1,6 +1,14 @@
 -- channels.lua
--- token-api 에서 채널 목록을 가져와 shared dict 에 60초 캐시
--- get_upstream(host) → upstream URL 또는 nil
+-- admin-api 에서 채널 목록을 가져와 shared dict 에 60초 캐시
+--
+-- 게이트웨이로 라우팅되는 조건 (모두 만족):
+--   - active = 1
+--   - integration_mode = "reverse_proxy"   (external 모드는 퍼블리셔가 직접 /v1/verify 호출)
+--   - verified_at IS NOT NULL              (도메인 소유 검증 통과)
+--
+-- API:
+--   get_upstream(host)  → upstream URL 또는 nil  (legacy — proxy 만 필요한 호출자)
+--   get_channel(host)   → {id, upstream, domain, ...} 또는 nil  (full record — 향후 per-site 로직용)
 
 local cjson = require "cjson.safe"
 local _M = {}
@@ -75,16 +83,27 @@ local function load_channels()
     local body = fetch_channels_from_api()
     if body then
         local channels = cjson.decode(body) or {}
-        local active = {}
+        local servable = {}
         for _, ch in ipairs(channels) do
-            if ch.active == 1 or ch.active == true then
-                active[#active + 1] = ch
+            local is_active   = (ch.active == 1) or (ch.active == true)
+            -- integration_mode 컬럼이 없는 옛 행 (마이그레이션 전) 도 reverse_proxy 로 간주
+            local is_proxy    = (ch.integration_mode == nil)
+                              or (ch.integration_mode == cjson.null)
+                              or (ch.integration_mode == "reverse_proxy")
+            -- verified_at 도 옛 행은 nil — 기존 운영 중인 채널 보호 위해 nil 도 OK 처리
+            -- (신규 채널은 verification 통과 시점에만 verified_at 셋, OpenResty 에 노출되기 전엔 등록 자체가 안 되니 안전)
+            local is_verified = (ch.verified_at ~= nil) and (ch.verified_at ~= cjson.null)
+                              or false
+            -- 옛 행 호환: site_key_hash 컬럼이 없거나 비어있으면 = 마이그레이션 이전 채널 = 그대로 서빙
+            local is_legacy   = (ch.verify_token == nil) or (ch.verify_token == cjson.null)
+            if is_active and is_proxy and (is_verified or is_legacy) then
+                servable[#servable + 1] = ch
             end
         end
-        local enc = cjson.encode(active)
+        local enc = cjson.encode(servable)
         cache:set(CACHE_KEY,  enc, CACHE_TTL)
         cache:set(STABLE_KEY, enc, STABLE_TTL)
-        return active
+        return servable
     end
 
     -- 3. fetch 실패 → stable 캐시 폴백
@@ -101,27 +120,23 @@ local function load_channels()
     return {}
 end
 
--- ── Host 헤더 → upstream URL ─────────────────────────────
--- 반환: upstream 문자열 (예: "http://origin.example.com") 또는 nil
+-- ── Host 헤더 → channel 레코드 ─────────────────────────────
+-- 반환: channel table {id, domain, upstream, integration_mode, ...} 또는 nil
 -- apex(pure-beef.kr) 와 www(www.pure-beef.kr) 는 동일 채널로 자동 매핑
-function _M.get_upstream(host)
+function _M.get_channel(host)
     if not host or host == "" then return nil end
     local channels = load_channels()
 
     -- 1. 정확 매칭
     for _, ch in ipairs(channels) do
-        if ch.domain == host then
-            return ch.upstream
-        end
+        if ch.domain == host then return ch end
     end
 
     -- 2. www. 접두 제거 후 매칭 (www.pure-beef.kr → pure-beef.kr)
     local stripped = host:gsub("^www%.", "")
     if stripped ~= host then
         for _, ch in ipairs(channels) do
-            if ch.domain == stripped then
-                return ch.upstream
-            end
+            if ch.domain == stripped then return ch end
         end
     end
 
@@ -129,13 +144,17 @@ function _M.get_upstream(host)
     if not host:match("^www%.") then
         local with_www = "www." .. host
         for _, ch in ipairs(channels) do
-            if ch.domain == with_www then
-                return ch.upstream
-            end
+            if ch.domain == with_www then return ch end
         end
     end
 
     return nil
+end
+
+-- legacy — upstream 만 반환. 신규 호출은 get_channel 권장.
+function _M.get_upstream(host)
+    local ch = _M.get_channel(host)
+    return ch and ch.upstream or nil
 end
 
 -- 캐시 강제 무효화 (채널 변경 직후 호출 가능)
