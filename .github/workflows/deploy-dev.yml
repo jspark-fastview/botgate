@@ -1,8 +1,19 @@
 name: Deploy → Dev EC2
 
+# 앱 코드 / docker compose 변경 시에만 트리거.
+# terraform/, k8s/, .github/workflows/build-push-ecr.yml 등 EKS 이전 작업은 EC2 무영향.
 on:
   push:
     branches: [main]
+    paths:
+      - 'admin-api/**'
+      - 'internal-api/**'
+      - 'openresty/**'
+      - 'frontend/**'
+      - 'token-api/**'
+      - 'web/**'
+      - 'docker-compose*.yml'
+      - '.github/workflows/deploy-dev.yml'
 
 jobs:
   deploy:
