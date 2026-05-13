@@ -13,8 +13,8 @@ spec:
     repoURL: https://github.com/jspark-fastview/botgate
     targetRevision: main
     path: k8s/argocd/apps
-    directory:
-      recurse: true
+    # directory.recurse 빼면 ArgoCD 가 kustomization.yaml 발견 → Kustomize 모드 자동 선택.
+    # directory 모드면 kustomization.yaml 자체를 K8s 리소스로 apply 하려고 함 → 실패
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
