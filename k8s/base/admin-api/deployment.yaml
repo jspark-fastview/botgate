@@ -41,6 +41,9 @@ spec:
           env:
             - name: SERVER_PORT
               value: "3002"
+            # K8s 환경 — schema.sql 자동 실행 (EC2 는 token-api 가 담당, K8s 는 admin-api 가 직접)
+            - name: SCHEMA_INIT_MODE
+              value: always
             - name: OTEL_SERVICE_NAME
               value: admin-api
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
