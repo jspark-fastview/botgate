@@ -37,7 +37,16 @@ When your changes create orphans:
 
 The test: every changed line should trace directly to the user's request.
 
-## 4. Goal-Driven Execution
+## 4. 인프라 명령은 사용자가 직접 실행
+**Terraform 등 비용/state 영향 있는 명령은 절대 직접 실행 X.**
+
+- `terraform init / plan / apply / destroy` → 사용자가 실행. 명령어만 제공.
+- `.tf` 파일 편집, plan 미리보기, output 해석은 OK.
+- IaC 폴더: `/Users/fastview/botcontroller/terraform/` (EKS + VPC + ECR + IRSA + Secrets stub)
+- 같은 원칙 적용 대상: `kubectl apply`, `helm install`, `eksctl create`, `aws ... create-*`
+  → 일회성 mutation 명령은 사용자가 직접. 조회 (`get`, `describe`, `sts get-caller-identity` 등) 는 자동 OK.
+
+## 5. Goal-Driven Execution
 **Define success criteria. Loop until verified.**
 
 Transform tasks into verifiable goals:

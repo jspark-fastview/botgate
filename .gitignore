@@ -18,3 +18,7 @@ frontend/out/
 .idea/
 .vscode/
 *.iml
+
+# OS
+.DS_Store
+**/.DS_Store
