@@ -20,6 +20,11 @@ module "eks" {
   # 클러스터 생성한 IAM principal 에게 admin 자동 부여
   enable_cluster_creator_admin_permissions = true
 
+  # TODO: 다음 클러스터 부팅 시 bootstrap_self_managed_addons = false 추가 권장.
+  # 그래야 aws-node / kube-proxy 자동 설치 안 됨 (Cilium 가 둘 다 대체).
+  # 단, 이 속성은 create-time 만 적용 — 기존 클러스터에 추가하면 destroy+recreate 발생.
+  # 현재 클러스터는 'kubectl delete daemonset' 로 수동 정리 (이미 처리됨).
+
   # EKS-managed addons
   # vpc-cni, kube-proxy 는 Cilium 이 대체 (cilium.tf)
   # ebs-csi 권한은 iam.tf 의 aws_eks_pod_identity_association.ebs_csi 가 담당

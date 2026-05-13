@@ -22,7 +22,9 @@ variable "k8s_version" {
 
 variable "node_instance_types" {
   type    = list(string)
-  default = ["t4g.medium", "t4g.large"]   # Graviton (arm64)
+  # Graviton (arm64). t4g.medium 은 17 pod max — KPS/cert-manager/ESO/argocd 등 깔리면 즉시 한도.
+  # t4g.large = 35 pod max, t4g.xlarge = 58. Spot fallback 으로 둘 다 등록.
+  default = ["t4g.large", "t4g.xlarge"]
 }
 
 variable "node_min_size" {

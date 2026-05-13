@@ -8,6 +8,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
+# 중요: ArgoCD install.yaml 은 namespace-less manifest — 여기서 명시 안 하면 default 로 떨어짐
+namespace: argocd
+
 resources:
   # ArgoCD 안정 버전 핀 — 학습 후 주기적 bump 권장
   - https://raw.githubusercontent.com/argoproj/argo-cd/v2.12.4/manifests/install.yaml
