@@ -4,41 +4,40 @@ kind: Kustomization
 namespace: guardus
 
 resources:
-  - ../../base
-  - external-secrets.yaml
+- ../../base
+- external-secrets.yaml
 
 # 환경 식별 label
 labels:
-  - includeSelectors: false
-    pairs:
-      guardus.io/env: dev
+- pairs:
+    guardus.io/env: dev
 
 # 이미지 — ECR 경로 + dev tag
 images:
-  - name: guardus/admin-api
-    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/admin-api
-    newTag: dev
-  - name: guardus/internal-api
-    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/internal-api
-    newTag: dev
-  - name: guardus/openresty
-    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/openresty
-    newTag: dev
-  - name: guardus/frontend
-    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/frontend
-    newTag: dev
+- name: guardus/admin-api
+  newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/admin-api
+  newTag: e39893faa252be7cf4a47ab203060bc7362808ab
+- name: guardus/frontend
+  newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/frontend
+  newTag: e39893faa252be7cf4a47ab203060bc7362808ab
+- name: guardus/internal-api
+  newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/internal-api
+  newTag: e39893faa252be7cf4a47ab203060bc7362808ab
+- name: guardus/openresty
+  newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/openresty
+  newTag: e39893faa252be7cf4a47ab203060bc7362808ab
 
 # 환경별 패치
 patches:
-  - path: patches/openresty-dev.yaml
-    target:
-      kind: Deployment
-      name: openresty
-  - path: patches/frontend-dev.yaml
-    target:
-      kind: Deployment
-      name: frontend
-  - path: patches/ingress-dev.yaml
-    target:
-      kind: Ingress
-      name: guardus-ingress
+- path: patches/openresty-dev.yaml
+  target:
+    kind: Deployment
+    name: openresty
+- path: patches/frontend-dev.yaml
+  target:
+    kind: Deployment
+    name: frontend
+- path: patches/ingress-dev.yaml
+  target:
+    kind: Ingress
+    name: guardus-ingress
