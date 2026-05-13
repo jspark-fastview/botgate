@@ -15,7 +15,9 @@ variable "cluster_name" {
 
 variable "k8s_version" {
   type    = string
-  default = "1.31"
+  # 1.31 → 1.32 → 1.33 순서로 업그레이드.
+  # 1.33 부터 표준 지원 (extended support fee $432/월 회피).
+  default = "1.33"
 }
 
 # VPC/서브넷은 신규 생성 X — 기존 content-vpc 를 data source 로 참조 (vpc.tf)
