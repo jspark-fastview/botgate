@@ -131,6 +131,11 @@ local function _record(action, verified, billed, blocked)
     ngx.ctx.bot_verified  = verified and "1" or "0"
     ngx.ctx.bot_billed    = billed and "1" or "0"
     ngx.ctx.bot_blocked   = blocked and "1" or "0"
+    -- ngx.var 에도 즉시 — log_by_lua_block 의 ngx.ctx 가 안 보이는 케이스 대비
+    ngx.var.bot_action       = action
+    ngx.var.bot_verified_log = verified and "1" or "0"
+    ngx.var.bot_billed       = billed and "1" or "0"
+    ngx.var.bot_blocked      = blocked and "1" or "0"
 end
 
 function _M.run()
@@ -152,6 +157,12 @@ function _M.run()
     -- 분류 (가장 먼저 — 악성 / 봇 / 사용자)
     local cls = bot_classifier.classify(raw_ua)
     ngx.ctx.classification = cls
+    -- ngx.var.* 도 즉시 set — ngx.exit 후 log_by_lua_block 의 ngx.ctx 가
+    -- 빈 케이스 (verify/block 응답) 에서도 access_log JSON 에 분류 정보 유지
+    ngx.var.bot_name     = cls.name or ""
+    ngx.var.bot_vendor   = cls.vendor or ""
+    ngx.var.bot_purpose  = cls.purpose or ""
+    ngx.var.bot_category = cls.category or "user"
 
     -- stage 1: 악성 봇 / 공격 도구 → 즉시 403 + 로깅 (blocked=true)
     if cls.category == "malicious" then
