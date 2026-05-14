@@ -1,9 +1,11 @@
 package io.guardus.admin.controller;
 
+import io.guardus.admin.service.LokiClient;
 import io.guardus.admin.util.DomainCondition;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -11,6 +13,8 @@ import java.util.*;
 /**
  * /admin/stats/summary       — unified KPI for innerops / dashboard
  * /admin/stats/operator-view — multi-channel operator dashboard
+ *
+ * 데이터 소스: Loki (K8s, LOKI_URL 설정 시) 또는 SQL access_logs (EC2 SQLite).
  */
 @RestController
 public class SummaryController {
@@ -24,9 +28,11 @@ public class SummaryController {
             " ELSE bot_ua END)";
 
     private final JdbcTemplate db;
+    private final LokiClient   loki;
 
-    public SummaryController(JdbcTemplate db) {
-        this.db = db;
+    public SummaryController(JdbcTemplate db, LokiClient loki) {
+        this.db   = db;
+        this.loki = loki;
     }
 
     // ── /admin/stats/summary ─────────────────────────────────────────────────
@@ -37,6 +43,200 @@ public class SummaryController {
      */
     @GetMapping("/admin/stats/summary")
     public Map<String, Object> summary(@RequestParam(required = false) String domain) {
+        // Loki 가 활성이면 LogQL 로 → K8s 표준 경로
+        if (loki.isEnabled()) {
+            return summaryFromLoki(domain);
+        }
+        return summaryFromSql(domain);
+    }
+
+    /**
+     * Loki LogQL 기반 summary.
+     * 동일 응답 shape — SQL 버전과 호환.
+     */
+    private Map<String, Object> summaryFromLoki(String domain) {
+        String hostFilter = (domain != null && !domain.isBlank())
+                ? "| host=`" + domain + "` " : "";
+        // 모든 stream 의 access_logs (oprenresty pod 의 JSON)
+        String baseSel = "{namespace=\"guardus\", app=\"openresty\"} | json " + hostFilter;
+        Duration today = Duration.ofHours(24);
+
+        // ── today 4-way ─────────────────────────────────────────────────────
+        Map<String, Long> today4way = new LinkedHashMap<>();
+        for (String c : List.of("user", "bot", "other_bot", "malicious")) today4way.put(c, 0L);
+        for (Map<String, Object> r : loki.instantQuery(
+                "sum by (category) (count_over_time(" + baseSel + "[24h]))")) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> lbl = (Map<String, String>) r.get("labels");
+            String cat = lbl.getOrDefault("category", "user");
+            long n = ((Number) r.getOrDefault("value", 0)).longValue();
+            if (today4way.containsKey(cat)) today4way.put(cat, n);
+        }
+        long todayTotal = today4way.values().stream().mapToLong(Long::longValue).sum();
+        double botPct = todayTotal > 0
+                ? (today4way.get("bot") + today4way.get("other_bot") + today4way.get("malicious")) / (double) todayTotal
+                : 0.0;
+
+        // ── today blocked ────────────────────────────────────────────────────
+        long blockedToday = 0;
+        for (Map<String, Object> r : loki.instantQuery(
+                "sum(count_over_time(" + baseSel + "| blocked=`1` [24h]))")) {
+            blockedToday = ((Number) r.getOrDefault("value", 0)).longValue();
+            break;
+        }
+
+        // ── hourly (today, 4-way) — 24 buckets ──────────────────────────────
+        List<Map<String, Object>> hourlyMap = new ArrayList<>(24);
+        for (int i = 0; i < 24; i++) {
+            Map<String, Object> slot = new LinkedHashMap<>();
+            slot.put("hour", String.format("%02d", i));
+            for (String c : List.of("user", "bot", "other_bot", "malicious")) slot.put(c, 0L);
+            hourlyMap.add(slot);
+        }
+        // range query for hourly by category
+        for (Map<String, Object> r : loki.rangeQuery(
+                "sum by (category) (count_over_time(" + baseSel + "[1h]))",
+                today, "1h")) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> lbl = (Map<String, String>) r.get("labels");
+            String cat = lbl.getOrDefault("category", "user");
+            if (!today4way.containsKey(cat)) continue;
+            @SuppressWarnings("unchecked")
+            List<double[]> series = (List<double[]>) r.get("series");
+            if (series == null) continue;
+            // 각 시계열 포인트의 ts → 시간 → bucket
+            for (double[] point : series) {
+                int hour = Instant.ofEpochSecond((long) point[0]).atZone(java.time.ZoneOffset.UTC).getHour();
+                if (hour < 0 || hour >= 24) continue;
+                Long cur = (Long) hourlyMap.get(hour).get(cat);
+                hourlyMap.get(hour).put(cat, cur + (long) point[1]);
+            }
+        }
+
+        // ── botCategories top 10 ─────────────────────────────────────────────
+        List<Map<String, Object>> botCategories = new ArrayList<>();
+        Map<String, Long[]> actionByBot = new LinkedHashMap<>();   // [block, meter, pass]
+        for (Map<String, Object> r : loki.instantQuery(
+                "sum by (bot_name, bot_purpose, action) (count_over_time(" + baseSel +
+                "| category != `user` | bot_name != `` [24h]))")) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> lbl = (Map<String, String>) r.get("labels");
+            String name = lbl.getOrDefault("bot_name", "");
+            if (name.isEmpty()) continue;
+            String purpose = lbl.getOrDefault("bot_purpose", "generic");
+            String action  = lbl.getOrDefault("action", "pass");
+            long count = ((Number) r.getOrDefault("value", 0)).longValue();
+            actionByBot.computeIfAbsent(name + "|" + purpose, k -> new Long[]{0L, 0L, 0L, count});
+            Long[] arr = actionByBot.get(name + "|" + purpose);
+            arr[3] += count;   // total
+            switch (action) {
+                case "block", "gone", "token_required", "token_invalid" -> arr[0] += count;
+                case "meter" -> arr[1] += count;
+                default -> arr[2] += count;
+            }
+        }
+        actionByBot.entrySet().stream()
+                .sorted((a, b) -> Long.compare(b.getValue()[3], a.getValue()[3]))
+                .limit(10)
+                .forEach(e -> {
+                    String[] parts = e.getKey().split("\\|", 2);
+                    Long[] arr = e.getValue();
+                    String action = (arr[0] > arr[1] && arr[0] > arr[2]) ? "block"
+                                  : (arr[1] > arr[2]) ? "meter" : "pass";
+                    botCategories.add(Map.of(
+                            "name", parts[0],
+                            "purpose", parts.length > 1 ? parts[1] : "generic",
+                            "requests", arr[3],
+                            "action", action));
+                });
+
+        // ── purposes ─────────────────────────────────────────────────────────
+        Map<String, Long> purposes = new LinkedHashMap<>();
+        for (Map<String, Object> r : loki.instantQuery(
+                "sum by (bot_purpose) (count_over_time(" + baseSel +
+                "| category != `user` | bot_purpose != `` [24h]))")) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> lbl = (Map<String, String>) r.get("labels");
+            String p = lbl.getOrDefault("bot_purpose", "generic");
+            purposes.put(p, ((Number) r.getOrDefault("value", 0)).longValue());
+        }
+
+        // ── actions ──────────────────────────────────────────────────────────
+        Map<String, Object> actions = new LinkedHashMap<>();
+        for (String a : List.of("pass", "meter", "verify", "token_only", "block", "gone")) actions.put(a, 0L);
+        for (Map<String, Object> r : loki.instantQuery(
+                "sum by (action) (count_over_time(" + baseSel + "[24h]))")) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> lbl = (Map<String, String>) r.get("labels");
+            String act = lbl.getOrDefault("action", "pass");
+            long n = ((Number) r.getOrDefault("value", 0)).longValue();
+            // token_required/token_invalid 는 block 으로 묶음
+            String key = switch (act) {
+                case "token_required", "token_invalid" -> "block";
+                case "pass", "meter", "block", "gone", "verify", "token_only" -> act;
+                default -> "pass";
+            };
+            actions.merge(key, n, (a1, b) -> (Long) a1 + (Long) b);
+        }
+
+        // ── channels ─────────────────────────────────────────────────────────
+        Map<String, Map<String, Long>> chanAgg = new LinkedHashMap<>();
+        for (Map<String, Object> r : loki.instantQuery(
+                "sum by (host) (count_over_time(" + baseSel + "[24h]))")) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> lbl = (Map<String, String>) r.get("labels");
+            String h = lbl.getOrDefault("host", "");
+            if (h.isEmpty() || h.equals("healthz")) continue;
+            chanAgg.computeIfAbsent(h, k -> new LinkedHashMap<>()).put("totalReq",
+                    ((Number) r.getOrDefault("value", 0)).longValue());
+        }
+        for (Map<String, Object> r : loki.instantQuery(
+                "sum by (host) (count_over_time(" + baseSel + "| category != `user` [24h]))")) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> lbl = (Map<String, String>) r.get("labels");
+            String h = lbl.getOrDefault("host", "");
+            chanAgg.computeIfAbsent(h, k -> new LinkedHashMap<>()).put("botReq",
+                    ((Number) r.getOrDefault("value", 0)).longValue());
+        }
+        for (Map<String, Object> r : loki.instantQuery(
+                "sum by (host) (count_over_time(" + baseSel + "| blocked=`1` [24h]))")) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> lbl = (Map<String, String>) r.get("labels");
+            String h = lbl.getOrDefault("host", "");
+            chanAgg.computeIfAbsent(h, k -> new LinkedHashMap<>()).put("blockedReq",
+                    ((Number) r.getOrDefault("value", 0)).longValue());
+        }
+        List<Map<String, Object>> channels = chanAgg.entrySet().stream()
+                .sorted((a, b) -> Long.compare(
+                        b.getValue().getOrDefault("totalReq", 0L),
+                        a.getValue().getOrDefault("totalReq", 0L)))
+                .limit(20)
+                .map(e -> {
+                    Map<String, Object> ch = new LinkedHashMap<>();
+                    ch.put("domain", e.getKey());
+                    ch.put("totalReq", e.getValue().getOrDefault("totalReq", 0L));
+                    ch.put("botReq",   e.getValue().getOrDefault("botReq", 0L));
+                    ch.put("blockedReq", e.getValue().getOrDefault("blockedReq", 0L));
+                    return ch;
+                }).toList();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("source",      "guardus");
+        result.put("generatedAt", Instant.now().toString());
+        result.put("totalToday",  todayTotal);
+        result.put("botPctToday", botPct);
+        result.put("blockedToday", blockedToday);
+        result.put("today4way",   today4way);
+        result.put("hourly",      hourlyMap);
+        result.put("botCategories", botCategories);
+        result.put("purposes",    purposes);
+        result.put("actions",     actions);
+        result.put("channels",    channels);
+        result.put("_backend",    "loki");
+        return result;
+    }
+
+    private Map<String, Object> summaryFromSql(String domain) {
         DomainCondition dc = DomainCondition.of(domain);
 
         // baseWhere: used for all-time queries
