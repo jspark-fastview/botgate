@@ -21,6 +21,10 @@ singleBinary:
 loki:
   auth_enabled: false
 
+  # single-binary 라 replication 1 (default 3 이면 "not enough replicas" 에러)
+  commonConfig:
+    replication_factor: 1
+
   schemaConfig:
     configs:
       - from: "2024-01-01"
