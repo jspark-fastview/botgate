@@ -15,9 +15,9 @@ variable "cluster_name" {
 
 variable "k8s_version" {
   type    = string
-  # 1.31 → 1.32 → 1.33 순서로 업그레이드.
-  # 1.33 부터 표준 지원 (extended support fee $432/월 회피).
-  default = "1.33"
+  # EKS minor 마다 14개월 표준 지원 — 매번 14개월 지나면 또 upgrade.
+  # 1.33 표준지원 종료: 2026.07.29 → 1.34 로 업그레이드 (표준지원 ~ 2026.10).
+  default = "1.34"
 }
 
 # VPC/서브넷은 신규 생성 X — 기존 content-vpc 를 data source 로 참조 (vpc.tf)
