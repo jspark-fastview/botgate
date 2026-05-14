@@ -3,7 +3,11 @@ kind: PodDisruptionBudget
 metadata:
   name: openresty
 spec:
-  minAvailable: 1
+  # maxUnavailable=1 — replicas 와 무관하게 1 pod 만 unavailable 허용.
+  # dev (replicas=1): 1 down 가능 = drain 통과 (잠시 다운, 학습용 OK)
+  # prod (replicas=3): 1 down = 2 살아있음 (다수 유지)
+  # minAvailable=1 보다 노드 upgrade friendly.
+  maxUnavailable: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: openresty
