@@ -24,6 +24,8 @@ public class LokiStatsService {
 
     /** 기본 윈도우. SQL access_logs 의 사실상 보존 범위와 맞춤 */
     public static final String RANGE_30D = "30d";
+    /** 무거운 sum-by-2-labels 쿼리용 축소 윈도우 (bot-names/malicious) */
+    public static final String RANGE_7D = "7d";
 
     private final LokiClient loki;
 
@@ -115,8 +117,8 @@ public class LokiStatsService {
     public List<Map<String, Object>> malicious(List<String> domains) {
         if (domains != null && domains.isEmpty()) return List.of();
         String selector = sel(domains, "malicious");
-        // last_seen 은 metric query 로 못 구함 → 생략 (프론트에서 표시 안 하면 OK)
-        return loki.sumByTwoLabels("bot_name", "bot_vendor", selector, RANGE_30D).stream()
+        // 7d 윈도우 — sum by 2 labels 무거움, 봇 카탈로그 표시용엔 7d 충분
+        return loki.sumByTwoLabels("bot_name", "bot_vendor", selector, RANGE_7D).stream()
                 .sorted((a, b) -> Long.compare(toL(b.get("count")), toL(a.get("count"))))
                 .limit(20)
                 .toList();
@@ -209,7 +211,8 @@ public class LokiStatsService {
         if (purpose != null && !purpose.isBlank()) {
             selector += " | bot_purpose=`" + LokiClient.esc(purpose) + "`";
         }
-        return loki.sumByTwoLabels("bot_name", "bot_purpose", selector, RANGE_30D).stream()
+        // 7d 윈도우 — bot-names 도 sum by 2 labels 라 30d 면 ~10s. 봇 카탈로그 카운트 표시용엔 7d 충분
+        return loki.sumByTwoLabels("bot_name", "bot_purpose", selector, RANGE_7D).stream()
                 .sorted((a, b) -> Long.compare(toL(b.get("count")), toL(a.get("count"))))
                 .toList();
     }
