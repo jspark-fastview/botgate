@@ -77,9 +77,11 @@ public class AuthController {
         db.update("DELETE FROM sessions WHERE user_id = ? AND expires_at < CURRENT_TIMESTAMP", user.get("id"));
 
         // 새 세션 생성
-        String token     = NanoId.generate(48);
-        String expiresAt = Instant.now().plus(30, ChronoUnit.DAYS)
-                .toString().replace("T", " ").substring(0, 19);
+        // expires_at: Postgres TIMESTAMPTZ + SQLite TEXT 양쪽 호환을 위해
+        // java.sql.Timestamp 로 전달 (Postgres 가 string-cast 안 받음, 'YYYY-MM-DD HH:MM:SS' 만 OK 한 게 아님)
+        String token = NanoId.generate(48);
+        java.sql.Timestamp expiresAt = java.sql.Timestamp.from(
+                Instant.now().plus(30, ChronoUnit.DAYS));
         db.update("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)",
                 token, user.get("id"), expiresAt);
 
