@@ -67,6 +67,9 @@ spec:
               value: "2"
             - name: DB_INIT_SQL
               value: ""    # Postgres 는 PRAGMA 필요 없음
+            # Redis 캐시 활성 (CacheConfig 가 이 값 보고 RedisCacheManager 선택)
+            - name: GUARDUS_REDIS_ENABLED
+              value: "true"
             # OTEL
             - name: OTEL_SERVICE_NAME
               value: admin-api
@@ -82,6 +85,9 @@ spec:
             # RDS 접속 정보: SPRING_DATASOURCE_URL / USERNAME / PASSWORD
             - secretRef:
                 name: rds-credentials
+            # Redis: SPRING_DATA_REDIS_URL / REDIS_HOST / REDIS_AUTH_TOKEN
+            - secretRef:
+                name: redis-credentials
           resources:
             requests:
               cpu: 200m

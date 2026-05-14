@@ -97,6 +97,8 @@ public class AuthController {
         if (auth != null && !auth.isBlank()) {
             String token = auth.replaceAll("(?i)^Bearer\\s+", "");
             if (!token.isBlank()) db.update("DELETE FROM sessions WHERE token = ?", token);
+            // Redis/Caffeine 캐시도 무효화 — 다른 pod 가 stale 세션 보지 않게
+            sessions.invalidate(auth);
         }
         return Map.of("ok", true);
     }

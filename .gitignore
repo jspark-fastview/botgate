@@ -22,3 +22,5 @@ frontend/out/
 # OS
 .DS_Store
 **/.DS_Store
+redis.plan
+*.plan

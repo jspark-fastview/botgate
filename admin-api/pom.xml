@@ -55,7 +55,7 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
-    <!-- Caffeine 캐시 (stats 30s TTL) -->
+    <!-- Caffeine 캐시 (stats 30s TTL) — Redis 비활성 시 fallback -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-cache</artifactId>
@@ -63,6 +63,11 @@
     <dependency>
       <groupId>com.github.ben-manes.caffeine</groupId>
       <artifactId>caffeine</artifactId>
+    </dependency>
+    <!-- Redis (Spring Data Redis + Lettuce) — K8s 환경에서 세션·stats 캐시 -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-redis</artifactId>
     </dependency>
     <!-- Prometheus 메트릭 (/actuator/prometheus) -->
     <dependency>
