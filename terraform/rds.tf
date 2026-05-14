@@ -66,7 +66,7 @@ resource "aws_secretsmanager_secret_version" "rds_master" {
 resource "aws_db_instance" "main" {
   identifier     = "guardus-prod-pg"
   engine         = "postgres"
-  engine_version = "16.4"
+  engine_version = "16.13"   # 16.4 는 ap-northeast-2 에 없음
 
   instance_class    = "db.t4g.medium"
   allocated_storage = 20
