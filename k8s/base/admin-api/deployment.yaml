@@ -70,6 +70,9 @@ spec:
             # Redis 캐시 활성 (CacheConfig 가 이 값 보고 RedisCacheManager 선택)
             - name: GUARDUS_REDIS_ENABLED
               value: "true"
+            # Stats prewarm — 1시간마다 백그라운드 self-HTTP 로 stats 캐시 채움
+            - name: GUARDUS_PREWARM_ENABLED
+              value: "true"
             # OTEL
             - name: OTEL_SERVICE_NAME
               value: admin-api

@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
  * Cache 구성 — Redis 우선, 없으면 Caffeine fallback.
  *
  * 캐시 이름별 TTL:
- *  - stats     : 30m  (Loki 30d 스캔 매우 느림. 운영 대시보드 30m lag 수용)
+ *  - stats     : 70m  (1h prewarm cycle + 10m 안전마진. StatsPrewarmJob 이 미리 채움)
  *  - sessions  : 30m  (어드민 세션 검증. 로그아웃은 즉시 invalidate)
  *  - tokens    : 1m   (예약. internal-api 가 추후 사용)
  *
@@ -62,12 +62,12 @@ public class CacheConfig {
                 .prefixCacheNameWith("guardus:");
 
         Map<String, RedisCacheConfiguration> perCache = new HashMap<>();
-        perCache.put("stats",    base.entryTtl(Duration.ofMinutes(30)));
+        perCache.put("stats",    base.entryTtl(Duration.ofMinutes(70)));
         perCache.put("sessions", base.entryTtl(Duration.ofMinutes(30)));
         perCache.put("tokens",   base.entryTtl(Duration.ofMinutes(1)));
 
         return RedisCacheManager.builder(cf)
-                .cacheDefaults(base.entryTtl(Duration.ofMinutes(30)))
+                .cacheDefaults(base.entryTtl(Duration.ofMinutes(70)))
                 .withInitialCacheConfigurations(perCache)
                 .build();
     }
@@ -80,7 +80,7 @@ public class CacheConfig {
     public CacheManager caffeineCacheManager() {
         CaffeineCacheManager mgr = new CaffeineCacheManager("stats", "sessions", "tokens");
         mgr.setCaffeine(Caffeine.newBuilder()
-                .expireAfterWrite(30, TimeUnit.MINUTES)
+                .expireAfterWrite(70, TimeUnit.MINUTES)
                 .maximumSize(2000));
         return mgr;
     }
