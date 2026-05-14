@@ -123,6 +123,16 @@ end
 
 -- ── 메인 필터 ─────────────────────────────────────────────────────────
 
+-- ── Loki access log 용 ngx.ctx 헬퍼 ─────────────────────────────────
+-- log_by_lua_block (bot.conf) 가 이 ctx 를 ngx.var.* 로 옮겨 JSON 출력
+local function _record(action, verified, billed, blocked)
+    ngx.ctx.access_logged = true
+    ngx.ctx.bot_action    = action
+    ngx.ctx.bot_verified  = verified and "1" or "0"
+    ngx.ctx.bot_billed    = billed and "1" or "0"
+    ngx.ctx.bot_blocked   = blocked and "1" or "0"
+end
+
 function _M.run()
     -- ① 긴급 바이패스 킬 스위치 — 공유 dict에서 읽어 즉시 통과
     local dict = ngx.shared.bot_catalog
@@ -149,7 +159,7 @@ function _M.run()
                    bot_name = cls.name, vendor = cls.vendor })
         logger.access(raw_ua or "", host, ip, path, false, false,
                       "malicious", "malicious", cls.name, cls.vendor, true)
-        ngx.ctx.access_logged = true
+        _record("block", false, false, true)
         ngx.header["X-Botgate-Error"] = "malicious-blocked"
         return ngx.exit(ngx.HTTP_FORBIDDEN)
     end
@@ -162,7 +172,7 @@ function _M.run()
             json_log({ bot_category = "path_blocked", action = "block", path = path,
                        bot_name = cls.name, bot_purpose = cls.purpose })
             logger.access(raw_ua, host, ip, path, false, false, cls.category, cls.purpose, cls.name, cls.vendor, true)
-            ngx.ctx.access_logged = true
+            _record("block", false, false, true)
             return ngx.exit(ngx.HTTP_FORBIDDEN)
         end
 
@@ -175,7 +185,7 @@ function _M.run()
             json_log({ bot_category = cls.category, action = "policy_pass", policy = policy_action,
                        bot_name = cls.name, bot_purpose = cls.purpose })
             logger.access(raw_ua, host, ip, path, true, billed, cls.category, cls.purpose, cls.name, cls.vendor, false)
-            ngx.ctx.access_logged = true
+            _record(billed and "meter" or "pass", true, billed, false)
             ngx.req.set_header("X-Bot-Verified", "policy:" .. policy_action)
             ngx.req.set_header("X-Bot-Purpose",  cls.purpose)
             ngx.req.set_header("X-Bot-Billed",   billed and "1" or "0")
@@ -187,7 +197,7 @@ function _M.run()
             json_log({ bot_category = cls.category, action = "policy_block", policy = "block",
                        bot_name = cls.name, bot_purpose = cls.purpose })
             logger.access(raw_ua, host, ip, path, false, false, cls.category, cls.purpose, cls.name, cls.vendor, true)
-            ngx.ctx.access_logged = true
+            _record("block", false, false, true)
             ngx.header["X-Botgate-Error"] = "purpose-blocked"
             return ngx.exit(ngx.HTTP_FORBIDDEN)
         end
@@ -197,7 +207,7 @@ function _M.run()
             json_log({ bot_category = cls.category, action = "policy_gone", policy = "gone",
                        bot_name = cls.name, bot_purpose = cls.purpose })
             logger.access(raw_ua, host, ip, path, false, false, cls.category, cls.purpose, cls.name, cls.vendor, true)
-            ngx.ctx.access_logged = true
+            _record("gone", false, false, true)
             ngx.header["X-Botgate-Error"] = "purpose-gone"
             return ngx.exit(410)
         end
@@ -207,18 +217,19 @@ function _M.run()
             local token = ngx.req.get_headers()["X-Bot-Token"]
             if not token or token == "" then
                 logger.access(raw_ua, host, ip, path, false, false, cls.category, cls.purpose, cls.name, cls.vendor, true)
-                ngx.ctx.access_logged = true
+                _record("token_required", false, false, true)
                 ngx.header["X-Botgate-Error"]    = "token-required"
                 ngx.header["X-Botgate-Register"] = "https://botgate.io/register"
                 return ngx.exit(402)
             end
             local valid, plan = validate_token(token, raw_ua, host, ip)
             if not valid then
+                _record("token_invalid", false, false, true)
                 ngx.header["X-Botgate-Error"] = "invalid-token"
                 return ngx.exit(401)
             end
             logger.access(raw_ua, host, ip, path, true, billed, cls.category, cls.purpose, cls.name, cls.vendor, false)
-            ngx.ctx.access_logged = true
+            _record(billed and "meter" or "pass", true, billed, false)
             ngx.req.set_header("X-Bot-Verified", "token")
             ngx.req.set_header("X-Bot-Purpose",  cls.purpose)
             ngx.req.set_header("X-Bot-Plan",     plan or "free")
@@ -252,7 +263,7 @@ function _M.run()
                        detail = detail, bot_name = cls.name, bot_purpose = cls.purpose,
                        method = verify_method })
             logger.access(raw_ua, host, ip, path, true, billed, cls.category, cls.purpose, cls.name, cls.vendor, false)
-            ngx.ctx.access_logged = true
+            _record(billed and "meter" or "pass", true, billed, false)
             ngx.req.set_header("X-Bot-Verified", verify_method)
             ngx.req.set_header("X-Bot-Purpose",  cls.purpose)
             ngx.req.set_header("X-Bot-Billed",   billed and "1" or "0")
@@ -265,7 +276,7 @@ function _M.run()
                 json_log({ bot_category = "ai_bot_lenient_pass", action = "pass", mode = "lenient",
                            detail = detail, bot_name = cls.name, bot_purpose = cls.purpose })
                 logger.access(raw_ua, host, ip, path, false, billed, cls.category, cls.purpose, cls.name, cls.vendor, false)
-                ngx.ctx.access_logged = true
+                _record(billed and "meter" or "pass", false, billed, false)
                 ngx.req.set_header("X-Bot-Verified", "lenient")
                 ngx.req.set_header("X-Bot-Purpose",  cls.purpose)
                 ngx.req.set_header("X-Bot-Billed",   billed and "1" or "0")
@@ -274,7 +285,7 @@ function _M.run()
             json_log({ bot_category = "ai_bot_unregistered", action = "block402", detail = detail,
                        bot_name = cls.name, bot_purpose = cls.purpose })
             logger.access(raw_ua, host, ip, path, false, false, cls.category, cls.purpose, cls.name, cls.vendor, true)
-            ngx.ctx.access_logged = true
+            _record("token_required", false, false, true)
             ngx.header["X-Botgate-Error"]    = "token-required"
             ngx.header["X-Botgate-Register"] = "https://botgate.io/register"
             return ngx.exit(402)
@@ -284,6 +295,7 @@ function _M.run()
         if not valid then
             json_log({ bot_category = "ai_bot_invalid_token", action = "block401",
                        bot_name = cls.name, bot_purpose = cls.purpose })
+            _record("token_invalid", false, false, true)
             ngx.header["X-Botgate-Error"] = "invalid-token"
             return ngx.exit(401)
         end
@@ -291,7 +303,7 @@ function _M.run()
         json_log({ bot_category = "ai_bot_token", action = "pass", plan = plan,
                    bot_name = cls.name, bot_purpose = cls.purpose })
         logger.access(raw_ua, host, ip, path, true, billed, cls.category, cls.purpose, cls.name, cls.vendor, false)
-        ngx.ctx.access_logged = true
+        _record(billed and "meter" or "pass", true, billed, false)
         ngx.req.set_header("X-Bot-Verified", "token")
         ngx.req.set_header("X-Bot-Purpose",  cls.purpose)
         ngx.req.set_header("X-Bot-Plan",     plan or "free")
