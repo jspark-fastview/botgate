@@ -22,9 +22,10 @@ import java.util.Map;
 @Service
 public class LokiStatsService {
 
-    /** 기본 윈도우. SQL access_logs 의 사실상 보존 범위와 맞춤 */
-    public static final String RANGE_30D = "30d";
-    /** 무거운 sum-by-2-labels 쿼리용 축소 윈도우 (bot-names/malicious) */
+    /** 기본 윈도우 — 7d. 30d 는 Loki multi-host regex 스캔이 너무 무거움
+     *  (host 가 stream label 이 아닌 JSON 추출 label 이라 chunk 마다 parse).
+     *  Alloy 에서 host stream-label promote 후 30d 복원 검토. */
+    public static final String RANGE_30D = "7d";
     public static final String RANGE_7D = "7d";
 
     private final LokiClient loki;
@@ -63,7 +64,7 @@ public class LokiStatsService {
         if (domains != null && domains.isEmpty()) return List.of();
         String selector = sel(domains, category);
         if ("1".equals(billed)) selector += " | billed=`1`";
-        return loki.dateBuckets(selector, 30);
+        return loki.dateBuckets(selector, 7);
     }
 
     // ── /me/stats/bots, /admin/stats/bots ─────────────────────────────
@@ -147,7 +148,7 @@ public class LokiStatsService {
         if (domains != null && domains.isEmpty()) return List.of();
         String selector = sel(domains, category) + " | bot_name!=``";
         // dateBucketsByLabel returns {date, bot_name, count}
-        return loki.dateBucketsByLabel("bot_name", selector, 30);
+        return loki.dateBucketsByLabel("bot_name", selector, 7);
     }
 
     // ── /me/stats/hourly, /admin/stats/hourly ─────────────────────────
