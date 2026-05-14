@@ -1,5 +1,8 @@
 package io.guardus.admin.config;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -45,10 +48,23 @@ public class CacheConfig {
     @Bean
     @ConditionalOnProperty(prefix = "guardus.redis", name = "enabled", havingValue = "true")
     public CacheManager redisCacheManager(RedisConnectionFactory cf) {
+        // GenericJackson2JsonRedisSerializer 의 default polymorphic typing 은
+        // WRAPPER_ARRAY ([type, value]) 형식 → 빈 List `[]` deserialize 시
+        // type id 못 찾아 SerializationException 발생.
+        // As.PROPERTY 로 변경: {"@class":"...", ...} 형태 → 빈 컬렉션도 안전.
+        ObjectMapper om = new ObjectMapper();
+        om.activateDefaultTyping(
+                BasicPolymorphicTypeValidator.builder()
+                        .allowIfSubType(Object.class)
+                        .build(),
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                JsonTypeInfo.As.PROPERTY);
+        GenericJackson2JsonRedisSerializer valueSerializer = new GenericJackson2JsonRedisSerializer(om);
+
         RedisCacheConfiguration base = RedisCacheConfiguration.defaultCacheConfig()
                 .disableCachingNullValues()
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(valueSerializer))
                 .prefixCacheNameWith("guardus:");
 
         Map<String, RedisCacheConfiguration> perCache = new HashMap<>();
