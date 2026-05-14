@@ -39,6 +39,181 @@ public class LokiClient {
 
     public boolean isEnabled() { return baseUrl != null && !baseUrl.isBlank(); }
 
+    // ──────────────────────────────────────────────────────────────────
+    // Stats helpers — admin-api 통계 컨트롤러용 LogQL 빌더 + 실행
+    // 기본 selector: {namespace="guardus", app="openresty"} | json | __error__=``
+    // ──────────────────────────────────────────────────────────────────
+
+    /** 공통 base selector. domain != null 이면 host 필터 추가 */
+    public String baseSelector(String domain) {
+        String hostFilter = (domain != null && !domain.isBlank())
+                ? " | host=`" + esc(domain) + "`" : "";
+        return "{namespace=\"guardus\", app=\"openresty\"} | json | __error__=``" + hostFilter;
+    }
+
+    /** 여러 도메인을 host=~ 정규식으로 묶음. 비어있으면 매치 0 인 selector */
+    public String baseSelectorMulti(List<String> domains) {
+        if (domains == null || domains.isEmpty()) {
+            return "{namespace=\"guardus\", app=\"openresty\"} | host=`__NONE__`"; // 매치 0
+        }
+        String regex = String.join("|", domains.stream().map(LokiClient::esc).toList());
+        return "{namespace=\"guardus\", app=\"openresty\"} | json | __error__=`` | host=~`" + regex + "`";
+    }
+
+    /** category line filter (all/null/blank → 빈 문자열) */
+    public String catFilter(String category) {
+        if (category == null || category.isBlank() || "all".equals(category)) return "";
+        return " | category=`" + esc(category) + "`";
+    }
+
+    /** 단일 selector 의 총 카운트 */
+    public long count(String selector, String range) {
+        if (!isEnabled()) return 0;
+        String logql = "sum(count_over_time(" + selector + " [" + range + "]))";
+        for (Map<String, Object> r : instantQuery(logql)) {
+            return ((Number) r.getOrDefault("value", 0)).longValue();
+        }
+        return 0;
+    }
+
+    /** sum by (label) — label 별 카운트 */
+    public Map<String, Long> sumByLabel(String label, String selector, String range) {
+        if (!isEnabled()) return Map.of();
+        String logql = "sum by (" + label + ") (count_over_time(" + selector + " [" + range + "]))";
+        Map<String, Long> out = new LinkedHashMap<>();
+        for (Map<String, Object> r : instantQuery(logql)) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> lbl = (Map<String, String>) r.get("labels");
+            String key = lbl.getOrDefault(label, "");
+            long n = ((Number) r.getOrDefault("value", 0)).longValue();
+            out.merge(key, n, Long::sum);
+        }
+        return out;
+    }
+
+    /** sum by (a, b) — 2-label 그룹 카운트. key = a + "|" + b */
+    public List<Map<String, Object>> sumByTwoLabels(String labelA, String labelB,
+                                                    String selector, String range) {
+        if (!isEnabled()) return List.of();
+        String logql = "sum by (" + labelA + ", " + labelB + ") (count_over_time(" + selector + " [" + range + "]))";
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map<String, Object> r : instantQuery(logql)) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> lbl = (Map<String, String>) r.get("labels");
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put(labelA, lbl.getOrDefault(labelA, ""));
+            row.put(labelB, lbl.getOrDefault(labelB, ""));
+            row.put("count", ((Number) r.getOrDefault("value", 0)).longValue());
+            out.add(row);
+        }
+        return out;
+    }
+
+    /** 일별 카운트 (최근 N 일). [{date: "YYYY-MM-DD", count: N}, ...] DESC */
+    public List<Map<String, Object>> dateBuckets(String selector, int days) {
+        if (!isEnabled()) return List.of();
+        // [5m]/step=5m → Java 에서 date 별 합산. step=1d 는 split 경계로 0 나옴
+        String logql = "sum(count_over_time(" + selector + " [5m]))";
+        Map<String, Long> agg = new LinkedHashMap<>();
+        for (Map<String, Object> r : rangeQuery(logql, Duration.ofDays(days), "5m")) {
+            @SuppressWarnings("unchecked")
+            List<double[]> series = (List<double[]>) r.get("series");
+            if (series == null) continue;
+            for (double[] p : series) {
+                String date = Instant.ofEpochSecond((long) p[0])
+                        .atZone(java.time.ZoneOffset.UTC).toLocalDate().toString();
+                agg.merge(date, (long) p[1], Long::sum);
+            }
+        }
+        return agg.entrySet().stream()
+                .sorted((a, b) -> b.getKey().compareTo(a.getKey()))
+                .map(e -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("date", e.getKey());
+                    m.put("count", e.getValue());
+                    return m;
+                }).toList();
+    }
+
+    /** 시간별 카운트 (특정 date). [{hour: "HH", count: N} ...24] ASC */
+    public List<Map<String, Object>> hourBuckets(String selector, String date) {
+        List<Map<String, Object>> out = new ArrayList<>(24);
+        for (int i = 0; i < 24; i++) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("hour", String.format("%02d", i));
+            m.put("count", 0L);
+            out.add(m);
+        }
+        if (!isEnabled() || date == null || !date.matches("\\d{4}-\\d{2}-\\d{2}")) return out;
+
+        // date 가 오늘이면 since=현재까지, 과거면 24h 윈도우
+        java.time.LocalDate target = java.time.LocalDate.parse(date);
+        java.time.LocalDate todayUtc = java.time.LocalDate.now(java.time.ZoneOffset.UTC);
+        long endMs, startMs;
+        if (target.equals(todayUtc)) {
+            endMs   = Instant.now().toEpochMilli();
+            startMs = target.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli();
+        } else {
+            startMs = target.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli();
+            endMs   = startMs + 86_400_000L;
+        }
+        String logql = "sum(count_over_time(" + selector + " [5m]))";
+        String path = "/loki/api/v1/query_range?query=" + enc(logql)
+                + "&start=" + (startMs * 1_000_000L)
+                + "&end="   + (endMs   * 1_000_000L)
+                + "&step=5m";
+        for (Map<String, Object> r : query(path)) {
+            @SuppressWarnings("unchecked")
+            List<double[]> series = (List<double[]>) r.get("series");
+            if (series == null) continue;
+            for (double[] p : series) {
+                int h = Instant.ofEpochSecond((long) p[0])
+                        .atZone(java.time.ZoneOffset.UTC).getHour();
+                if (h < 0 || h >= 24) continue;
+                Long cur = (Long) out.get(h).get("count");
+                out.get(h).put("count", cur + (long) p[1]);
+            }
+        }
+        return out;
+    }
+
+    /** 일별 + label (예: bot_name) 그룹 카운트 — daily/bots 용 */
+    public List<Map<String, Object>> dateBucketsByLabel(String label, String selector, int days) {
+        if (!isEnabled()) return List.of();
+        String logql = "sum by (" + label + ") (count_over_time(" + selector + " [5m]))";
+        // key = date|labelValue → count
+        Map<String, Long> agg = new LinkedHashMap<>();
+        for (Map<String, Object> r : rangeQuery(logql, Duration.ofDays(days), "5m")) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> lbl = (Map<String, String>) r.get("labels");
+            String v = lbl.getOrDefault(label, "");
+            @SuppressWarnings("unchecked")
+            List<double[]> series = (List<double[]>) r.get("series");
+            if (series == null) continue;
+            for (double[] p : series) {
+                String date = Instant.ofEpochSecond((long) p[0])
+                        .atZone(java.time.ZoneOffset.UTC).toLocalDate().toString();
+                agg.merge(date + "|" + v, (long) p[1], Long::sum);
+            }
+        }
+        return agg.entrySet().stream()
+                .sorted((a, b) -> a.getKey().compareTo(b.getKey()))
+                .map(e -> {
+                    String[] parts = e.getKey().split("\\|", 2);
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("date", parts[0]);
+                    m.put(label, parts.length > 1 ? parts[1] : "");
+                    m.put("count", e.getValue());
+                    return m;
+                }).toList();
+    }
+
+    /** LogQL 백틱 안에 들어가는 값 escape (백틱과 백슬래시 제거) */
+    public static String esc(String s) {
+        if (s == null) return "";
+        return s.replace("`", "").replace("\\", "");
+    }
+
     /**
      * Instant query — 한 시점의 집계값 (vector). 예: topk, sum.
      * @param logql  LogQL 표현식

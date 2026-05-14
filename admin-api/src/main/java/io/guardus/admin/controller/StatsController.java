@@ -1,5 +1,6 @@
 package io.guardus.admin.controller;
 
+import io.guardus.admin.service.LokiStatsService;
 import io.guardus.admin.util.DomainCondition;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -9,14 +10,25 @@ import java.util.*;
 
 /**
  * /admin/stats/* — KPI endpoints (excluding summary and operator-view which are in SummaryController)
+ *
+ * Loki 활성 (K8s) 환경에서는 LokiStatsService 위임.
+ * SQLite (EC2) 환경에서는 기존 SQL 그대로.
  */
 @RestController
 public class StatsController {
 
-    private final JdbcTemplate db;
+    private final JdbcTemplate     db;
+    private final LokiStatsService lokiStats;
 
-    public StatsController(JdbcTemplate db) {
-        this.db = db;
+    public StatsController(JdbcTemplate db, LokiStatsService lokiStats) {
+        this.db        = db;
+        this.lokiStats = lokiStats;
+    }
+
+    /** domain 파라미터 → Loki 멀티 selector 입력. null=전체 */
+    private static List<String> domList(String domain) {
+        if (domain == null || domain.isBlank() || "all".equals(domain)) return null;
+        return List.of(domain);
     }
 
     // ── billing ──────────────────────────────────────────────────────────────
@@ -24,6 +36,7 @@ public class StatsController {
     /** GET /admin/stats/billing?domain= */
     @GetMapping("/admin/stats/billing")
     public Map<String, Object> billing(@RequestParam(required = false) String domain) {
+        if (lokiStats.isEnabled()) return lokiStats.billing(domList(domain));
         DomainCondition dc = DomainCondition.of(domain);
         List<String> conds  = new ArrayList<>(List.of("category = 'bot'"));
         List<Object> params = new ArrayList<>();
@@ -35,7 +48,7 @@ public class StatsController {
                 "FROM access_logs " + where, params.toArray());
         long billed = toLong(row.get("billed"));
         long total  = toLong(row.get("total"));
-        int  unit   = 2; // ₩2 per billed request (placeholder)
+        int  unit   = 2;
         return Map.of("total", total, "billed", billed, "unit_price", unit,
                 "estimated_amount", billed * unit);
     }
@@ -47,6 +60,7 @@ public class StatsController {
     public List<Map<String, Object>> statsBots(
             @RequestParam(required = false) String domain,
             @RequestParam(defaultValue = "bot") String category) {
+        if (lokiStats.isEnabled()) return lokiStats.bots(domList(domain), category, 50);
 
         List<String> conds  = new ArrayList<>();
         List<Object> params = new ArrayList<>();
@@ -71,6 +85,7 @@ public class StatsController {
     /** GET /admin/stats/domains */
     @GetMapping("/admin/stats/domains")
     public List<Map<String, Object>> statsDomains() {
+        if (lokiStats.isEnabled()) return lokiStats.statsDomains(null);
         return db.queryForList(
                 "SELECT domain, COUNT(*) AS count FROM access_logs GROUP BY domain ORDER BY count DESC");
     }
@@ -83,6 +98,7 @@ public class StatsController {
             @RequestParam(required = false) String domain,
             @RequestParam(defaultValue = "bot") String category,
             @RequestParam(required = false) String billed) {
+        if (lokiStats.isEnabled()) return lokiStats.daily(domList(domain), category, billed);
 
         List<String> conds  = new ArrayList<>(List.of("ts >= datetime('now', '-30 days')"));
         List<Object> params = new ArrayList<>();
@@ -102,6 +118,7 @@ public class StatsController {
     public List<Map<String, Object>> statsDailyBots(
             @RequestParam(required = false) String domain,
             @RequestParam(defaultValue = "bot") String category) {
+        if (lokiStats.isEnabled()) return lokiStats.dailyBots(domList(domain), category);
 
         List<String> conds  = new ArrayList<>(List.of("ts >= datetime('now', '-30 days')"));
         List<Object> params = new ArrayList<>();
@@ -128,6 +145,8 @@ public class StatsController {
         if (date == null || !date.matches("\\d{4}-\\d{2}-\\d{2}")) {
             return ResponseEntity.badRequest().body(Map.of("error", "date query param required (YYYY-MM-DD)"));
         }
+        if (lokiStats.isEnabled()) return ResponseEntity.ok(lokiStats.hourly(domList(domain), date, category));
+
         List<String> conds  = new ArrayList<>(List.of("DATE(ts) = ?"));
         List<Object> params = new ArrayList<>(List.of(date));
         if (!"all".equals(category) && !category.isBlank()) { conds.add("category = ?"); params.add(category); }
@@ -155,6 +174,7 @@ public class StatsController {
     /** GET /admin/stats/category?domain= */
     @GetMapping("/admin/stats/category")
     public Map<String, Object> statsCategory(@RequestParam(required = false) String domain) {
+        if (lokiStats.isEnabled()) return lokiStats.category(domList(domain));
         DomainCondition dc = DomainCondition.of(domain);
         String where = dc.hasCondition() ? "WHERE " + dc.sql() : "";
         List<Map<String, Object>> rows = db.queryForList(
@@ -174,6 +194,7 @@ public class StatsController {
     /** GET /admin/stats/purpose?domain= */
     @GetMapping("/admin/stats/purpose")
     public List<Map<String, Object>> statsPurpose(@RequestParam(required = false) String domain) {
+        if (lokiStats.isEnabled()) return lokiStats.purpose(domList(domain));
         List<String> conds  = new ArrayList<>(List.of("category != 'user'"));
         List<Object> params = new ArrayList<>();
         DomainCondition dc = DomainCondition.of(domain);
@@ -190,6 +211,7 @@ public class StatsController {
     /** GET /admin/stats/malicious?domain= */
     @GetMapping("/admin/stats/malicious")
     public List<Map<String, Object>> statsMalicious(@RequestParam(required = false) String domain) {
+        if (lokiStats.isEnabled()) return lokiStats.malicious(domList(domain));
         List<String> conds  = new ArrayList<>(List.of("category = 'malicious'"));
         List<Object> params = new ArrayList<>();
         DomainCondition dc = DomainCondition.of(domain);
@@ -208,6 +230,7 @@ public class StatsController {
     public List<Map<String, Object>> statsBotNames(
             @RequestParam(required = false) String domain,
             @RequestParam(required = false) String purpose) {
+        if (lokiStats.isEnabled()) return lokiStats.botNames(domList(domain), purpose);
 
         List<String> conds  = new ArrayList<>(List.of("category != 'user'", "bot_name IS NOT NULL", "bot_name != ''"));
         List<Object> params = new ArrayList<>();
@@ -229,6 +252,7 @@ public class StatsController {
             @RequestParam(required = false) String domain,
             @RequestParam(required = false) String category,
             @RequestParam(defaultValue = "50") int limit) {
+        if (lokiStats.isEnabled()) return lokiStats.pages(domList(domain), category, limit);
 
         List<String> conds  = new ArrayList<>();
         List<Object> params = new ArrayList<>();
@@ -254,6 +278,8 @@ public class StatsController {
         if (path == null || path.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "path required"));
         }
+        if (lokiStats.isEnabled()) return ResponseEntity.ok(lokiStats.pageBots(domList(domain), path, category));
+
         List<String> conds  = new ArrayList<>(List.of("path = ?"));
         List<Object> params = new ArrayList<>(List.of(path));
         if (!"all".equals(category) && !category.isBlank()) { conds.add("category = ?"); params.add(category); }

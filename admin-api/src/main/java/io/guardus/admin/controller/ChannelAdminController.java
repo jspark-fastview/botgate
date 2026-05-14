@@ -1,6 +1,7 @@
 package io.guardus.admin.controller;
 
 import io.guardus.admin.service.DnsService;
+import io.guardus.admin.service.LokiStatsService;
 import io.guardus.admin.util.CacheInvalidator;
 import io.guardus.admin.util.NanoId;
 import org.springframework.http.ResponseEntity;
@@ -37,17 +38,25 @@ public class ChannelAdminController {
             ORDER BY (bot_total + other_bot_total + user_total) DESC
             """;
 
-    private final JdbcTemplate db;
-    private final DnsService   dns;
+    private final JdbcTemplate     db;
+    private final DnsService       dns;
+    private final LokiStatsService lokiStats;
 
-    public ChannelAdminController(JdbcTemplate db, DnsService dns) {
-        this.db  = db;
-        this.dns = dns;
+    public ChannelAdminController(JdbcTemplate db, DnsService dns, LokiStatsService lokiStats) {
+        this.db        = db;
+        this.dns       = dns;
+        this.lokiStats = lokiStats;
     }
 
     /** GET /admin/stats/channels */
     @GetMapping("/admin/stats/channels")
     public List<Map<String, Object>> statsByChannel() {
+        if (lokiStats.isEnabled()) {
+            // channels 는 RDS, access_logs 메트릭은 Loki
+            List<Map<String, Object>> chs = db.queryForList(
+                    "SELECT id, name, domain, upstream, active FROM channels");
+            return lokiStats.enrichChannelStats(chs);
+        }
         return db.queryForList(STATS_SQL);
     }
 
