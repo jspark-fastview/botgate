@@ -6,17 +6,17 @@
 # ── Subnet group ──────────────────────────────────────────────────
 # content-vpc 의 a/c 서브넷 사용 (data 는 vpc.tf 에서 정의)
 resource "aws_db_subnet_group" "rds" {
-  name       = "${var.cluster_name}-rds"
+  name       = "guardus-prod-rds"
   subnet_ids = local.subnet_ids
   tags = {
-    Name = "${var.cluster_name}-rds"
+    Name = "guardus-prod-rds"
   }
 }
 
 # ── Security Group ────────────────────────────────────────────────
 # EKS 노드 SG 에서만 5432 inbound
 resource "aws_security_group" "rds" {
-  name        = "${var.cluster_name}-rds"
+  name        = "guardus-prod-rds"
   description = "Postgres 5432 from EKS nodes only"
   vpc_id      = local.vpc_id
 
@@ -45,7 +45,7 @@ resource "random_password" "rds_master" {
 }
 
 resource "aws_secretsmanager_secret" "rds_master" {
-  name                    = "guardus/rds/master"
+  name                    = "guardus/rds/prod/master"
   recovery_window_in_days = 0    # 학습용 — 즉시 삭제 가능
 }
 
@@ -64,7 +64,7 @@ resource "aws_secretsmanager_secret_version" "rds_master" {
 
 # ── Postgres 인스턴스 ─────────────────────────────────────────────
 resource "aws_db_instance" "main" {
-  identifier     = "${var.cluster_name}-pg"
+  identifier     = "guardus-prod-pg"
   engine         = "postgres"
   engine_version = "16.4"
 
