@@ -16,3 +16,10 @@ RUN apk add --no-cache curl ca-certificates \
     done \
  && apk del curl
 # ca-certificates 는 런타임에 필요하므로 유지
+
+# Config 파일들을 이미지에 baked.
+# EC2 는 docker-compose 가 volume 으로 같은 경로 mount → image 의 파일 override.
+# K8s 는 volume mount 없음 → image 의 파일 사용.
+COPY nginx.conf       /usr/local/openresty/nginx/conf/nginx.conf
+COPY conf.d/dev/      /etc/nginx/conf.d/
+COPY lua/             /etc/nginx/lua/
