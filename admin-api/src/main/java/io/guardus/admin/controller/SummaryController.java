@@ -58,7 +58,8 @@ public class SummaryController {
         String hostFilter = (domain != null && !domain.isBlank())
                 ? "| host=`" + domain + "` " : "";
         // 모든 stream 의 access_logs (oprenresty pod 의 JSON)
-        String baseSel = "{namespace=\"guardus\", app=\"openresty\"} | json " + hostFilter;
+        // | __error__=`` 필수 — JSON 추출 라벨로 sum by (...) 집계 시 필요 (parse error 행 제외)
+        String baseSel = "{namespace=\"guardus\", app=\"openresty\"} | json | __error__=`` " + hostFilter;
         Duration today = Duration.ofHours(24);
 
         // ── today 4-way ─────────────────────────────────────────────────────

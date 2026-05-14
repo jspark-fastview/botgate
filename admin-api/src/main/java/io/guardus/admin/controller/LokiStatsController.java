@@ -63,7 +63,7 @@ public class LokiStatsController {
         if (!loki.isEnabled()) return Map.of();
         String logql = "sum by (action) ("
                 + "count_over_time({namespace=\"guardus\", app=\"openresty\"} "
-                + "| json "
+                + "| json | __error__=`` "
                 + "[" + range + "]))";
         List<Map<String, Object>> rows = loki.instantQuery(logql);
         Map<String, Long> out = new LinkedHashMap<>();
