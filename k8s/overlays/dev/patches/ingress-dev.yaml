@@ -26,6 +26,18 @@
               service:
                 name: openresty
                 port: { number: 80 }
+    # ── 운영 어드민 (frontend SPA 직접, OpenResty 우회) ─────────
+    # EC2 의 guardus-fv.viewus.co → port 3003 패턴 동일.
+    # frontend 가 admin SPA + portal SPA 다 서빙.
+    - host: guardus-admin.viewus.co
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: { number: 3003 }
     # ── 채널 1: viewus.co ─────────────────────────
     - host: viewus.co
       http:
