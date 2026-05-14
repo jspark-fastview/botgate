@@ -37,3 +37,19 @@ output "pod_identity_associations" {
 output "kubeconfig_command" {
   value = "aws eks update-kubeconfig --name ${module.eks.cluster_name} --region ${var.region}"
 }
+
+output "rds" {
+  value = {
+    endpoint    = aws_db_instance.main.address
+    port        = aws_db_instance.main.port
+    db_name     = aws_db_instance.main.db_name
+    secret_id   = aws_secretsmanager_secret.rds_master.name
+    jdbc_url    = "jdbc:postgresql://${aws_db_instance.main.address}:${aws_db_instance.main.port}/${aws_db_instance.main.db_name}"
+  }
+}
+
+# 비번 자체는 sensitive — `terraform output -raw rds_password` 로만
+output "rds_password" {
+  value     = random_password.rds_master.result
+  sensitive = true
+}
