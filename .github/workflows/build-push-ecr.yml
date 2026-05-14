@@ -104,6 +104,12 @@ jobs:
         if: matrix.changed == 'true'
         uses: docker/setup-buildx-action@v3
 
+      # admin-api: SPA 정적 파일 (web/) 을 build context 안으로 복사
+      # Docker build context 외부 (../web) 접근 불가라 이렇게 우회.
+      - name: Copy web/ into admin-api context
+        if: matrix.changed == 'true' && matrix.component == 'admin-api'
+        run: cp -r web admin-api/web
+
       - name: Build & push
         if: matrix.changed == 'true'
         uses: docker/build-push-action@v5

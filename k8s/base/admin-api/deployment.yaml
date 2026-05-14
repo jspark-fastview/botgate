@@ -119,12 +119,5 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 2
             failureThreshold: 12
-          volumeMounts:
-            - name: web-static
-              mountPath: /app/web
-              readOnly: true
-      volumes:
-        - name: web-static
-          configMap:
-            name: web-static-placeholder
-            optional: true
+          # web/ SPA 정적 파일은 admin-api 이미지에 빌드인 (Dockerfile COPY web)
+          # 기존 web-static-placeholder ConfigMap 마운트는 빈 디렉토리로 가려서 제거.
