@@ -95,9 +95,10 @@ public class SummaryController {
             hourlyMap.add(slot);
         }
         // range query for hourly by category
+        // [1h]/step=1h 는 Loki query split 으로 빈 결과. [5m]/step=5m → Java 에서 hour bucket 합산.
         for (Map<String, Object> r : loki.rangeQuery(
-                "sum by (category) (count_over_time(" + baseSel + "[1h]))",
-                today, "1h")) {
+                "sum by (category) (count_over_time(" + baseSel + "[5m]))",
+                today, "5m")) {
             @SuppressWarnings("unchecked")
             Map<String, String> lbl = (Map<String, String>) r.get("labels");
             String cat = lbl.getOrDefault("category", "user");
@@ -181,13 +182,18 @@ public class SummaryController {
         }
 
         // ── channels ─────────────────────────────────────────────────────────
+        // IP/healthz/빈값 제외 (K8s probe 가 pod IP 를 Host 로 보냄)
+        java.util.function.Predicate<String> isRealDomain = h ->
+                h != null && !h.isEmpty()
+                && !h.equals("healthz")
+                && !h.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}(:\\d+)?$");
         Map<String, Map<String, Long>> chanAgg = new LinkedHashMap<>();
         for (Map<String, Object> r : loki.instantQuery(
                 "sum by (host) (count_over_time(" + baseSel + "[24h]))")) {
             @SuppressWarnings("unchecked")
             Map<String, String> lbl = (Map<String, String>) r.get("labels");
             String h = lbl.getOrDefault("host", "");
-            if (h.isEmpty() || h.equals("healthz")) continue;
+            if (!isRealDomain.test(h)) continue;
             chanAgg.computeIfAbsent(h, k -> new LinkedHashMap<>()).put("totalReq",
                     ((Number) r.getOrDefault("value", 0)).longValue());
         }
@@ -196,6 +202,7 @@ public class SummaryController {
             @SuppressWarnings("unchecked")
             Map<String, String> lbl = (Map<String, String>) r.get("labels");
             String h = lbl.getOrDefault("host", "");
+            if (!isRealDomain.test(h)) continue;
             chanAgg.computeIfAbsent(h, k -> new LinkedHashMap<>()).put("botReq",
                     ((Number) r.getOrDefault("value", 0)).longValue());
         }
@@ -204,6 +211,7 @@ public class SummaryController {
             @SuppressWarnings("unchecked")
             Map<String, String> lbl = (Map<String, String>) r.get("labels");
             String h = lbl.getOrDefault("host", "");
+            if (!isRealDomain.test(h)) continue;
             chanAgg.computeIfAbsent(h, k -> new LinkedHashMap<>()).put("blockedReq",
                     ((Number) r.getOrDefault("value", 0)).longValue());
         }
