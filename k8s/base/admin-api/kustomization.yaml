@@ -2,10 +2,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # 모든 admin-api 매니페스트 한 묶음
+# RDS 이관 후 PVC 불필요 — pvc.yaml 제거
 resources:
   - serviceaccount.yaml
   - configmap.yaml
-  - pvc.yaml
   - deployment.yaml
   - service.yaml
   - pdb.yaml

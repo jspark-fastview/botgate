@@ -7,9 +7,13 @@ metadata:
     app.kubernetes.io/component: api
     app.kubernetes.io/part-of: guardus
 spec:
-  replicas: 1
+  # RDS 이관 후 replicas 2. SQLite PVC 의존 사라짐 → podAffinity 제거.
+  replicas: 2
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app.kubernetes.io/name: internal-api
@@ -20,15 +24,16 @@ spec:
         app.kubernetes.io/component: api
     spec:
       serviceAccountName: internal-api
-      # SQLite PVC 가 ReadWriteOnce 이므로 admin-api 와 같은 노드에 스케줄
-      # (제한 — 추후 RDS 이관 시 affinity 제거)
+      # 2 replicas — 노드 분산
       affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app.kubernetes.io/name: admin-api
-              topologyKey: kubernetes.io/hostname
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: internal-api
+                topologyKey: kubernetes.io/hostname
       securityContext:
         fsGroup: 1000
         runAsUser: 1000
@@ -40,14 +45,20 @@ spec:
             - name: http
               containerPort: 3001
           env:
+            - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+              value: org.postgresql.Driver
+            - name: DB_POOL_MAX
+              value: "10"
+            - name: DB_POOL_MIN
+              value: "2"
             - name: OTEL_SERVICE_NAME
               value: internal-api
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: http://otel-collector.monitoring.svc:4317
-            - name: SPRING_DATASOURCE_URL
-              value: jdbc:sqlite:/app/data/botgate.db
-            - name: SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE
-              value: "1"
+          envFrom:
+            # RDS 접속 정보 (admin-api 와 공유)
+            - secretRef:
+                name: rds-credentials
           resources:
             requests: { cpu: 200m, memory: 384Mi }
             limits:   { cpu: 1000m, memory: 768Mi }
@@ -63,10 +74,3 @@ spec:
             httpGet: { path: /actuator/health, port: http }
             periodSeconds: 5
             failureThreshold: 12
-          volumeMounts:
-            - name: sqlite-data
-              mountPath: /app/data
-      volumes:
-        - name: sqlite-data
-          persistentVolumeClaim:
-            claimName: guardus-db        # admin-api 와 동일 PVC 공유 (같은 SQLite)

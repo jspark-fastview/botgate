@@ -6,7 +6,5 @@ data:
   WEB_DIR: /app/web
   OPENRESTY_HOST: openresty.guardus.svc.cluster.local
   OPENRESTY_PORT: "80"
-  SPRING_DATASOURCE_URL: jdbc:sqlite:/app/data/botgate.db
-  SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.sqlite.JDBC
-  SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "1"
-  SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "1"
+  # SPRING_DATASOURCE_URL / USERNAME / PASSWORD 는 rds-credentials Secret 에서.
+  # SPRING_DATASOURCE_DRIVER_CLASS_NAME / DB_POOL_* 는 Deployment env 직접.

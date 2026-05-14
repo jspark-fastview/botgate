@@ -7,11 +7,13 @@ metadata:
     app.kubernetes.io/component: api
     app.kubernetes.io/part-of: guardus
 spec:
-  # SQLite 단일 writer 제약 — replicas=1 강제
-  # 추후 RDS 이관 시 replicas 증가 가능
-  replicas: 1
+  # RDS 이관 후 replicas 2+. SQLite 단일 writer 제약 풀림.
+  replicas: 2
   strategy:
-    type: Recreate           # SQLite 동시 마운트 회피
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app.kubernetes.io/name: admin-api
@@ -25,11 +27,21 @@ spec:
         prometheus.io/port: "3002"
         prometheus.io/path: "/actuator/prometheus"
     spec:
-      serviceAccountName: admin-api          # IRSA 용
+      serviceAccountName: admin-api          # Pod Identity 용
       securityContext:
         fsGroup: 1000
         runAsUser: 1000
         runAsNonRoot: true
+      # 2 replicas 분산 — 같은 노드 회피
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: admin-api
+                topologyKey: kubernetes.io/hostname
       containers:
         - name: admin-api
           image: guardus/admin-api:latest    # overlay 에서 ECR 경로로 patch
@@ -41,9 +53,18 @@ spec:
           env:
             - name: SERVER_PORT
               value: "3002"
-            # K8s 환경 — schema.sql 자동 실행 (EC2 는 token-api 가 담당, K8s 는 admin-api 가 직접)
-            - name: SCHEMA_INIT_MODE
-              value: always
+            # Postgres + Flyway 모드 (Postgres JDBC driver 사용)
+            - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+              value: org.postgresql.Driver
+            - name: FLYWAY_ENABLED
+              value: "true"
+            - name: DB_POOL_MAX
+              value: "10"
+            - name: DB_POOL_MIN
+              value: "2"
+            - name: DB_INIT_SQL
+              value: ""    # Postgres 는 PRAGMA 필요 없음
+            # OTEL
             - name: OTEL_SERVICE_NAME
               value: admin-api
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -55,6 +76,9 @@ spec:
                 name: admin-api-env
             - secretRef:
                 name: admin-api-secrets
+            # RDS 접속 정보: SPRING_DATASOURCE_URL / USERNAME / PASSWORD
+            - secretRef:
+                name: rds-credentials
           resources:
             requests:
               cpu: 200m
@@ -78,7 +102,7 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 2
             failureThreshold: 3
-          startupProbe:                    # JVM 부팅 시간 확보 (60s)
+          startupProbe:                    # JVM 부팅 + Flyway migrate 시간 확보 (60s)
             httpGet:
               path: /actuator/health
               port: http
@@ -87,15 +111,10 @@ spec:
             timeoutSeconds: 2
             failureThreshold: 12
           volumeMounts:
-            - name: sqlite-data
-              mountPath: /app/data
             - name: web-static
               mountPath: /app/web
               readOnly: true
       volumes:
-        - name: sqlite-data
-          persistentVolumeClaim:
-            claimName: guardus-db
         - name: web-static
           configMap:
             name: web-static-placeholder
