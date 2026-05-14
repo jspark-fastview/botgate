@@ -58,7 +58,9 @@ public class BotClassifierService {
         List<BotPattern> mal = new ArrayList<>();
         List<BotPattern> normal = new ArrayList<>();
         for (Map<String, Object> r : rows) {
-            String patternsJson = (String) r.get("patterns");
+            // SQLite 는 TEXT (String), Postgres JSONB 는 PGobject — 양쪽 호환 위해 toString.
+            Object patternsRaw = r.get("patterns");
+            String patternsJson = patternsRaw == null ? null : patternsRaw.toString();
             List<String> patterns;
             try {
                 patterns = patternsJson != null
