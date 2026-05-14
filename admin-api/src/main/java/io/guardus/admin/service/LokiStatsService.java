@@ -246,26 +246,40 @@ public class LokiStatsService {
         if (domains.isEmpty()) return channels;
         String base = loki.baseSelectorMulti(domains);
 
+        // 5개 Loki 쿼리를 병렬로 실행 (직렬 1.8s → 병렬 max(~400ms))
+        java.util.concurrent.CompletableFuture<List<Map<String, Object>>> fHostCat =
+                java.util.concurrent.CompletableFuture.supplyAsync(() ->
+                        loki.sumByTwoLabels("host", "category", base, RANGE_30D));
+        java.util.concurrent.CompletableFuture<Map<String, Long>> fVerified =
+                java.util.concurrent.CompletableFuture.supplyAsync(() ->
+                        loki.sumByLabel("host", base + " | category=`bot` | verified=`1`", RANGE_30D));
+        java.util.concurrent.CompletableFuture<Map<String, Long>> fBlocked =
+                java.util.concurrent.CompletableFuture.supplyAsync(() ->
+                        loki.sumByLabel("host", base + " | category=`bot` | blocked=`1`", RANGE_30D));
+        java.util.concurrent.CompletableFuture<Map<String, Long>> fTotal =
+                java.util.concurrent.CompletableFuture.supplyAsync(() ->
+                        loki.sumByLabel("host", base + " | category=`bot`", RANGE_30D));
+        java.util.concurrent.CompletableFuture<List<Map<String, Object>>> fBotTypes =
+                java.util.concurrent.CompletableFuture.supplyAsync(() ->
+                        loki.sumByTwoLabels("host", "bot_name",
+                                base + " | category=`bot` | bot_name!=``", RANGE_30D));
+        java.util.concurrent.CompletableFuture.allOf(fHostCat, fVerified, fBlocked, fTotal, fBotTypes).join();
+
         // host × category
         Map<String, Map<String, Long>> hostCat = new LinkedHashMap<>();
-        for (Map<String, Object> r : loki.sumByTwoLabels("host", "category", base, RANGE_30D)) {
+        for (Map<String, Object> r : fHostCat.join()) {
             String host = (String) r.get("host");
             String cat  = (String) r.get("category");
             long  cnt   = toL(r.get("count"));
             hostCat.computeIfAbsent(host, k -> new LinkedHashMap<>()).merge(cat, cnt, Long::sum);
         }
-        // bot 카테고리만 verified/blocked
-        Map<String, Long> verified = loki.sumByLabel("host",
-                base + " | category=`bot` | verified=`1`", RANGE_30D);
-        Map<String, Long> blocked = loki.sumByLabel("host",
-                base + " | category=`bot` | blocked=`1`", RANGE_30D);
-        Map<String, Long> total   = loki.sumByLabel("host",
-                base + " | category=`bot`", RANGE_30D);
+        Map<String, Long> verified = fVerified.join();
+        Map<String, Long> blocked  = fBlocked.join();
+        Map<String, Long> total    = fTotal.join();
 
         // bot_types: host 별 bot_name distinct count
         Map<String, Long> botTypes = new LinkedHashMap<>();
-        for (Map<String, Object> r : loki.sumByTwoLabels("host", "bot_name",
-                base + " | category=`bot` | bot_name!=``", RANGE_30D)) {
+        for (Map<String, Object> r : fBotTypes.join()) {
             String host = (String) r.get("host");
             botTypes.merge(host, 1L, Long::sum);
         }
