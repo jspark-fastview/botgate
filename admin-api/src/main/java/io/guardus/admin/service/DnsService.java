@@ -1,5 +1,6 @@
 package io.guardus.admin.service;
 
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import javax.naming.directory.Attribute;
@@ -11,10 +12,14 @@ import java.util.*;
 /**
  * DNS lookup service — checks if a channel domain resolves to our ALB.
  * Mirrors checkChannelDns() in admin.js.
+ *
+ * Result 캐시 — DNS query 매번 수행하면 채널 페이지 로드 시 4 채널 × ~200ms = 1s.
+ * TTL 은 stats 와 동일 5m (CacheConfig). 운영자가 DNS 바꾸고 5분 기다리면 갱신.
  */
 @Service
 public class DnsService {
 
+    @Cacheable(value = "stats", key = "'dns:' + #domain", unless = "#result == null")
     public Map<String, Object> checkDns(String domain) {
         String expected = System.getenv().getOrDefault("ALB_HOSTNAME", "").trim();
         String cname = null;
