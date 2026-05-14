@@ -58,6 +58,9 @@ spec:
               value: org.postgresql.Driver
             - name: FLYWAY_ENABLED
               value: "true"
+            # Loki 통합 (access_logs 쿼리)
+            - name: LOKI_URL
+              value: http://loki.monitoring.svc:3100
             - name: DB_POOL_MAX
               value: "10"
             - name: DB_POOL_MIN
