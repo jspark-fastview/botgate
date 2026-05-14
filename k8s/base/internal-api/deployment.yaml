@@ -55,10 +55,16 @@ spec:
               value: internal-api
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: http://otel-collector.monitoring.svc:4317
+            # Redis 캐시 활성 (CacheConfig 분기)
+            - name: GUARDUS_REDIS_ENABLED
+              value: "true"
           envFrom:
             # RDS 접속 정보 (admin-api 와 공유)
             - secretRef:
                 name: rds-credentials
+            # Redis 자격증명 (admin-api 와 공유)
+            - secretRef:
+                name: redis-credentials
           resources:
             requests: { cpu: 200m, memory: 384Mi }
             limits:   { cpu: 1000m, memory: 768Mi }

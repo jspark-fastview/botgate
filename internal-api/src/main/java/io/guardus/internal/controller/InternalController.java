@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.guardus.internal.dto.AccessLogRequest;
 import io.guardus.internal.dto.ValidateRequest;
+import io.guardus.internal.service.TokenLookupService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -17,14 +18,16 @@ public class InternalController {
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
+    private final TokenLookupService tokenLookup;
 
     // bot_catalog 30초 메모리 캐시 (JS 동작 동일)
     private volatile Map<String, Object> catalogCache = null;
     private volatile long catalogAt = 0L;
 
-    public InternalController(JdbcTemplate jdbc, ObjectMapper objectMapper) {
+    public InternalController(JdbcTemplate jdbc, ObjectMapper objectMapper, TokenLookupService tokenLookup) {
         this.jdbc = jdbc;
         this.objectMapper = objectMapper;
+        this.tokenLookup = tokenLookup;
     }
 
     /** "www.viewus.co" / "VIEWUS.CO" → "viewus.co" */
@@ -37,13 +40,10 @@ public class InternalController {
     // POST /internal/tokens/validate
     @PostMapping("/internal/tokens/validate")
     public ResponseEntity<Map<String, Object>> validateToken(@RequestBody ValidateRequest req) {
-        var rows = jdbc.queryForList(
-            "SELECT id, plan FROM tokens WHERE token = ? AND active = 1 AND (expires_at IS NULL OR expires_at > datetime('now'))",
-            req.token()
-        );
-
-        boolean valid = !rows.isEmpty();
-        String plan = valid ? (String) rows.get(0).get("plan") : null;
+        // 토큰 lookup 은 캐싱 (TTL 1m). access_logs INSERT 는 매번.
+        Map<String, Object> tok = tokenLookup.findValid(req.token());
+        boolean valid = tok != null;
+        String plan = valid ? (String) tok.get("plan") : null;
 
         jdbc.update(
             "INSERT INTO access_logs (token, bot_ua, domain, domain_canonical, ip, path, verified, billed, category, bot_purpose, bot_name, bot_vendor, blocked) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
