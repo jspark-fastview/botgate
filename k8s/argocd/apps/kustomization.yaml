@@ -9,6 +9,8 @@ resources:
   - platform/external-secrets.yaml
   - platform/cert-manager.yaml
   - platform/kube-prometheus-stack.yaml
+  - platform/loki.yaml                       # 로그 저장
+  - platform/alloy.yaml                      # K8s pod logs → Loki 수집기
   # 애플리케이션 — overlay 기반
   - guardus/guardus-dev.yaml
   - guardus/guardus-prod.yaml

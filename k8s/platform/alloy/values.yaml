@@ -1,0 +1,61 @@
+# Grafana Alloy — log/metrics 수집기 (Promtail/Grafana Agent 후속).
+# DaemonSet 으로 노드별 1개. K8s pod stdout/stderr 수집 → Loki push.
+
+alloy:
+  configMap:
+    create: true
+    content: |-
+      // K8s pod logs 발견 + 라벨 부여
+      discovery.kubernetes "pods" {
+        role = "pod"
+      }
+
+      // Pod 메타데이터를 Loki 라벨로 변환
+      discovery.relabel "pods" {
+        targets = discovery.kubernetes.pods.targets
+
+        // 표준 라벨
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          target_label  = "app"
+        }
+
+        // 너무 verbose 한 시스템 네임스페이스 제외 (선택)
+        rule {
+          source_labels = ["namespace"]
+          regex         = "kube-system|argocd|external-secrets|cert-manager"
+          action        = "drop"
+        }
+      }
+
+      // 컨테이너 stdout/stderr 수집
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pods.output
+        forward_to = [loki.write.default.receiver]
+      }
+
+      // Loki 로 push — single-binary 모드 service 명
+      loki.write "default" {
+        endpoint {
+          url = "http://loki.monitoring.svc:3100/loki/api/v1/push"
+        }
+      }
+
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+controller:
+  type: daemonset

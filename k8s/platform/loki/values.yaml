@@ -1,0 +1,73 @@
+# Loki — single-binary 모드 (학습/소규모 운영).
+# 추후 트래픽 늘면 simple-scalable 또는 distributed 로 마이그레이션 가능.
+#
+# 저장:
+#   - chunks/index: local PVC gp3 10GB (60일 유지 = 약 5GB 예상)
+#   - 운영급은 S3 backend 권장 (별도 작업)
+
+deploymentMode: SingleBinary
+
+singleBinary:
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 1000m, memory: 1Gi }
+  persistence:
+    enabled: true
+    storageClass: gp3
+    size: 10Gi
+
+# 학습용 — auth 비활성 (multi-tenant 안 씀)
+loki:
+  auth_enabled: false
+
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+
+  storage:
+    type: filesystem
+
+  limits_config:
+    retention_period: 60d
+    ingestion_rate_mb: 16
+    ingestion_burst_size_mb: 32
+    max_query_lookback: 60d
+
+  compactor:
+    retention_enabled: true
+    retention_delete_delay: 2h
+    retention_delete_worker_count: 150
+    delete_request_store: filesystem
+
+  ruler:
+    enable_api: true
+
+# scalable/distributed 컴포넌트 비활성 (single-binary 사용)
+read:    { replicas: 0 }
+write:   { replicas: 0 }
+backend: { replicas: 0 }
+
+# 캐시 (학습엔 비활성)
+chunksCache:    { enabled: false }
+resultsCache:   { enabled: false }
+
+# gateway (nginx) — single-binary 모드면 굳이 필요 없음
+gateway:
+  enabled: false
+
+# 모니터링 ServiceMonitor (KPS 와 연동)
+monitoring:
+  selfMonitoring:        { enabled: false }   # 별도 logs-to-loki 흐름 방지
+  serviceMonitor:        { enabled: true, namespace: monitoring }
+  lokiCanary:            { enabled: false }
+  dashboards:            { enabled: false }
+
+# Helm chart 안의 test pod 비활성
+test: { enabled: false }
