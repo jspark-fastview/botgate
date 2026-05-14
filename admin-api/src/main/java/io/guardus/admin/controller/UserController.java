@@ -173,7 +173,7 @@ public class UserController {
         Map<String, Object> result = siteVerify.verify(domain, verifyToken);
         if (Boolean.TRUE.equals(result.get("verified"))) {
             db.update(
-                "UPDATE channels SET verified_at = datetime('now'), verification_method = ? WHERE id = ?",
+                "UPDATE channels SET verified_at = CURRENT_TIMESTAMP, verification_method = ? WHERE id = ?",
                 result.get("method"), id);
             CacheInvalidator.invalidate();
         }

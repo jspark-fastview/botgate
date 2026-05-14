@@ -74,7 +74,7 @@ public class AuthController {
         }
 
         // 만료 세션 정리
-        db.update("DELETE FROM sessions WHERE user_id = ? AND expires_at < datetime('now')", user.get("id"));
+        db.update("DELETE FROM sessions WHERE user_id = ? AND expires_at < CURRENT_TIMESTAMP", user.get("id"));
 
         // 새 세션 생성
         String token     = NanoId.generate(48);

@@ -40,7 +40,7 @@ public class SessionService {
                 SELECT s.token, u.id, u.email, u.name, u.active
                 FROM sessions s
                 JOIN users u ON u.id = s.user_id
-                WHERE s.token = ? AND s.expires_at > datetime('now')
+                WHERE s.token = ? AND s.expires_at > CURRENT_TIMESTAMP
                 """, token);
 
         if (rows.isEmpty()) return null;

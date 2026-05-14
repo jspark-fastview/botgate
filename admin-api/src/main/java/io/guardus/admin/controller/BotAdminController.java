@@ -112,7 +112,7 @@ public class BotAdminController {
             db.update("""
                     UPDATE bot_catalog
                     SET name=?, vendor=?, purpose=?, patterns=?, is_malicious=?, enabled=?,
-                        updated_at=datetime('now')
+                        updated_at=CURRENT_TIMESTAMP
                     WHERE id=?
                     """, name, vendor, purpose, patsJson, isMalicious, enabled, id);
         } catch (Exception e) {

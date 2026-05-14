@@ -196,7 +196,7 @@ public class VerifyController {
             Integer cnt = db.queryForObject(
                 "SELECT COUNT(*) FROM tokens " +
                 "WHERE token = ? AND active = 1 " +
-                "  AND (expires_at IS NULL OR expires_at > datetime('now'))",
+                "  AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)",
                 Integer.class, token);
             return cnt != null && cnt > 0;
         } catch (Exception e) {
