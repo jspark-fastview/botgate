@@ -10,7 +10,8 @@ spec:
     - alias: bottlerocket@latest
 
   # IAM — Terraform karpenter module 이 만든 node role
-  role: "guardus-eks-karpenter-20250515"   # TODO terraform apply 후 정확한 이름 확인
+  # (terraform output karpenter_node_iam_role_name 결과)
+  role: "Karpenter-guardus-eks-20260515044341503700000006"
 
   # VPC subnets — EKS 가 사용하는 subnet (content-vpc public 노드 subnet)
   subnetSelectorTerms:
