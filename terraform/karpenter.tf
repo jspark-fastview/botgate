@@ -12,6 +12,9 @@ module "karpenter" {
   # Pod Identity 사용 (IRSA 대신 — 본 클러스터 표준)
   enable_pod_identity             = true
   create_pod_identity_association = true
+  # Helm chart 의 namespace / SA 와 일치해야 함 (default 는 kube-system 이라 안 맞음)
+  namespace       = "karpenter"
+  service_account = "karpenter"
 
   # Karpenter 가 노드에 부여할 IAM role
   # EKS 표준 worker 권한 + SSM (디버깅용)

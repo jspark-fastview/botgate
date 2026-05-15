@@ -37,7 +37,12 @@ spec:
           values: ["medium", "large", "xlarge", "2xlarge"]
         - key: topology.kubernetes.io/zone
           operator: In
-          values: ["ap-northeast-2a", "ap-northeast-2c"]   # content-vpc 의 가용 AZ
+          # 4 AZ 모두 — 2c IP 고갈 대응으로 b/d 도 사용 (Terraform vpc.tf 에서 태그 추가됨)
+          values:
+            - ap-northeast-2a
+            - ap-northeast-2b
+            - ap-northeast-2c
+            - ap-northeast-2d
 
       # 노드 lifecycle
       expireAfter: 720h   # 30일 후 자동 교체 (Bottlerocket 보안 패치)

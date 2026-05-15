@@ -12,7 +12,8 @@ module "eks" {
   cluster_endpoint_private_access = false
 
   vpc_id     = local.vpc_id
-  subnet_ids = local.subnet_ids
+  # 4 AZ subnet — control plane ENI 분산 + 어느 AZ 든 여유 있는 곳 사용
+  subnet_ids = local.eks_subnet_ids
 
   # Pod Identity 사용 — IRSA 용 OIDC provider 불필요
   enable_irsa = false
@@ -47,7 +48,8 @@ module "eks" {
 
       # public subnet 배치 + public IP 강제
       # (content-vpc 의 서브넷은 MapPublicIpOnLaunch=False 라 launch template 에서 명시)
-      subnet_ids = local.subnet_ids
+      # 4 AZ 다 허용 — Spot interruption 시 IP 여유 있는 AZ 로 자동 분산
+      subnet_ids = local.eks_subnet_ids
 
       # public IP 자동 할당 — NAT 없이 ECR/Secrets Manager 접근하려면 필수
       network_interfaces = [{
