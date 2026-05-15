@@ -1,18 +1,27 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { login, register } from '@/lib/api'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [mode, setMode]         = useState<'login' | 'register'>('login')
   const [name, setName]         = useState('')
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
+  const [notice, setNotice]     = useState('')
   const [loading, setLoading]   = useState(false)
+
+  // /portal 에서 토큰 만료/없음 으로 보낸 reason 표시
+  useEffect(() => {
+    const reason = searchParams?.get('reason')
+    if (reason === 'expired') setNotice('세션이 만료되었습니다. 다시 로그인해 주세요.')
+    else if (reason === 'signin') setNotice('로그인이 필요합니다.')
+  }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -86,6 +95,12 @@ export default function LoginPage() {
             {mode === 'login' ? '채널 오너 포털에 오신 걸 환영합니다.' : '이메일로 계정을 만드세요.'}
           </p>
 
+          {notice && (
+            <div style={{
+              background: '#fef3c7', color: '#92400e', borderRadius: 8,
+              padding: '10px 14px', fontSize: 13, marginBottom: 14
+            }}>{notice}</div>
+          )}
           {error && <div className="login-err">{error}</div>}
 
           <form onSubmit={handleSubmit}>

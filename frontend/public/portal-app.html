@@ -419,6 +419,23 @@
 </head>
 <body>
 
+<!-- ── 진입 즉시 토큰 체크 — 없으면 페이지 그리기 전 /login 으로 ────── -->
+<script>
+(function() {
+  if (!localStorage.getItem('portalToken')) {
+    // history 스택에 안 남도록 replace
+    window.location.replace('/login?reason=signin');
+  }
+})();
+</script>
+
+<!-- ── 세션 만료 배너 (apiFetch 가 401 받으면 표시) ───────────── -->
+<div id="session-expired-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:10000;
+     background:#dc2626;color:#fff;padding:14px;text-align:center;font-weight:600;
+     box-shadow:0 2px 12px rgba(0,0,0,.2);">
+  세션이 만료되었습니다. 로그인 페이지로 이동합니다…
+</div>
+
 <!-- ── 로그인 오버레이 ───────────────────────────────────── -->
 <div id="login-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:#fff;border-radius:20px;padding:40px 36px;width:360px;box-shadow:0 24px 80px rgba(0,0,0,.25);">
@@ -1275,6 +1292,18 @@
   /* ─── 인증 ────────────────────────────────────────── */
   function adminKey() { return localStorage.getItem('portalToken') || '' }
 
+  // 세션 만료 시 중복 redirect 방지 + 사용자에게 알림
+  let _sessionExpiredHandled = false
+  function handleSessionExpired() {
+    if (_sessionExpiredHandled) return
+    _sessionExpiredHandled = true
+    localStorage.removeItem('portalToken')
+    const banner = document.getElementById('session-expired-banner')
+    if (banner) banner.style.display = 'block'
+    // 1초 후 redirect — 사용자가 메시지 인지하도록
+    setTimeout(() => window.location.replace('/login?reason=expired'), 1000)
+  }
+
   function apiFetch(url, opts = {}) {
     const key = adminKey()
     return fetch(url, {
@@ -1282,11 +1311,11 @@
       headers: { ...opts.headers, ...(key ? { 'Authorization': `Bearer ${key}` } : {}) },
     }).then(r => {
       if (r.status === 401) {
-        // /me/* 또는 /auth/me 가 401이면 진짜 세션 만료 → 로그인 페이지로
+        // /me/* 또는 /auth/me 가 401이면 진짜 세션 만료
         // 그 외 (/admin/* 등 운영자 전용)는 그냥 throw (호출자가 catch)
         const path = String(url).replace(API, '')
         if (path.startsWith('/me/') || path.startsWith('/auth/me')) {
-          showLogin()
+          handleSessionExpired()
         }
         throw new Error('unauthorized')
       }
@@ -1296,8 +1325,7 @@
 
   function showLogin() {
     // 채널 오너 포털: 빌트인 오버레이 대신 Next.js /login 페이지로 이동
-    localStorage.removeItem('portalToken')
-    window.location.href = '/login'
+    handleSessionExpired()
   }
   function hideLogin() {
     document.getElementById('login-overlay').style.display = 'none'
