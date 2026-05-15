@@ -96,6 +96,9 @@ git push origin main        # CI/CD → EC2 자동 배포
 - apex/www 도메인 중복 등록 X — 자동 매핑됨
 - upstream 호출 시 Host 헤더 = 채널 도메인 유지 (backend ALB host-rule 호환)
 - `?_bgts=` 캐시버스터 추가 X — WordPress canonical redirect 루프 유발
+- **신규 채널 DNS 는 `guardus-endpoint.viewus.co` CNAME** — ALB hostname 직접 가리키지 말 것 (ALB 변경 시 사고 방지)
+- **`alb.ingress.kubernetes.io/group.name` 변경 X** — ALB hostname 새로 생성됨 (2026-05-15 사고 사례)
+- `alb-eks.viewus.co` 는 deprecated alias (기존 채널 호환). 새로운 건 `guardus-endpoint.viewus.co` 만 사용
 
 ## 리브랜딩 현황 (botgate → GuardUs)
 
