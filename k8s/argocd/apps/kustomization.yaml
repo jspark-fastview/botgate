@@ -12,6 +12,7 @@ resources:
   - platform/loki.yaml                       # 로그 저장
   - platform/alloy.yaml                      # K8s pod logs → Loki 수집기
   - platform/karpenter.yaml                  # 노드 자동 다양화 + Spot interruption 대응
+  - platform/argocd-ingress.yaml             # ArgoCD UI 외부 도메인 (argocd.viewus.co)
   # 애플리케이션 — overlay 기반
   - guardus/guardus-dev.yaml
   - guardus/guardus-prod.yaml

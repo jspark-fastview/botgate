@@ -1,0 +1,16 @@
+# ArgoCD server 가 ALB 뒤에 있을 때 redirect loop 방지.
+# server.insecure=true : ArgoCD 가 HTTP 모드로 listen (ALB 가 SSL 종료).
+# 단, ALB → ArgoCD 백엔드도 HTTPS 면 insecure 불필요. 우리는 HTTPS backend 라 그대로 둠.
+# 다만 redirect loop 방지로 X-Forwarded-* 헤더 신뢰:
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cmd-params-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-cmd-params-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  # ALB 통해 들어오는 X-Forwarded-Proto 신뢰
+  server.insecure: "false"
+  # ALB 가 SSL termination 후 HTTPS 로 backend 호출 — backend-protocol: HTTPS 와 매칭

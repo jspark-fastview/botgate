@@ -1,0 +1,27 @@
+# argocd.viewus.co → ALB → argocd-server
+# ArgoCD server 가 자체 TLS (port 443) 라 backend-protocol HTTPS.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server
+  namespace: argocd
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/backend-protocol: HTTPS
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/tags: Project=GuardUs,Component=argocd
+spec:
+  ingressClassName: alb
+  rules:
+    - host: argocd.viewus.co
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port: { number: 443 }
