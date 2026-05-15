@@ -114,10 +114,13 @@ public class StatsPrewarmJob {
         long t0 = System.currentTimeMillis();
         List<Map<String, Object>> sessions;
         try {
+            // 모든 valid token prewarm — controller @Cacheable key 가 Bearer header 전체라
+            // 토큰별 cache entry 분리. DISTINCT user_id 만 채우면 옛 토큰 사용자가 cache miss.
+            // user 당 토큰이 다중이면 cost ↑ 다만 max 10 으로 제한.
             sessions = db.queryForList(
-                    "SELECT DISTINCT ON (user_id) token, user_id " +
-                    "FROM sessions WHERE expires_at > CURRENT_TIMESTAMP " +
-                    "ORDER BY user_id, created_at DESC");
+                    "SELECT token, user_id FROM sessions " +
+                    "WHERE expires_at > CURRENT_TIMESTAMP " +
+                    "ORDER BY created_at DESC LIMIT 10");
         } catch (Exception e) {
             log.warn("[prewarm-{}] sessions 조회 실패: {}", tier, e.getMessage());
             return;
