@@ -163,6 +163,14 @@ function _M.warm()
     return load_channels()
 end
 
+-- 채널 cache 채워져 있는지 — K8s readinessProbe 가 사용 (cold start 트래픽 차단)
+function _M.is_ready()
+    local cache = ngx.shared.rdns_cache
+    if not cache then return false end
+    -- fresh 또는 stable cache 둘 중 하나라도 있으면 ready
+    return cache:get(CACHE_KEY) ~= nil or cache:get(STABLE_KEY) ~= nil
+end
+
 function _M.invalidate()
     ngx.shared.rdns_cache:delete(CACHE_KEY)
 end

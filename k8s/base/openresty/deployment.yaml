@@ -56,11 +56,17 @@ spec:
           resources:
             requests: { cpu: 100m, memory: 128Mi }
             limits:   { cpu: 1000m, memory: 256Mi }
+          # liveness: 단순 OpenResty 살아있는지 (channels cache 무관)
           livenessProbe:
             httpGet: { path: /, port: http, httpHeaders: [ { name: Host, value: healthz } ] }
             initialDelaySeconds: 10
             periodSeconds: 10
+          # readiness: channels cache 채워져야만 ready → cold start 트래픽 차단
+          # 새 pod 은 prefetch_admin_data 가 admin-api 에서 fetch 완료 후만 ALB target 등록.
           readinessProbe:
-            httpGet: { path: /, port: http, httpHeaders: [ { name: Host, value: healthz } ] }
-            initialDelaySeconds: 3
-            periodSeconds: 5
+            httpGet: { path: /_internal/readyz, port: http }
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            timeoutSeconds: 2
+            failureThreshold: 30   # 90s 까지 prefetch 기다림 (admin-api cold start 보완)
+            successThreshold: 1
