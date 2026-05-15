@@ -43,6 +43,9 @@ loki:
     ingestion_rate_mb: 16
     ingestion_burst_size_mb: 32
     max_query_lookback: 60d
+    # /me/stats/pages 의 path 별 group by — 봇 트래픽이 다양한 URL 이라 시리즈 500+ 흔함.
+    # 기본 500 이면 "maximum of series reached" HTTP 400 → admin-api 빈 응답.
+    max_query_series: 5000
 
   compactor:
     retention_enabled: true
