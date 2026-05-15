@@ -16,6 +16,46 @@ local _M = {}
 local CACHE_KEY = "channels_json"
 local CACHE_TTL = 60   -- seconds
 
+-- ── Redis 직접 GET (admin-api 결합도 분리) ──────────────────
+-- ChannelsRedisCache 가 admin-api 측에서 guardus:channels:json 키로 저장.
+-- admin-api 가 죽어도 Redis 가 살아있으면 새 OpenResty pod 가 채널 정보 받음.
+local REDIS_KEY = "guardus:channels:json"
+local function fetch_channels_from_redis()
+    local host = os.getenv("REDIS_HOST")
+    local auth = os.getenv("REDIS_AUTH_TOKEN")
+    if not host or host == "" then return nil end
+
+    local redis = require "resty.redis"
+    local red   = redis:new()
+    red:set_timeouts(500, 1000, 1000)  -- connect, send, read (ms)
+
+    -- ElastiCache TLS + AUTH
+    local ok, err = red:connect(host, 6379, { ssl = true, ssl_verify = false })
+    if not ok then
+        ngx.log(ngx.WARN, "[channels] redis connect fail: ", err)
+        return nil
+    end
+
+    if auth and auth ~= "" then
+        local _, aerr = red:auth(auth)
+        if aerr then
+            ngx.log(ngx.WARN, "[channels] redis auth fail: ", aerr)
+            red:close()
+            return nil
+        end
+    end
+
+    local res, gerr = red:get(REDIS_KEY)
+    -- connection pool 에 반환 (재사용)
+    red:set_keepalive(10000, 50)
+
+    if gerr or res == nil or res == ngx.null or res == "" then
+        if gerr then ngx.log(ngx.WARN, "[channels] redis get fail: ", gerr) end
+        return nil
+    end
+    return res
+end
+
 -- ── HTTP GET (cosocket) ──────────────────────────────────
 local function fetch_channels_from_api()
     local host = os.getenv("ADMIN_API_HOST") or os.getenv("TOKEN_API_HOST") or "127.0.0.1"
@@ -79,8 +119,14 @@ local function load_channels()
     local cached = cache:get(CACHE_KEY)
     if cached then return cjson.decode(cached) or {} end
 
-    -- 2. fetch
-    local body = fetch_channels_from_api()
+    -- 2a. Redis 직접 GET — admin-api 와 결합도 분리.
+    -- ChannelsRedisCache 가 admin-api 측에서 채널 변경 시 + 5분마다 sync.
+    -- admin-api 가 죽어도 Redis 가 살아있으면 OpenResty 동작.
+    local body = fetch_channels_from_redis()
+    if not body then
+        -- 2b. Redis 실패 시 admin-api 직접 HTTP (legacy fallback)
+        body = fetch_channels_from_api()
+    end
     if body then
         local channels = cjson.decode(body) or {}
         local servable = {}

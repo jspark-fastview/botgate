@@ -1,5 +1,6 @@
 package io.guardus.admin.controller;
 
+import io.guardus.admin.service.ChannelsRedisCache;
 import io.guardus.admin.service.DnsService;
 import io.guardus.admin.service.LokiStatsService;
 import io.guardus.admin.util.CacheInvalidator;
@@ -38,14 +39,23 @@ public class ChannelAdminController {
             ORDER BY (bot_total + other_bot_total + user_total) DESC
             """;
 
-    private final JdbcTemplate     db;
-    private final DnsService       dns;
-    private final LokiStatsService lokiStats;
+    private final JdbcTemplate        db;
+    private final DnsService          dns;
+    private final LokiStatsService    lokiStats;
+    private final ChannelsRedisCache  channelsRedis;   // null = Redis 비활성 (EC2)
 
-    public ChannelAdminController(JdbcTemplate db, DnsService dns, LokiStatsService lokiStats) {
-        this.db        = db;
-        this.dns       = dns;
-        this.lokiStats = lokiStats;
+    public ChannelAdminController(JdbcTemplate db, DnsService dns, LokiStatsService lokiStats,
+                                  @org.springframework.beans.factory.annotation.Autowired(required=false)
+                                  ChannelsRedisCache channelsRedis) {
+        this.db            = db;
+        this.dns           = dns;
+        this.lokiStats     = lokiStats;
+        this.channelsRedis = channelsRedis;
+    }
+
+    /** channel 변경 후 OpenResty 가 새 pod cold start 시 받을 수 있도록 Redis 동기화 */
+    private void syncChannelsRedis() {
+        if (channelsRedis != null) channelsRedis.sync();
     }
 
     /** GET /admin/stats/channels */
@@ -92,6 +102,7 @@ public class ChannelAdminController {
             throw e;
         }
         CacheInvalidator.invalidate();
+        syncChannelsRedis();
         return ResponseEntity.status(201).body(
                 Map.of("id", id, "name", name, "domain", domain, "upstream", upstream, "active", 1));
     }
@@ -117,6 +128,7 @@ public class ChannelAdminController {
         db.update("UPDATE channels SET name = ?, domain = ?, upstream = ?, active = ? WHERE id = ?",
                 name, domain, upstream, active, id);
         CacheInvalidator.invalidate();
+        syncChannelsRedis();
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
@@ -126,6 +138,7 @@ public class ChannelAdminController {
         int changed = db.update("DELETE FROM channels WHERE id = ?", id);
         if (changed == 0) return ResponseEntity.notFound().build();
         CacheInvalidator.invalidate();
+        syncChannelsRedis();
         return ResponseEntity.noContent().build();
     }
 

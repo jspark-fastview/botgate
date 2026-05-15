@@ -53,6 +53,9 @@ spec:
           envFrom:
             - secretRef:
                 name: openresty-secrets   # ADMIN_KEY, BOTGATE_BYPASS_KEY
+            # Redis 자격증명 — channels.lua 가 admin-api 결합도 분리 위해 Redis 직접 GET
+            - secretRef:
+                name: redis-credentials
           resources:
             requests: { cpu: 100m, memory: 128Mi }
             limits:   { cpu: 1000m, memory: 256Mi }

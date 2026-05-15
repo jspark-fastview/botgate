@@ -1,5 +1,6 @@
 package io.guardus.admin.controller;
 
+import io.guardus.admin.service.ChannelsRedisCache;
 import io.guardus.admin.service.DnsService;
 import io.guardus.admin.service.SessionService;
 import io.guardus.admin.service.SiteVerificationService;
@@ -24,13 +25,21 @@ public class UserController {
     private final SessionService          sessions;
     private final DnsService              dns;
     private final SiteVerificationService siteVerify;
+    private final ChannelsRedisCache      channelsRedis;  // null = Redis 비활성 (EC2)
 
     public UserController(JdbcTemplate db, SessionService sessions,
-                          DnsService dns, SiteVerificationService siteVerify) {
-        this.db         = db;
-        this.sessions   = sessions;
-        this.dns        = dns;
-        this.siteVerify = siteVerify;
+                          DnsService dns, SiteVerificationService siteVerify,
+                          @org.springframework.beans.factory.annotation.Autowired(required=false)
+                          ChannelsRedisCache channelsRedis) {
+        this.db            = db;
+        this.sessions      = sessions;
+        this.dns           = dns;
+        this.siteVerify    = siteVerify;
+        this.channelsRedis = channelsRedis;
+    }
+
+    private void syncChannelsRedis() {
+        if (channelsRedis != null) channelsRedis.sync();
     }
 
     /** 본인 소유 채널 확인 */
@@ -131,6 +140,7 @@ public class UserController {
             }
             throw e;
         }
+        syncChannelsRedis();
 
         // 검증 가이드 함께 반환 — 다음 단계 (verify → site-key) 안내
         Map<String, Object> instructions = Map.of(
@@ -183,6 +193,7 @@ public class UserController {
                 "UPDATE channels SET verified_at = CURRENT_TIMESTAMP, verification_method = ? WHERE id = ?",
                 result.get("method"), id);
             CacheInvalidator.invalidate();
+        syncChannelsRedis();
         }
         return ResponseEntity.ok(result);
     }
@@ -209,6 +220,7 @@ public class UserController {
         String key  = SiteKeys.generate();
         String hash = SiteKeys.hash(key);
         db.update("UPDATE channels SET site_key_hash = ? WHERE id = ?", hash, id);
+        syncChannelsRedis();
 
         // 평문은 이번 한 번만 노출
         return ResponseEntity.status(201).body(Map.of(
@@ -240,6 +252,7 @@ public class UserController {
         db.update("UPDATE channels SET name = ?, upstream = ?, active = ? WHERE id = ?",
                 name, upstream, active, id);
         CacheInvalidator.invalidate();
+        syncChannelsRedis();
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
@@ -255,6 +268,7 @@ public class UserController {
 
         db.update("DELETE FROM channels WHERE id = ?", id);
         CacheInvalidator.invalidate();
+        syncChannelsRedis();
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
@@ -319,6 +333,7 @@ public class UserController {
 
         db.update("DELETE FROM tokens WHERE id = ?", id);
         CacheInvalidator.invalidate();
+        syncChannelsRedis();
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
@@ -336,6 +351,7 @@ public class UserController {
                 ON CONFLICT(key) DO UPDATE SET value = excluded.value
                 """, "cache_purge_expires_at", String.valueOf(expiresAt));
         CacheInvalidator.invalidate();
+        syncChannelsRedis();
         return ResponseEntity.ok(Map.of("ok", true, "expires_at", expiresAt));
     }
 
@@ -349,6 +365,7 @@ public class UserController {
                 ON CONFLICT(key) DO UPDATE SET value = '0'
                 """, "cache_purge_expires_at");
         CacheInvalidator.invalidate();
+        syncChannelsRedis();
         return ResponseEntity.ok(Map.of("ok", true, "active", false));
     }
 
