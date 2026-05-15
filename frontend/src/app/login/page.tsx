@@ -2,12 +2,11 @@
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { login, register } from '@/lib/api'
 
 export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [mode, setMode]         = useState<'login' | 'register'>('login')
   const [name, setName]         = useState('')
   const [email, setEmail]       = useState('')
@@ -17,11 +16,14 @@ export default function LoginPage() {
   const [loading, setLoading]   = useState(false)
 
   // /portal 에서 토큰 만료/없음 으로 보낸 reason 표시
+  // window.location.search 사용 — useSearchParams 는 Next.js SSG 에서 Suspense 필요
   useEffect(() => {
-    const reason = searchParams?.get('reason')
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const reason = params.get('reason')
     if (reason === 'expired') setNotice('세션이 만료되었습니다. 다시 로그인해 주세요.')
     else if (reason === 'signin') setNotice('로그인이 필요합니다.')
-  }, [searchParams])
+  }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
