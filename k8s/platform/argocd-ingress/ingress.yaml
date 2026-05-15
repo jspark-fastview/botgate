@@ -12,6 +12,8 @@ metadata:
     alb.ingress.kubernetes.io/ssl-redirect: '443'
     alb.ingress.kubernetes.io/backend-protocol: HTTPS
     alb.ingress.kubernetes.io/healthcheck-path: /
+    # guardus-ingress 와 같은 ALB 공유 (별도 ALB 안 만듦, 비용 절감)
+    alb.ingress.kubernetes.io/group.name: guardus-shared
     alb.ingress.kubernetes.io/tags: Project=GuardUs,Component=argocd
 spec:
   ingressClassName: alb

@@ -9,6 +9,8 @@ metadata:
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
     alb.ingress.kubernetes.io/ssl-redirect: '443'
     alb.ingress.kubernetes.io/healthcheck-path: /
+    # ALB 공유 group — argocd 등 다른 Ingress 와 같은 ALB 사용 (비용 절감)
+    alb.ingress.kubernetes.io/group.name: guardus-shared
     # 인증서: overlay 에서 cert ARN 또는 host 별 ACM 자동 발견 활성화
     # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:...
     alb.ingress.kubernetes.io/tags: Project=GuardUs,Env=base
