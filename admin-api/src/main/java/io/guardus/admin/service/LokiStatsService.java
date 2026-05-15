@@ -294,14 +294,19 @@ public class LokiStatsService {
         List<Map<String, Object>> out = new ArrayList<>();
         for (Map<String, Object> c : channels) {
             String d = (String) c.get("domain");
-            Map<String, Long> cat = hostCat.getOrDefault(d, Map.of());
-            long bot = cat.getOrDefault("bot", 0L);
-            long ob  = cat.getOrDefault("other_bot", 0L);
-            long us  = cat.getOrDefault("user", 0L);
-            long mal = cat.getOrDefault("malicious", 0L);
-            long ver = verified.getOrDefault(d, 0L);
-            long blk = blocked.getOrDefault(d, 0L);
-            long tot = total.getOrDefault(d, 0L);
+            // apex + www. 두 host 의 카운트 모두 합산 (사용자가 둘을 같은 채널로 봄)
+            List<String> hosts = canonicalHosts(d);
+            long bot = 0, ob = 0, us = 0, mal = 0, ver = 0, blk = 0, tot = 0;
+            for (String h : hosts) {
+                Map<String, Long> cat = hostCat.getOrDefault(h, Map.of());
+                bot += cat.getOrDefault("bot", 0L);
+                ob  += cat.getOrDefault("other_bot", 0L);
+                us  += cat.getOrDefault("user", 0L);
+                mal += cat.getOrDefault("malicious", 0L);
+                ver += verified.getOrDefault(h, 0L);
+                blk += blocked.getOrDefault(h, 0L);
+                tot += total.getOrDefault(h, 0L);
+            }
             long lenient = Math.max(0, tot - ver - blk);
 
             Map<String, Object> m = new LinkedHashMap<>(c);
@@ -312,7 +317,10 @@ public class LokiStatsService {
             m.put("verified",        ver);
             m.put("lenient_pass",    lenient);
             m.put("blocked",         blk);
-            m.put("bot_types",       botTypes.getOrDefault(d, 0L));
+            // bot_types 도 apex+www 합산 (같은 봇이 양쪽에 있어도 unique 1로 처리하기보다 sum — 운영 표시용)
+            long bt = 0;
+            for (String h : hosts) bt += botTypes.getOrDefault(h, 0L);
+            m.put("bot_types",       bt);
             out.add(m);
         }
         // bot+other_bot+user DESC
@@ -332,5 +340,12 @@ public class LokiStatsService {
     private static boolean isRealDomain(String h) {
         return h != null && !h.isEmpty() && !h.equals("healthz")
                 && !h.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}(:\\d+)?$");
+    }
+
+    /** 채널 domain → [apex, www.apex] 두 host 모두 반환. www.x 입력해도 apex+www 둘 다. */
+    private static List<String> canonicalHosts(String domain) {
+        if (domain == null || domain.isBlank()) return List.of();
+        String apex = domain.startsWith("www.") ? domain.substring(4) : domain;
+        return List.of(apex, "www." + apex);
     }
 }

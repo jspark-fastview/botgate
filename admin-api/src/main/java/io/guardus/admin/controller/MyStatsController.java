@@ -32,19 +32,28 @@ public class MyStatsController {
         if (user == null) return List.of();
         List<Map<String, Object>> rows = db.queryForList(
                 "SELECT domain FROM channels WHERE owner_id = ?", user.get("id"));
-        List<String> domains = new ArrayList<>();
-        for (Map<String, Object> r : rows) domains.add((String) r.get("domain"));
-        return domains;
+        // 등록된 도메인 1개당 apex + www. 자동 확장
+        // (사용자가 mobilitytv.co.kr 만 등록해도 www.mobilitytv.co.kr 트래픽도 같은 채널로 카운트)
+        java.util.LinkedHashSet<String> expanded = new java.util.LinkedHashSet<>();
+        for (Map<String, Object> r : rows) {
+            String d = (String) r.get("domain");
+            if (d == null) continue;
+            expanded.add(d);
+            if (d.startsWith("www.")) expanded.add(d.substring(4));
+            else                       expanded.add("www." + d);
+        }
+        return new ArrayList<>(expanded);
     }
 
-    /** 채널 selector 적용: filter가 user 소유 도메인에 포함되면 그것만, 아니면 전체 */
+    /** 채널 selector 적용: filter가 user 소유 도메인에 포함되면 apex+www 둘 다, 아니면 전체 */
     private List<String> filterDomains(List<String> myDomains, String filter) {
         if (filter == null || filter.isBlank() || "all".equals(filter)) return myDomains;
-        if (myDomains.contains(filter)) return List.of(filter);
-        // apex/www 자동 매칭
-        for (String d : myDomains) {
-            if (filter.equals("www." + d) || ("www." + filter).equals(d)) return List.of(filter);
-        }
+        // filter 와 같은 canonical (www. 제거) 가진 모든 host 포함
+        String canonical = filter.startsWith("www.") ? filter.substring(4) : filter;
+        List<String> matched = myDomains.stream()
+                .filter(d -> d.equals(canonical) || d.equals("www." + canonical))
+                .toList();
+        if (!matched.isEmpty()) return matched;
         return List.of(); // 본인 채널 아님 → empty
     }
 
