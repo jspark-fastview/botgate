@@ -429,6 +429,21 @@
 })();
 </script>
 
+<!-- ── Service Worker 등록 — 새 deploy 자동 감지 + reload ───── -->
+<script>
+(function() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+  // 새 SW 가 활성화되어 controller 가 바뀌면 페이지 reload (한 번만)
+  let _reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (_reloaded) return;
+    _reloaded = true;
+    window.location.reload();
+  });
+})();
+</script>
+
 <!-- ── 세션 만료 배너 (apiFetch 가 401 받으면 표시) ───────────── -->
 <div id="session-expired-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:10000;
      background:#dc2626;color:#fff;padding:14px;text-align:center;font-weight:600;
