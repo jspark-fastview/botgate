@@ -16,3 +16,4 @@ helmCharts:
 resources:
   - ec2nodeclass.yaml
   - nodepool.yaml
+  - rbac-extra.yaml
