@@ -60,13 +60,19 @@ public class SummaryController {
         // 모든 stream 의 access_logs (oprenresty pod 의 JSON)
         // | __error__=`` 필수 — JSON 추출 라벨로 sum by (...) 집계 시 필요 (parse error 행 제외)
         String baseSel = "{namespace=\"guardus\", app=\"openresty\"} | json | __error__=`` " + hostFilter;
-        Duration today = Duration.ofHours(24);
+        // KST today 자정 ~ now 윈도우. 24h sliding 은 어제 데이터가 섞여서 hour bucket 이 어긋났음.
+        java.time.ZoneId KST = java.time.ZoneId.of("Asia/Seoul");
+        Instant nowI = Instant.now();
+        Instant kstMidnight = nowI.atZone(KST).toLocalDate().atStartOfDay(KST).toInstant();
+        long todaySec = Math.max(60L, java.time.Duration.between(kstMidnight, nowI).getSeconds());
+        Duration today = Duration.ofSeconds(todaySec);
+        String todayWindow = "[" + todaySec + "s]";   // LogQL 의 [duration] 식
 
         // ── today 4-way ─────────────────────────────────────────────────────
         Map<String, Long> today4way = new LinkedHashMap<>();
         for (String c : List.of("user", "bot", "other_bot", "malicious")) today4way.put(c, 0L);
         for (Map<String, Object> r : loki.instantQuery(
-                "sum by (category) (count_over_time(" + baseSel + "[24h]))")) {
+                "sum by (category) (count_over_time(" + baseSel + todayWindow + "))")) {
             @SuppressWarnings("unchecked")
             Map<String, String> lbl = (Map<String, String>) r.get("labels");
             String cat = lbl.getOrDefault("category", "user");
@@ -81,7 +87,7 @@ public class SummaryController {
         // ── today blocked ────────────────────────────────────────────────────
         long blockedToday = 0;
         for (Map<String, Object> r : loki.instantQuery(
-                "sum(count_over_time(" + baseSel + "| blocked=`1` [24h]))")) {
+                "sum(count_over_time(" + baseSel + "| blocked=`1` " + todayWindow + "))")) {
             blockedToday = ((Number) r.getOrDefault("value", 0)).longValue();
             break;
         }
@@ -106,9 +112,9 @@ public class SummaryController {
             @SuppressWarnings("unchecked")
             List<double[]> series = (List<double[]>) r.get("series");
             if (series == null) continue;
-            // 각 시계열 포인트의 ts → 시간 → bucket
+            // 각 시계열 포인트의 ts → KST 시간 → bucket
             for (double[] point : series) {
-                int hour = Instant.ofEpochSecond((long) point[0]).atZone(java.time.ZoneOffset.UTC).getHour();
+                int hour = Instant.ofEpochSecond((long) point[0]).atZone(KST).getHour();
                 if (hour < 0 || hour >= 24) continue;
                 Long cur = (Long) hourlyMap.get(hour).get(cat);
                 hourlyMap.get(hour).put(cat, cur + (long) point[1]);
@@ -120,7 +126,7 @@ public class SummaryController {
         Map<String, Long[]> actionByBot = new LinkedHashMap<>();   // [block, meter, pass]
         for (Map<String, Object> r : loki.instantQuery(
                 "sum by (bot_name, bot_purpose, action) (count_over_time(" + baseSel +
-                "| category != `user` | bot_name != `` [24h]))")) {
+                "| category != `user` | bot_name != `` " + todayWindow + "))")) {
             @SuppressWarnings("unchecked")
             Map<String, String> lbl = (Map<String, String>) r.get("labels");
             String name = lbl.getOrDefault("bot_name", "");
@@ -156,7 +162,7 @@ public class SummaryController {
         Map<String, Long> purposes = new LinkedHashMap<>();
         for (Map<String, Object> r : loki.instantQuery(
                 "sum by (bot_purpose) (count_over_time(" + baseSel +
-                "| category != `user` | bot_purpose != `` [24h]))")) {
+                "| category != `user` | bot_purpose != `` " + todayWindow + "))")) {
             @SuppressWarnings("unchecked")
             Map<String, String> lbl = (Map<String, String>) r.get("labels");
             String p = lbl.getOrDefault("bot_purpose", "generic");
@@ -167,7 +173,7 @@ public class SummaryController {
         Map<String, Object> actions = new LinkedHashMap<>();
         for (String a : List.of("pass", "meter", "verify", "token_only", "block", "gone")) actions.put(a, 0L);
         for (Map<String, Object> r : loki.instantQuery(
-                "sum by (action) (count_over_time(" + baseSel + "[24h]))")) {
+                "sum by (action) (count_over_time(" + baseSel + todayWindow + "))")) {
             @SuppressWarnings("unchecked")
             Map<String, String> lbl = (Map<String, String>) r.get("labels");
             String act = lbl.getOrDefault("action", "pass");
@@ -189,7 +195,7 @@ public class SummaryController {
                 && !h.matches("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}(:\\d+)?$");
         Map<String, Map<String, Long>> chanAgg = new LinkedHashMap<>();
         for (Map<String, Object> r : loki.instantQuery(
-                "sum by (host) (count_over_time(" + baseSel + "[24h]))")) {
+                "sum by (host) (count_over_time(" + baseSel + todayWindow + "))")) {
             @SuppressWarnings("unchecked")
             Map<String, String> lbl = (Map<String, String>) r.get("labels");
             String h = lbl.getOrDefault("host", "");
@@ -198,7 +204,7 @@ public class SummaryController {
                     ((Number) r.getOrDefault("value", 0)).longValue());
         }
         for (Map<String, Object> r : loki.instantQuery(
-                "sum by (host) (count_over_time(" + baseSel + "| category != `user` [24h]))")) {
+                "sum by (host) (count_over_time(" + baseSel + "| category != `user` " + todayWindow + "))")) {
             @SuppressWarnings("unchecked")
             Map<String, String> lbl = (Map<String, String>) r.get("labels");
             String h = lbl.getOrDefault("host", "");
@@ -207,7 +213,7 @@ public class SummaryController {
                     ((Number) r.getOrDefault("value", 0)).longValue());
         }
         for (Map<String, Object> r : loki.instantQuery(
-                "sum by (host) (count_over_time(" + baseSel + "| blocked=`1` [24h]))")) {
+                "sum by (host) (count_over_time(" + baseSel + "| blocked=`1` " + todayWindow + "))")) {
             @SuppressWarnings("unchecked")
             Map<String, String> lbl = (Map<String, String>) r.get("labels");
             String h = lbl.getOrDefault("host", "");
