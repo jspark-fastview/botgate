@@ -1,9 +1,12 @@
-# botgate
+# GuardUs (구 botgate)
 
 OpenResty 기반 AI 봇 트래픽 수익화 게이트웨이.
 
 AI 크롤러(GPTBot, ClaudeBot 등)의 rDNS 이중 검증 + 토큰 인증으로 유료 접근을 관리하고,  
 등록된 채널(사이트)을 리버스 프록시로 연결해 봇 트래픽 통계를 수집합니다.
+
+> **현재 운영**: EKS (`guardus-eks`, ap-northeast-2). 매니페스트 / 운영 정보는 [`k8s/README.md`](k8s/README.md).  
+> **이 문서**: 로컬 / dev 환경 (Docker Compose) 위주. 옛 token-api (Fastify + SQLite) 아키텍처 그대로. 운영은 **admin-api (Spring Boot + Postgres + Redis + Loki)** 로 옮겨졌음.
 
 ## 아키텍처
 
@@ -172,12 +175,14 @@ ssh -L 3000:localhost:3000 ec2-user@<EC2_IP>
 open http://localhost:3000/ui/admin.html
 ```
 
-## SQLite 스키마
+## DB 스키마
+
+> Dev: SQLite (`botgate.db`). Prod: Postgres (`guardus-prod-pg-2a` @ ap-northeast-2a). 스키마 동일, Flyway migration 으로 양쪽 호환.
 
 ```sql
 tokens        -- API 토큰 (id, token, owner, plan, active, user_id)
 access_logs   -- 봇 접근 기록 (token, bot_ua, domain, ip, path, verified, billed)
-channels      -- 등록 채널 (id, name, domain, upstream, active, owner_id)
+channels      -- 등록 채널 (id, name, domain, upstream, active, owner_id, integration_mode)
 path_rules    -- 경로 규칙 (pattern, action: allow|block|meter)
 users         -- 채널 오너 계정 (email, password_hash, name, active)
 sessions      -- 로그인 세션 (token, user_id, expires_at)
