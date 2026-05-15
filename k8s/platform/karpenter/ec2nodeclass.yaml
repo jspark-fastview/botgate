@@ -30,4 +30,4 @@ spec:
   tags:
     Name: guardus-eks-karpenter-node
     Component: karpenter
-    karpenter.sh/managed-by-karpenter: "true"
+    karpenter.sh/discovery: guardus-eks   # interruption queue 가 이 tag 로 인스턴스 식별

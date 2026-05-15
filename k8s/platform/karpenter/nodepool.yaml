@@ -8,7 +8,9 @@ spec:
   template:
     metadata:
       labels:
-        karpenter.sh/managed-by-karpenter: "true"
+        # karpenter.sh/* 는 Karpenter 자체 reserved domain — 사용 금지.
+        # 사용자 label 용 guardus.io/* 사용.
+        guardus.io/provisioner: karpenter
     spec:
       nodeClassRef:
         group: karpenter.k8s.aws

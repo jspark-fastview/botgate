@@ -15,10 +15,16 @@ controller:
     requests: { cpu: 200m, memory: 256Mi }
     limits:   { cpu: 1000m, memory: 512Mi }
 
-# Karpenter 자체는 stable 워크로드 → 기본 노드그룹 (managed) 위에서 동작
-# nodeSelector / tolerations 명시해서 Karpenter-managed 노드는 피함
-nodeSelector:
-  karpenter.sh/managed-by-karpenter: "false"
+# Karpenter 자체는 stable 워크로드 → 기본 managed node group 위에서 동작.
+# Karpenter-managed 노드는 affinity 로 회피 (preferred — managed group 없으면 Karpenter 위에서도 OK).
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: guardus.io/provisioner
+              operator: DoesNotExist
 
 # 보안: Pod Identity 사용 — serviceAccount.annotations 의 eks.amazonaws.com/role-arn 불필요
 serviceAccount:
