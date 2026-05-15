@@ -17,7 +17,12 @@ const nextConfig: NextConfig = {
         headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
       },
       {
-        source: '/:file(.+\\.(css|html))',
+        source: '/:file(.+\\.css)',
+        headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
+      },
+      // sw.js 도 항상 fresh 받아야 새 SW 감지 가능
+      {
+        source: '/sw.js',
         headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
       },
     ]
