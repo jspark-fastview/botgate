@@ -3,9 +3,9 @@ kind: PodDisruptionBudget
 metadata:
   name: admin-api
 spec:
-  # replicas=1 이라 maxUnavailable=0 으로 노드 drain 시 보호
-  # (Recreate 전략과 함께 — 다운타임은 발생하지만 정책적으로 표시)
-  minAvailable: 0
+  # replicas=2 — 동시 1개 이하만 disruption 허용. voluntary drain (node upgrade)
+  # 시 PDB 준수. Spot unvoluntary 는 막을 수 없지만 topologySpread 가 위험 분산.
+  maxUnavailable: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: admin-api

@@ -33,6 +33,20 @@ spec:
                   matchLabels:
                     app.kubernetes.io/name: openresty
                 topologyKey: kubernetes.io/hostname
+      # AZ + 노드 분산 — Spot 1 AZ 사망 시 다른 AZ pod 생존
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: openresty
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: openresty
       containers:
         - name: openresty
           image: guardus/openresty:latest

@@ -32,7 +32,7 @@ spec:
         fsGroup: 1000
         runAsUser: 1000
         runAsNonRoot: true
-      # 2 replicas 분산 — 같은 노드 회피
+      # 2 replicas 분산 — 같은 노드 회피 (soft)
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -42,6 +42,21 @@ spec:
                   matchLabels:
                     app.kubernetes.io/name: admin-api
                 topologyKey: kubernetes.io/hostname
+      # AZ + 노드 분산 — Spot interruption 1 AZ 동시 사망해도 다른 AZ 의 pod 생존.
+      # ScheduleAnyway: 노드 부족 시 강제 schedule (preferred 와 비슷한 효과).
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: admin-api
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: admin-api
       containers:
         - name: admin-api
           image: guardus/admin-api:latest    # overlay 에서 ECR 경로로 patch
