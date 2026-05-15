@@ -110,13 +110,19 @@ public class StatsPrewarmJob {
         return all;
     }
 
+    /** prewarm self-HTTP 전용 ExecutorService — concurrency 8 제한 */
+    private final java.util.concurrent.ExecutorService executor =
+            java.util.concurrent.Executors.newFixedThreadPool(8,
+                    r -> {
+                        Thread t = new Thread(r, "prewarm");
+                        t.setDaemon(true);
+                        return t;
+                    });
+
     private void runForAllSessions(String tier, List<String> endpoints) {
         long t0 = System.currentTimeMillis();
         List<Map<String, Object>> sessions;
         try {
-            // 모든 valid token prewarm — controller @Cacheable key 가 Bearer header 전체라
-            // 토큰별 cache entry 분리. DISTINCT user_id 만 채우면 옛 토큰 사용자가 cache miss.
-            // user 당 토큰이 다중이면 cost ↑ 다만 max 10 으로 제한.
             sessions = db.queryForList(
                     "SELECT token, user_id FROM sessions " +
                     "WHERE expires_at > CURRENT_TIMESTAMP " +
@@ -127,23 +133,31 @@ public class StatsPrewarmJob {
         }
         if (sessions.isEmpty()) return;
 
-        int ok = 0, fail = 0;
+        // 병렬 호출 — concurrency 8 로 admin-api thread pool 부담 적게
+        java.util.concurrent.atomic.AtomicInteger ok   = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.atomic.AtomicInteger fail = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.List<java.util.concurrent.CompletableFuture<Void>> futures = new java.util.ArrayList<>();
         for (Map<String, Object> s : sessions) {
             String token = (String) s.get("token");
             HttpHeaders h = new HttpHeaders();
             h.setBearerAuth(token);
             HttpEntity<Void> req = new HttpEntity<>(h);
             for (String ep : endpoints) {
-                try {
-                    http.exchange(selfUrl + ep, HttpMethod.GET, req, String.class);
-                    ok++;
-                } catch (Exception e) {
-                    fail++;
-                }
+                futures.add(java.util.concurrent.CompletableFuture.runAsync(() -> {
+                    try {
+                        http.exchange(selfUrl + ep, HttpMethod.GET, req, String.class);
+                        ok.incrementAndGet();
+                    } catch (Exception e) {
+                        fail.incrementAndGet();
+                    }
+                }, executor));
             }
         }
+        java.util.concurrent.CompletableFuture.allOf(
+                futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+
         long ms = System.currentTimeMillis() - t0;
-        log.info("[prewarm-{}] {} users × {} eps — ok={} fail={} ({} ms)",
-                tier, sessions.size(), endpoints.size(), ok, fail, ms);
+        log.info("[prewarm-{}] {} users × {} eps — ok={} fail={} ({} ms, parallel)",
+                tier, sessions.size(), endpoints.size(), ok.get(), fail.get(), ms);
     }
 }

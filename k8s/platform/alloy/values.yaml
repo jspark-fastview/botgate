@@ -40,10 +40,36 @@ alloy:
         }
       }
 
-      // 컨테이너 stdout/stderr 수집
+      // 컨테이너 stdout/stderr 수집 — openresty JSON access log 는 별도 처리 (host/category stream label promote)
       loki.source.kubernetes "pods" {
         targets    = discovery.relabel.pods.output
+        forward_to = [loki.process.openresty_json.receiver]
+      }
+
+      // OpenResty access log JSON parse → host/category 를 stream label 로 승격.
+      // 효과: host=~ 매칭이 chunk 단위 인덱스로 → /me/stats/* 등 cache miss 10-100× 빠름.
+      // cardinality 안전: host 10개 이내, category 4종 (user/bot/other_bot/malicious).
+      // bot_name/path 는 cardinality 커서 line filter 유지.
+      loki.process "openresty_json" {
         forward_to = [loki.write.default.receiver]
+
+        // app=openresty 인 line 만 JSON parse (다른 stream 은 stage skip)
+        stage.match {
+          selector = "{app=\"openresty\"}"
+          stage.json {
+            expressions = {
+              host     = "host",
+              category = "category",
+            }
+          }
+          // 빈 값이면 stream label 안 박힘 (Loki 자동)
+          stage.labels {
+            values = {
+              host     = "",
+              category = "",
+            }
+          }
+        }
       }
 
       // Loki 로 push — single-binary 모드 service 명

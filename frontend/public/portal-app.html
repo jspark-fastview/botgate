@@ -1509,6 +1509,25 @@
       series = [{ data: series, color: '#2b6df6', label: 'AI 봇' }];
     }
 
+    // 데이터 합산 0 또는 1일치만 있으면 fallback 메시지
+    const totalCount = series.reduce((s, ser) =>
+      s + (ser.data || []).reduce((ss, r) => ss + (r.count || 0), 0), 0);
+    const uniqueDates = new Set();
+    series.forEach(ser => (ser.data || []).forEach(r => uniqueDates.add(r.date)));
+    if (totalCount === 0) {
+      chart.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--ink-mute);font-size:13px;text-align:center;padding:24px;">아직 데이터가 수집되지 않았습니다.<br><span style="font-size:12px;">트래픽이 들어오면 차트가 채워집니다.</span></div>';
+      return;
+    }
+    if (uniqueDates.size === 1) {
+      const d = [...uniqueDates][0];
+      chart.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--ink-2);font-size:13px;gap:8px;padding:24px;text-align:center;">
+        <div style="font-size:24px;font-weight:800;color:var(--brand);">${totalCount.toLocaleString()}건</div>
+        <div>${d} 하루치만 수집됨</div>
+        <div style="font-size:12px;color:var(--ink-mute);">시간이 지나며 일별 추이가 그려집니다.</div>
+      </div>`;
+      return;
+    }
+
     const today = new Date();
     const allSlots = series.map(s =>
       Array.from({length: days}, (_, i) => {
@@ -2423,6 +2442,23 @@
     document.getElementById('analytics-back-btn').style.display  = 'none';
     chart.innerHTML = ''; chartx.innerHTML = '';
     if (legendEl) legendEl.innerHTML = '';
+
+    // 데이터 0 또는 1일치만 있으면 fallback 메시지
+    if (!Array.isArray(dailyBots) || dailyBots.length === 0) {
+      chart.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--ink-mute);font-size:13px;text-align:center;padding:24px;">아직 AI 봇 요청 데이터가 수집되지 않았습니다.<br><span style="font-size:12px;">트래픽이 들어오면 차트가 채워집니다.</span></div>';
+      return;
+    }
+    const uniqueDates = new Set(dailyBots.map(r => r.date));
+    if (uniqueDates.size < 2) {
+      const onlyDate = [...uniqueDates][0] || '';
+      const total = dailyBots.reduce((s, r) => s + (r.count || 0), 0);
+      chart.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--ink-2);font-size:13px;gap:8px;padding:24px;text-align:center;">
+        <div style="font-size:24px;font-weight:800;color:var(--brand);">${total.toLocaleString()}건</div>
+        <div>${onlyDate} 하루치 데이터만 수집됨</div>
+        <div style="font-size:12px;color:var(--ink-mute);">시간이 지나며 일별 추이가 그려집니다.</div>
+      </div>`;
+      return;
+    }
 
     const today = new Date();
     const dates = Array.from({ length: 30 }, (_, i) => {
