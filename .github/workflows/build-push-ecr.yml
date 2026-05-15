@@ -154,4 +154,15 @@ jobs:
           fi
           git add k8s/overlays/dev/kustomization.yaml
           git commit -m "ci: bump dev image tags to ${GITHUB_SHA::7}"
-          git push
+          # race condition (다른 commit 이 거의 동시에 들어와서 push reject) 대응: rebase + 재시도
+          for i in 1 2 3 4 5; do
+            if git push; then
+              echo "push 성공 (시도 $i)"
+              exit 0
+            fi
+            echo "push reject — pull --rebase 후 재시도 ($i/5)"
+            git pull --rebase origin main
+            sleep $((i * 2))
+          done
+          echo "push 5회 실패 — abort"
+          exit 1
