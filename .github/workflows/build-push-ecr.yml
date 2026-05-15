@@ -125,9 +125,14 @@ jobs:
 
   bump:
     name: Bump dev image tags (GitOps)
-    needs: build
+    needs: [detect, build]
     runs-on: ubuntu-latest
     if: always() && needs.build.result == 'success'
+    env:
+      CHG_ADMIN: ${{ needs.detect.outputs.admin-api }}
+      CHG_INTERNAL: ${{ needs.detect.outputs.internal-api }}
+      CHG_OPENRESTY: ${{ needs.detect.outputs.openresty }}
+      CHG_FRONTEND: ${{ needs.detect.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -135,14 +140,21 @@ jobs:
 
       - name: Bump image tags in overlay/dev
         run: |
-          # kustomize edit set image — SHA 태그로 핀
+          # kustomize edit set image — 변경된 component 만 SHA bump
+          # (변경 안 된 건 그대로 둠 — ECR 에 없는 SHA 로 갱신하면 ImagePullBackOff)
           curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz | tar xz
           sudo mv kustomize /usr/local/bin/
 
           cd k8s/overlays/dev
-          for c in admin-api internal-api openresty frontend; do
+          bump() {
+            local c="$1"
             kustomize edit set image guardus/$c=${ECR_REGISTRY}/guardus/$c:${GITHUB_SHA}
-          done
+            echo "  bumped: $c"
+          }
+          [ "$CHG_ADMIN"     = "true" ] && bump admin-api    || echo "  skip: admin-api (변경 없음)"
+          [ "$CHG_INTERNAL"  = "true" ] && bump internal-api || echo "  skip: internal-api (변경 없음)"
+          [ "$CHG_OPENRESTY" = "true" ] && bump openresty    || echo "  skip: openresty (변경 없음)"
+          [ "$CHG_FRONTEND"  = "true" ] && bump frontend     || echo "  skip: frontend (변경 없음)"
 
       - name: Commit & push
         run: |
