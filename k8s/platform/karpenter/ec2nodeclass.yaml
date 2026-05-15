@@ -1,0 +1,32 @@
+# EC2NodeClass — Karpenter 가 띄울 EC2 instance 의 AMI / IAM / 네트워크 정의
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  # Bottlerocket ARM64 — 기존 managed node group 과 동일
+  amiFamily: Bottlerocket
+  amiSelectorTerms:
+    - alias: bottlerocket@latest
+
+  # IAM — Terraform karpenter module 이 만든 node role
+  role: "guardus-eks-karpenter-20250515"   # TODO terraform apply 후 정확한 이름 확인
+
+  # VPC subnets — EKS 가 사용하는 subnet (content-vpc public 노드 subnet)
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: guardus-eks
+  # Terraform karpenter module 이 노드용 subnet 에 자동 tag 부여 (아래 참조).
+  # 만약 tag 없으면 수동 추가:
+  #   aws ec2 create-tags --resources subnet-xxx --tags Key=karpenter.sh/discovery,Value=guardus-eks
+
+  # SecurityGroups — EKS 노드 SG
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: guardus-eks
+
+  # 노드에 자동 적용 tag (Cost Allocation 등)
+  tags:
+    Name: guardus-eks-karpenter-node
+    Component: karpenter
+    karpenter.sh/managed-by-karpenter: "true"

@@ -1,0 +1,37 @@
+# Karpenter controller — Pod Identity 사용 (Terraform module 이 association 생성).
+# SettingsConfigMap 으로 cluster 정보 주입.
+
+settings:
+  clusterName: guardus-eks
+  # Terraform karpenter module 이 만든 interruption queue name
+  # (eks 클러스터 이름과 동일하게 만들어짐)
+  interruptionQueue: guardus-eks
+  # batchIdleDuration / maxBatchDuration: scheduling 효율
+  batchMaxDuration: 10s
+  batchIdleDuration: 1s
+
+controller:
+  resources:
+    requests: { cpu: 200m, memory: 256Mi }
+    limits:   { cpu: 1000m, memory: 512Mi }
+
+# Karpenter 자체는 stable 워크로드 → 기본 노드그룹 (managed) 위에서 동작
+# nodeSelector / tolerations 명시해서 Karpenter-managed 노드는 피함
+nodeSelector:
+  karpenter.sh/managed-by-karpenter: "false"
+
+# 보안: Pod Identity 사용 — serviceAccount.annotations 의 eks.amazonaws.com/role-arn 불필요
+serviceAccount:
+  create: true
+  name: karpenter
+
+# 로그 verbosity
+logLevel: info
+
+# replicas — controller HA
+replicas: 2
+
+# PDB
+podDisruptionBudget:
+  name: karpenter
+  maxUnavailable: 1

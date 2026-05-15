@@ -1,0 +1,59 @@
+# NodePool — Spot/On-Demand mix + 다양한 instance types
+# 한 번에 모든 Spot 이 interrupt 되는 사고 방지.
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: default
+spec:
+  template:
+    metadata:
+      labels:
+        karpenter.sh/managed-by-karpenter: "true"
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind:  EC2NodeClass
+        name:  default
+
+      # 인스턴스 다양화 — ARM64 (Graviton) + 다양한 family/size.
+      # Karpenter 가 workload requirements 보고 적절한 거 자동 선택.
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["arm64"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]   # Spot 우선, 부족 시 On-Demand 자동
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["t", "c", "m"]          # t (general), c (compute), m (general)
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values: ["3"]                    # t4g/c7g/m7g 등 최신 세대
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values: ["medium", "large", "xlarge", "2xlarge"]
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values: ["ap-northeast-2a", "ap-northeast-2c"]   # content-vpc 의 가용 AZ
+
+      # 노드 lifecycle
+      expireAfter: 720h   # 30일 후 자동 교체 (Bottlerocket 보안 패치)
+
+  # Consolidation — 사용 안 하는 노드 자동 정리 → 비용 절감
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 60s
+    # budgets: 한 번에 disruption 되는 노드 수 제한
+    budgets:
+      - nodes: "10%"     # 평소 10% 만 동시 disruption
+      - nodes: "0"       # 사용자 정의 시간대엔 disruption 금지 (선택)
+        schedule: "0 9 * * mon-fri"
+        duration: 8h
+
+  # 비용 / 성능 weight — Spot 충분하면 그쪽으로 끌어감
+  weight: 100
+
+  limits:
+    cpu: 100
+    memory: 200Gi
