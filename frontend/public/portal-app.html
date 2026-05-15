@@ -1414,11 +1414,52 @@
     document.querySelectorAll('.ch-selector').forEach(s => {
       if (s !== sel) s.value = _selectedChannel || '';
     });
+    // 즉시 로딩 상태 — 새 데이터 fetch 대기 중 옛 데이터 그대로 안 보이게
+    showLoadingState();
     // 현재 페이지 데이터 재로드
     const activeId = document.querySelector('.page-section.active')?.id;
     if (activeId === 'page-dashboard') loadDashboard();
     if (activeId === 'page-analytics') { _analyticsDailyBotsCache = null; loadAnalytics(); }
     if (activeId === 'page-traffic')   { if (trafficTimer) { clearInterval(trafficTimer); trafficTimer = null; } startTraffic(); }
+  }
+
+  /** 채널 변경 시 모든 위젯을 "로딩중" 으로. fetch 응답 후 갱신됨. */
+  function showLoadingState() {
+    const loadingPanel = '<div style="color:var(--ink-mute);font-size:13px;text-align:center;padding:40px 0;">로딩중…</div>';
+    const loadingRow6  = '<tr><td colspan="6" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>';
+    const loadingRow4  = '<tr><td colspan="4" style="text-align:center;color:var(--ink-mute);padding:24px;">로딩중…</td></tr>';
+
+    // KPI 카드 (대시보드)
+    ['kpi-requests', 'kpi-otherbot', 'kpi-malicious', 'kpi-tokens'].forEach(id => {
+      const e = document.getElementById(id); if (e) e.textContent = '—';
+    });
+    const reqSub = document.getElementById('kpi-requests-sub');
+    if (reqSub) reqSub.textContent = '';
+
+    // 대시보드 panels
+    ['dash-bot-list', 'dash-otherbot-list', 'dash-events'].forEach(id => {
+      const e = document.getElementById(id); if (e) e.innerHTML = loadingPanel;
+    });
+    ['chart', 'chartx'].forEach(id => {
+      const e = document.getElementById(id); if (e) e.innerHTML = '';
+    });
+
+    // 분석 리포트
+    ['analytics-chart', 'analytics-chartx', 'analytics-chart-legend'].forEach(id => {
+      const e = document.getElementById(id); if (e) e.innerHTML = '';
+    });
+    const aBars = document.getElementById('analytics-bot-bars');
+    if (aBars) aBars.innerHTML = loadingPanel;
+    const aTbl = document.getElementById('analytics-tbl-body');
+    if (aTbl) aTbl.innerHTML = loadingRow6;
+    const aPages = document.getElementById('analytics-pages-tbl-body');
+    if (aPages) aPages.innerHTML = loadingRow4;
+    const aPlatforms = document.getElementById('analytics-platforms-bot-list');
+    if (aPlatforms) aPlatforms.innerHTML = loadingPanel;
+
+    // 실시간 트래픽
+    const traffic = document.getElementById('traffic-rows');
+    if (traffic) traffic.innerHTML = loadingPanel;
   }
 
   function chParam() {
