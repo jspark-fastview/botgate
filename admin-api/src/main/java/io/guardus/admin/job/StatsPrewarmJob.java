@@ -83,20 +83,24 @@ public class StatsPrewarmJob {
         this.http = new RestTemplate(rf);
     }
 
-    /** 5분 — initialDelay 30s */
-    @Scheduled(fixedRate = 300_000L, initialDelay = 30_000L)
+    // initialDelay 늘림 — Loki/CoreDNS/Cilium 안정화 대기.
+    // 짧으면 cold-call timeout → 빈 응답 → @Cacheable unless 가 막아주긴 하지만
+    // 그래도 첫 호출에서 fresh 가 들어오게 하는 게 빠름.
+
+    /** 5분 cycle — initialDelay 2분 */
+    @Scheduled(fixedRate = 300_000L, initialDelay = 120_000L)
     public void prewarmFast() {
         runForAllSessions("fast", buildFastEndpoints());
     }
 
-    /** 15분 — initialDelay 60s */
-    @Scheduled(fixedRate = 900_000L, initialDelay = 60_000L)
+    /** 15분 cycle — initialDelay 3분 */
+    @Scheduled(fixedRate = 900_000L, initialDelay = 180_000L)
     public void prewarmNormal() {
         runForAllSessions("normal", NORMAL_ENDPOINTS);
     }
 
-    /** 1시간 — initialDelay 90s */
-    @Scheduled(fixedRate = 3_600_000L, initialDelay = 90_000L)
+    /** 1시간 cycle — initialDelay 4분 */
+    @Scheduled(fixedRate = 3_600_000L, initialDelay = 240_000L)
     public void prewarmSlow() {
         runForAllSessions("slow", SLOW_ENDPOINTS);
     }

@@ -85,12 +85,12 @@ spec:
             # Redis 캐시 활성 (CacheConfig 가 이 값 보고 RedisCacheManager 선택)
             - name: GUARDUS_REDIS_ENABLED
               value: "true"
-            # Stats prewarm — 일시 비활성.
-            # 이유: admin-api 시작 30s 시점 self-HTTP 호출이 Loki cold-call timeout 발생 시
-            #       빈 응답 → @Cacheable 가 Redis 에 negative cache (70m TTL) → portal KPI 0.
-            # 재활성하기 전: initialDelay 늘리거나 unless 조건으로 0/empty 응답은 cache 안 하도록 fix 필요.
+            # Stats prewarm — 활성.
+            # negative caching 대응 완료:
+            #  1) CacheUtil.isEmpty 로 @Cacheable unless — 0/empty 응답은 cache 안 함
+            #  2) initialDelay 30s → 2-4분 — Loki/CoreDNS/Cilium 안정화 대기
             - name: GUARDUS_PREWARM_ENABLED
-              value: "false"
+              value: "true"
             # OTEL
             - name: OTEL_SERVICE_NAME
               value: admin-api

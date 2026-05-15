@@ -66,7 +66,8 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/category?domain=&hellip; */
-    @Cacheable(value = "stats", key = "'cat:' + #auth + ':' + #domain")
+    @Cacheable(value = "stats", key = "'cat:' + #auth + ':' + #domain",
+               unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/category")
     public Map<String, Object> category(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -90,7 +91,8 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/daily?domain=&category=bot&billed= — /admin/stats/daily 와 동일 형식 */
-    @Cacheable(value = "stats", key = "'daily:' + #auth + ':' + #domain + ':' + #category + ':' + #billed")
+    @Cacheable(value = "stats", key = "'daily:' + #auth + ':' + #domain + ':' + #category + ':' + #billed",
+               unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/daily")
     public List<Map<String, Object>> daily(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -117,7 +119,8 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/bots?domain=&category=bot&limit=10 */
-    @Cacheable(value = "stats", key = "'bots:' + #auth + ':' + #domain + ':' + #category + ':' + #limit")
+    @Cacheable(value = "stats", key = "'bots:' + #auth + ':' + #domain + ':' + #category + ':' + #limit",
+               unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/bots")
     public List<Map<String, Object>> bots(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -150,7 +153,8 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/purpose?domain= */
-    @Cacheable(value = "stats", key = "'purpose:' + #auth + ':' + #domain")
+    @Cacheable(value = "stats", key = "'purpose:' + #auth + ':' + #domain",
+               unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/purpose")
     public List<Map<String, Object>> purpose(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -169,7 +173,8 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/malicious?domain= */
-    @Cacheable(value = "stats", key = "'mal:' + #auth + ':' + #domain")
+    @Cacheable(value = "stats", key = "'mal:' + #auth + ':' + #domain",
+               unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/malicious")
     public List<Map<String, Object>> malicious(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -188,7 +193,8 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/billing?domain= */
-    @Cacheable(value = "stats", key = "'bill:' + #auth + ':' + #domain")
+    @Cacheable(value = "stats", key = "'bill:' + #auth + ':' + #domain",
+               unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/billing")
     public Map<String, Object> billing(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -215,7 +221,8 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/daily/bots?domain=&category=bot */
-    @Cacheable(value = "stats", key = "'dailybots:' + #auth + ':' + #domain + ':' + #category")
+    @Cacheable(value = "stats", key = "'dailybots:' + #auth + ':' + #domain + ':' + #category",
+               unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/daily/bots")
     public List<Map<String, Object>> dailyBots(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -241,7 +248,8 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/hourly?date=YYYY-MM-DD&domain=&category=bot */
-    @Cacheable(value = "stats", key = "'hourly:' + #auth + ':' + #date + ':' + #domain + ':' + #category")
+    @Cacheable(value = "stats", key = "'hourly:' + #auth + ':' + #date + ':' + #domain + ':' + #category",
+               unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/hourly")
     public List<Map<String, Object>> hourly(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -276,7 +284,8 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/pages?domain=&category=&limit=50 */
-    @Cacheable(value = "stats", key = "'pages:' + #auth + ':' + #domain + ':' + #category + ':' + #limit")
+    @Cacheable(value = "stats", key = "'pages:' + #auth + ':' + #domain + ':' + #category + ':' + #limit",
+               unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/pages")
     public List<Map<String, Object>> pages(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -328,7 +337,8 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/bot-names?domain=&purpose= */
-    @Cacheable(value = "stats", key = "'botnames:' + #auth + ':' + #domain + ':' + #purpose")
+    @Cacheable(value = "stats", key = "'botnames:' + #auth + ':' + #domain + ':' + #purpose",
+               unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/bot-names")
     public List<Map<String, Object>> botNames(
             @RequestHeader(value = "Authorization", required = false) String auth,
@@ -353,7 +363,8 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/channels — 본인 채널들의 누적 통계 */
-    @Cacheable(value = "stats", key = "'chstats:' + #auth")
+    @Cacheable(value = "stats", key = "'chstats:' + #auth",
+               unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/channels")
     public List<Map<String, Object>> statsByChannel(@RequestHeader(value = "Authorization", required = false) String auth) {
         Map<String, Object> user = sessions.validate(auth);
@@ -385,7 +396,8 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/domains — 본인 채널 도메인별 카운트 */
-    @Cacheable(value = "stats", key = "'doms:' + #auth")
+    @Cacheable(value = "stats", key = "'doms:' + #auth",
+               unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/domains")
     public List<Map<String, Object>> statsDomains(@RequestHeader(value = "Authorization", required = false) String auth) {
         List<String> domains = myDomains(auth);
