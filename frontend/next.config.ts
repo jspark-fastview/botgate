@@ -2,6 +2,27 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+
+  // 정적 자원 cache 정책 — 운영 deploy 후 사용자 stale cache 방지.
+  // portal-app.html / bg-*.jsx / *.css 는 매 deploy 마다 바뀔 수 있어
+  // no-store 로 강제 (브라우저 disk cache 우회).
+  async headers() {
+    return [
+      {
+        source: '/portal-app.html',
+        headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
+      },
+      {
+        source: '/bg-:path*.jsx',
+        headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
+      },
+      {
+        source: '/:file(.+\\.(css|html))',
+        headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
+      },
+    ]
+  },
+
   async rewrites() {
     const apiUrl = process.env.API_URL || 'http://localhost:3002'
     return {
