@@ -101,11 +101,16 @@ public class UserController {
         Map<String, Object> user = sessions.validate(auth);
         if (user == null) return ResponseEntity.status(401).body(Map.of("error", "not authenticated"));
 
-        String name   = (String) body.get("name");
-        String domain = (String) body.get("domain");
+        String name     = (String) body.get("name");
+        String domain   = (String) body.get("domain");
+        String upstream = (String) body.getOrDefault("upstream", "");
         if (name == null || domain == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "name, domain 필수"));
         }
+        if (upstream == null) upstream = "";
+
+        // upstream 입력 있으면 reverse_proxy, 없으면 external (외부 SaaS 통합)
+        String mode = upstream.isBlank() ? "external" : "reverse_proxy";
 
         String id          = "ch_" + NanoId.generate(8);
         String verifyToken = NanoId.generate(32);
@@ -113,11 +118,13 @@ public class UserController {
         try {
             db.update("INSERT INTO channels " +
                       "(id, name, domain, domain_canonical, upstream, owner_id, verify_token, integration_mode) " +
-                      "VALUES (?, ?, ?, ?, '', ?, ?, 'external')",
+                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     id, name, domain,
                     ChannelAdminController.canonicalDomain(domain),
+                    upstream,
                     user.get("id"),
-                    verifyToken);
+                    verifyToken,
+                    mode);
         } catch (Exception e) {
             if (e.getMessage() != null && e.getMessage().contains("UNIQUE")) {
                 return ResponseEntity.status(409).body(Map.of("error", "domain already exists"));
