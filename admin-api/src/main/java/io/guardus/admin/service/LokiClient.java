@@ -76,6 +76,21 @@ public class LokiClient {
         return 0;
     }
 
+    /** topk by label — high-cardinality label (path 등) 용. Loki 측에서 top N 만 반환 → max_query_series 회피 */
+    public Map<String, Long> topkByLabel(String label, String selector, String range, int topN) {
+        if (!isEnabled()) return Map.of();
+        String logql = "topk(" + topN + ", sum by (" + label + ") (count_over_time(" + selector + " [" + range + "])))";
+        Map<String, Long> out = new LinkedHashMap<>();
+        for (Map<String, Object> r : instantQuery(logql)) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> lbl = (Map<String, String>) r.get("labels");
+            String key = lbl.getOrDefault(label, "");
+            long n = ((Number) r.getOrDefault("value", 0)).longValue();
+            out.merge(key, n, Long::sum);
+        }
+        return out;
+    }
+
     /** sum by (label) — label 별 카운트 */
     public Map<String, Long> sumByLabel(String label, String selector, String range) {
         if (!isEnabled()) return Map.of();

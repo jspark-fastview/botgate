@@ -175,7 +175,10 @@ public class LokiStatsService {
     public List<Map<String, Object>> pages(List<String> domains, String category, int limit) {
         if (domains != null && domains.isEmpty()) return List.of();
         String selector = sel(domains, category);
-        Map<String, Long> agg = loki.sumByLabel("path", selector, RANGE_30D);
+        // path cardinality 큼 (WordPress 는 unique URL 수천+). 7d sum by (path) 면
+        // Loki max_query_series 한계로 400. 24h 윈도우 + topk 으로 Loki 측에서 컷.
+        int topN = Math.min(limit, 50);
+        Map<String, Long> agg = loki.topkByLabel("path", selector, "24h", topN);
         return agg.entrySet().stream()
                 .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
                 .limit(Math.min(limit, 200))
