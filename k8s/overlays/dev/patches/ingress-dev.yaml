@@ -83,3 +83,18 @@
             pathType: Prefix
             backend:
               service: { name: openresty, port: { number: 80 } }
+    # ── 채널 4: mobilitytv.co.kr (Cloudflare proxied) ──────
+    - host: mobilitytv.co.kr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: openresty, port: { number: 80 } }
+    - host: www.mobilitytv.co.kr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: openresty, port: { number: 80 } }
