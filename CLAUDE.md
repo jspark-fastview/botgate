@@ -100,6 +100,15 @@ git push origin main        # CI/CD → EC2 자동 배포
 - **`alb.ingress.kubernetes.io/group.name` 변경 X** — ALB hostname 새로 생성됨 (2026-05-15 사고 사례)
 - `alb-eks.viewus.co` 는 deprecated alias (기존 채널 호환). 새로운 건 `guardus-endpoint.viewus.co` 만 사용
 
+### EKS / Terraform 제약 (2026-05-15 학습)
+
+- **EKS cluster 의 subnet AZ 집합은 생성 후 변경 불가** — `aws_eks_cluster.vpc_config.subnet_ids` 에 새 AZ 추가 시 `InvalidParameterException`. 변경하려면 cluster 재생성. control plane ENI IP 부족 시 다른 워크로드 정리 또는 cluster 재생성 외 방법 없음.
+- **EKS managed node group `subnet_ids` 변경 = force replacement** — 기존 노드 다 destroy. 4 AZ 확장은 Karpenter 로 (EC2NodeClass.subnetSelectorTerms 의 태그로 자동 발견).
+- **RDS cross-AZ 이전은 read replica → promote** — 무다운타임 패턴. snapshot/restore 보다 빠르고 안전. `aws rds create-db-instance-read-replica --availability-zone ap-northeast-2a` 후 lag 0 도달 시 `promote-read-replica` + Secrets Manager endpoint 갱신 + admin-api rolling restart.
+- **Spring `@Cacheable` 은 반드시 `unless` 로 0/empty 응답 cache 막기** — prewarm/cold-start 시 LokiClient timeout 등으로 silent 빈 응답 받으면 70m TTL 로 캐시 → portal/me-stats 가 70분 동안 0. `unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)"`.
+- **CI GitOps bump 는 paths-filter aware 해야** — 변경 안 된 component 의 SHA 갱신 시 ECR 에 그 SHA 이미지 없음 → `ImagePullBackOff`. `detect` job 의 `outputs.<component>` 로 분기.
+- **CI GitOps bump push 는 pull --rebase retry** — race condition (다른 commit 동시 push) 시 reject. 5회 retry 권장.
+
 ## 리브랜딩 현황 (botgate → GuardUs)
 
 - [ ] 소스 전체 치환 (`botgate` → `GuardUs`/`guardus`, `BOTGATE` → `GUARDUS`)
@@ -113,8 +122,9 @@ git push origin main        # CI/CD → EC2 자동 배포
 | 도메인 | 방식 |
 |---|---|
 | `viewus.co` | Cloudflare Worker `/en` |
-| `pikle.io` / `www.pikle.io` | Route 53 CNAME → ALB |
-| `pure-beef.kr` / `www.pure-beef.kr` | Cloudflare DNS-only → ALB |
+| `pikle.io` / `www.pikle.io` | Route 53 CNAME → `guardus-endpoint.viewus.co` |
+| `pure-beef.kr` / `www.pure-beef.kr` | Cloudflare DNS-only → `guardus-endpoint.viewus.co` |
+| `mobilitytv.co.kr` / `www.mobilitytv.co.kr` | Cloudflare DNS-only → `guardus-endpoint.viewus.co` |
 
 ## 봇 정책
 
@@ -162,6 +172,6 @@ openssl rand -hex 32
 STATS_KEY=<생성된_키>
 
 # innerops 쪽 .env 에도 같은 값
-GUARDUS_URL=https://botgate-admin.viewus.co
+GUARDUS_URL=https://guardus-admin.viewus.co
 GUARDUS_STATS_KEY=<같은_키>
 ```
