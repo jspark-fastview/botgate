@@ -419,13 +419,28 @@
 </head>
 <body>
 
-<!-- ── 진입 즉시 토큰 체크 — 없으면 페이지 그리기 전 /login 으로 ────── -->
+<!-- ── 진입 즉시 토큰 체크 — 없으면 /login, 있어도 만료된 토큰이면 /login?reason=expired ────── -->
 <script>
 (function() {
-  if (!localStorage.getItem('portalToken')) {
+  const token = localStorage.getItem('portalToken');
+  if (!token) {
     // history 스택에 안 남도록 replace
     window.location.replace('/login?reason=signin');
+    return;
   }
+  // 토큰 존재해도 만료/위조일 수 있음 — /auth/me 로 검증 (페이지 그리기 전).
+  // 페이지가 API 호출 안 하는 정적 view 일 경우 그대로 떠있는 문제 방지.
+  // 검증 자체는 페이지 로딩 막지 않게 promise 띄우고, 401 시 즉시 redirect.
+  fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+    .then(r => {
+      if (r.status === 401) {
+        localStorage.removeItem('portalToken');
+        window.location.replace('/login?reason=expired');
+      }
+    })
+    .catch(() => {
+      // 네트워크 에러 — 그대로 두고 apiFetch 가 처리 (offline 시 banner 띄우는 게 더 헷갈림)
+    });
 })();
 </script>
 
