@@ -12,8 +12,11 @@ module "eks" {
   cluster_endpoint_private_access = false
 
   vpc_id     = local.vpc_id
-  # 4 AZ subnet — control plane ENI 분산 + 어느 AZ 든 여유 있는 곳 사용
-  subnet_ids = local.eks_subnet_ids
+  # ⚠️ EKS cluster 의 subnet AZ 집합은 cluster 생성 후 변경 불가 (AWS 제약).
+  # cluster 는 a/c 그대로. 4 AZ 활용은 Karpenter 가 담당 (b/d subnet 도 태그로 발견).
+  # 만약 control plane ENI 가 2c IP 부족 (InsufficientFreeAddresses) 으로 진짜 막히면
+  # → 그땐 EKS 재생성하는 별도 작업 필요 (다운타임 큰 작업).
+  subnet_ids = local.subnet_ids
 
   # Pod Identity 사용 — IRSA 용 OIDC provider 불필요
   enable_irsa = false
@@ -48,8 +51,9 @@ module "eks" {
 
       # public subnet 배치 + public IP 강제
       # (content-vpc 의 서브넷은 MapPublicIpOnLaunch=False 라 launch template 에서 명시)
-      # 4 AZ 다 허용 — Spot interruption 시 IP 여유 있는 AZ 로 자동 분산
-      subnet_ids = local.eks_subnet_ids
+      # ⚠️ managed node group 의 subnet_ids 변경은 force replacement → 기존 노드 다 destroy.
+      # 그래서 a/c 그대로 둠. 4 AZ 활용은 Karpenter 가 담당 (EC2NodeClass 가 태그로 자동 발견).
+      subnet_ids = local.subnet_ids
 
       # public IP 자동 할당 — NAT 없이 ECR/Secrets Manager 접근하려면 필수
       network_interfaces = [{
