@@ -10,6 +10,7 @@ resources:
   - service.yaml
   - pdb.yaml
   - servicemonitor.yaml
+  - prometheusrule.yaml
 
 # 공통 label — 모든 리소스에 자동 부착
 labels:

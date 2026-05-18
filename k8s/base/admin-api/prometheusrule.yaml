@@ -1,0 +1,72 @@
+# Prometheus Operator (kube-prometheus-stack) 가 자동 등록.
+# Alertmanager → 사용자 receiver (Slack/email/etc) 로 라우팅 (receiver 셋업은 별도).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: admin-api
+  labels:
+    release: kube-prometheus-stack   # KPS operator 가 이 label 로 매칭
+spec:
+  groups:
+    - name: guardus.stats
+      rules:
+        # Stats negative caching / Loki down 감지.
+        # admin-api 의 StatsHealthMetric 이 1분마다 lokiStats.category(null) 호출 → 결과 합을 gauge.
+        # 정상이면 수만~수십만. 0 이 10분 지속되면 firing.
+        - alert: GuardUsStatsCategorySumZero
+          expr: max(guardus_stats_category_sum) == 0
+          for: 10m
+          labels:
+            severity: warning
+            component: admin-api
+          annotations:
+            summary: "GuardUs portal stats 가 10분 동안 0 (negative caching 또는 Loki down)"
+            description: |
+              admin-api 의 /me/stats/category 응답 합이 0 으로 10분 지속.
+              가능 원인:
+                - Loki 가 답을 못 줘서 silent fail → 0 응답 → Redis 가 70m TTL 로 negative cache
+                - Loki ingester 가 죽었거나 OpenResty 가 트래픽 못 받음
+              조치: `redis-cli --scan --pattern 'guardus:stats::*' | while read k; do redis-cli DEL "$k"; done`
+
+        # Stats health metric 자체가 측정 실패 (Loki 호출 예외)
+        - alert: GuardUsStatsHealthMetricError
+          expr: max(guardus_stats_health_error) == 1
+          for: 5m
+          labels:
+            severity: warning
+            component: admin-api
+          annotations:
+            summary: "GuardUs stats health metric 측정 실패 5분 지속"
+            description: "admin-api 가 Loki 와 통신 못 함 또는 다른 예외. admin-api log 확인."
+
+    - name: guardus.api
+      rules:
+        # admin-api 5xx 비율 — Spring Boot Actuator 의 http.server.requests metric 활용
+        - alert: GuardUsAdminApi5xxRate
+          expr: |
+            sum(rate(http_server_requests_seconds_count{application="admin-api",status=~"5.."}[5m]))
+            / sum(rate(http_server_requests_seconds_count{application="admin-api"}[5m]))
+            > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            component: admin-api
+          annotations:
+            summary: "admin-api 5xx 비율 > 5% (5분)"
+            description: "admin-api 가 5xx 응답 5% 이상. Spring log + DB/Loki 연결 확인."
+
+        # admin-api 응답 latency p95 — Loki cold call 30s 초과 등 slow 감지
+        - alert: GuardUsAdminApiLatencyP95High
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le, uri) (
+                rate(http_server_requests_seconds_bucket{application="admin-api"}[5m])
+              )
+            ) > 10
+          for: 10m
+          labels:
+            severity: info
+            component: admin-api
+          annotations:
+            summary: "admin-api p95 latency > 10s (uri 별)"
+            description: "특정 endpoint 가 느림. Loki query timeout 임박 가능. LokiClient timeout 또는 cache 정책 검토."
