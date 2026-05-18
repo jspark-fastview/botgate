@@ -17,8 +17,9 @@ spec:
         kind:  EC2NodeClass
         name:  default
 
-      # 인스턴스 다양화 — ARM64 (Graviton) + 다양한 family/size.
-      # Karpenter 가 workload requirements 보고 적절한 거 자동 선택.
+      # 인스턴스 다양화 — ARM64 (Graviton) + 명시적 family list + 다양한 size.
+      # 단일 family (c8g.large) 만 시도하면 spot capacity 부족 시 stuck.
+      # 명시적 family list 로 Karpenter 가 spot 회수 시 빠른 fallback (다른 family) 가능.
       requirements:
         - key: kubernetes.io/arch
           operator: In
@@ -26,15 +27,25 @@ spec:
         - key: karpenter.sh/capacity-type
           operator: In
           values: ["spot", "on-demand"]   # Spot 우선, 부족 시 On-Demand 자동
-        - key: karpenter.k8s.aws/instance-category
+        # explicit instance-family list — 7 family × 4 size = 28 옵션 (spot 회수 시 빠른 대체)
+        - key: karpenter.k8s.aws/instance-family
           operator: In
-          values: ["t", "c", "m"]          # t (general), c (compute), m (general)
-        - key: karpenter.k8s.aws/instance-generation
-          operator: Gt
-          values: ["3"]                    # t4g/c7g/m7g 등 최신 세대
+          values:
+            - t4g                          # general burstable (가벼운 워크로드)
+            - c6g                          # compute Gen6 (저렴)
+            - c7g                          # compute Gen7
+            - c8g                          # compute Gen8 (최신)
+            - m6g                          # general Gen6
+            - m7g                          # general Gen7
+            - m8g                          # general Gen8 (최신)
         - key: karpenter.k8s.aws/instance-size
           operator: In
           values: ["medium", "large", "xlarge", "2xlarge"]
+        # 명시적 CPU range — 너무 작은 (1 vCPU) 또는 너무 큰 노드 회피.
+        # daemonset overhead 211m + 워크로드 가장 큰 게 prometheus 1611Mi → 2 vCPU/4GB 이상 필요
+        - key: karpenter.k8s.aws/instance-cpu
+          operator: In
+          values: ["2", "4", "8"]
         - key: topology.kubernetes.io/zone
           operator: In
           # 4 AZ 모두 — 2c IP 고갈 대응으로 b/d 도 사용 (Terraform vpc.tf 에서 태그 추가됨)
