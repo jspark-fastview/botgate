@@ -31,8 +31,10 @@ public class LokiClient {
     private final HttpClient http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(3))
             .build();
-    // request timeout 은 query 별로 다를 수 있어 별도 (Loki queue time 이 길어질 때 대비)
-    private static final Duration REQ_TIMEOUT = Duration.ofSeconds(30);
+    // request timeout — cold cache 시 7d 윈도우 + sum/topk by 라벨 쿼리가 30s 초과하는 사례 있음
+    // (category / daily / purpose / bot-names / domains 가 가장 무거움).
+    // 너무 길면 사용자 첫 호출 latency 큼. 90s = "기다릴 수 있는 최대치 + cache 진입".
+    private static final Duration REQ_TIMEOUT = Duration.ofSeconds(90);
     private final ObjectMapper mapper = new ObjectMapper();
 
     public LokiClient(@Value("${loki.url:}") String baseUrl) {
