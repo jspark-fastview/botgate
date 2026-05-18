@@ -86,6 +86,27 @@ public class StatsPrewarmJob {
     // initialDelay 늘림 — Loki/CoreDNS/Cilium 안정화 대기.
     // 짧으면 cold-call timeout → 빈 응답 → @Cacheable unless 가 막아주긴 하지만
     // 그래도 첫 호출에서 fresh 가 들어오게 하는 게 빠름.
+    //
+    // 단, admin-api 재시작 후엔 ApplicationReadyEvent 가 즉시 prewarm 1회 트리거 (onAppReady).
+    // 그래서 사용자 portal 진입 시 cache 비어있는 시간 = 부팅 후 ~10초.
+
+    /** admin-api 부팅 완료 직후 — 즉시 prewarm 1회 (Tomcat ready 시점). */
+    @org.springframework.context.event.EventListener(
+        org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    public void onAppReady() {
+        // 별도 thread 로 띄움 — Spring 이 ApplicationReadyEvent 처리 차단되지 않게.
+        Thread t = new Thread(() -> {
+            // Tomcat / Loki client / Redis 등 안정화 5초 대기
+            try { Thread.sleep(5_000L); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); return; }
+            log.info("[prewarm-startup] admin-api ready → 즉시 prewarm 1회");
+            runForAllSessions("startup-fast",   buildFastEndpoints());
+            runForAllSessions("startup-normal", NORMAL_ENDPOINTS);
+            runForAllSessions("startup-slow",   SLOW_ENDPOINTS);
+            log.info("[prewarm-startup] 완료");
+        }, "prewarm-startup");
+        t.setDaemon(true);
+        t.start();
+    }
 
     /** 5분 cycle — initialDelay 2분 */
     @Scheduled(fixedRate = 300_000L, initialDelay = 120_000L)
@@ -114,9 +135,11 @@ public class StatsPrewarmJob {
         return all;
     }
 
-    /** prewarm self-HTTP 전용 ExecutorService — concurrency 8 제한 */
+    /** prewarm self-HTTP 전용 ExecutorService — concurrency 2 제한.
+     *  이전 8 → 2 로 줄임. Loki 가 7d 윈도우 무거운 query 동시 처리 시 queueTime 폭증.
+     *  prewarm 은 background 라 동시성 낮춰도 OK (5분 cycle 안에 모든 호출 끝나기만 하면 됨). */
     private final java.util.concurrent.ExecutorService executor =
-            java.util.concurrent.Executors.newFixedThreadPool(8,
+            java.util.concurrent.Executors.newFixedThreadPool(2,
                     r -> {
                         Thread t = new Thread(r, "prewarm");
                         t.setDaemon(true);

@@ -9,9 +9,12 @@ deploymentMode: SingleBinary
 
 singleBinary:
   replicas: 1
+  # Burstable QoS — cold prewarm 시 무거운 query 동시 처리, 평소엔 idle.
+  # 노드 여유 있으면 limit 까지 burst (K8s 의 native "일시 리소스 부스트").
+  # 노드 (t4g.xlarge = 4 vCPU/16Gi) 의 여유 분 활용. baseline 노드와 spot 둘 다 OK.
   resources:
-    requests: { cpu: 100m, memory: 256Mi }
-    limits:   { cpu: 1000m, memory: 1Gi }
+    requests: { cpu: 500m, memory: 1Gi }
+    limits:   { cpu: 3500m, memory: 6Gi }
   persistence:
     enabled: true
     storageClass: gp3
