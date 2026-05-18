@@ -16,7 +16,6 @@ spec:
       # 4 deployment 동시 sync 시 IPAM 포화 사고 (2026-05-18) 방지.
       maxSurge: 0
       maxUnavailable: 1
-      maxUnavailable: 0
   selector:
     matchLabels:
       app.kubernetes.io/name: admin-api
