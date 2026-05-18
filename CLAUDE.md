@@ -46,7 +46,25 @@ The test: every changed line should trace directly to the user's request.
 - 같은 원칙 적용 대상: `kubectl apply`, `helm install`, `eksctl create`, `aws ... create-*`
   → 일회성 mutation 명령은 사용자가 직접. 조회 (`get`, `describe`, `sts get-caller-identity` 등) 는 자동 OK.
 
-## 5. Goal-Driven Execution
+## 5. 🚨 제약사항으로 목표 미달 시 반드시 명시 🚨
+**사용자가 의도한 결과를 못 달성하면 작업 끝나고 "잘 됐어요" 보고 X. 명시적으로 알림.**
+
+가장 중요한 원칙. 위반 = 사용자 신뢰 잃음.
+
+원래 의도 (예: "X 를 Y 로 이전해서 Z 문제 해결") 가 기술적 제약 (AWS API limit, K8s 제약, force-replacement 등) 으로 인해 부분만 가능하면:
+
+- 부분 진행 후 **"전체 의도 달성 여부"** 를 명시적으로 보고:
+  - ✅ 한 것: (예) RDS 만 2a 로 이전
+  - ❌ 못 한 것: (예) EKS cluster control plane subnet — AWS 제약상 변경 불가
+  - ⚠️ 그 결과 사용자가 원했던 효과 (예: 2c IP 부족 해결) **는 미달성** — 다른 워크로드 정리 또는 cluster 재생성 필요
+
+- 작업 중간에 제약 발견 시 즉시 알리고 "그래도 진행할지" 사용자 결정 받기. silent 하게 작은 옵션으로 변경 후 진행 X.
+
+- 사용자가 "X 해줘" 했는데 X 의 효과가 진짜 안 나면 (예: 다음에 같은 사고 재발 가능) 명확히 경고. trade-off 가 "그래도 되겠지" 가 아니라 "이게 미달성된다는 점 의식하고 결정해라".
+
+위반 사례 (2026-05-18): 사용자 "2c subnet IP 부족 해결" 의도 → 나는 RDS 만 이전하고 EKS cluster 가 여전히 2c 의존성 갖고 있는 점 명확히 안 알림 → 사고 재발 → 사용자 격노.
+
+## 6. Goal-Driven Execution
 **Define success criteria. Loop until verified.**
 
 Transform tasks into verifiable goals:
