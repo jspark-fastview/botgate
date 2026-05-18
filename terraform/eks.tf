@@ -79,6 +79,43 @@ module "eks" {
         "k8s.io/cluster-autoscaler/${var.cluster_name}"   = "owned"
       }
     }
+
+    # On-Demand baseline — spot 동시 회수 시 안정 기반 1 노드.
+    # 비용 ~$30/월 (t4g.medium). 채널 다운 1회 손해 << 월 $30.
+    baseline = {
+      ami_type       = "BOTTLEROCKET_ARM_64"
+      instance_types = ["t4g.medium"]
+      capacity_type  = "ON_DEMAND"
+
+      min_size     = 1
+      desired_size = 1
+      max_size     = 2
+
+      # spot 과 동일한 subnet (a/c) 사용 — 4 AZ 확장은 Karpenter 담당.
+      subnet_ids = local.subnet_ids
+
+      network_interfaces = [{
+        associate_public_ip_address = true
+        delete_on_termination       = true
+      }]
+
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size = 30
+            volume_type = "gp3"
+            encrypted   = true
+          }
+        }
+      }
+
+      labels = { role = "workload-baseline" }
+      tags = {
+        "k8s.io/cluster-autoscaler/enabled"               = "true"
+        "k8s.io/cluster-autoscaler/${var.cluster_name}"   = "owned"
+      }
+    }
   }
 }
 
