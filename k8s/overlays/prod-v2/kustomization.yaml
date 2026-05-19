@@ -51,3 +51,12 @@ patches:
     target:
       kind: Ingress
       name: guardus-ingress
+  # admin-api / internal-api startup probe 연장 (새 cluster cold start 보완)
+  - path: patches/startup-probe-v2.yaml
+    target:
+      kind: Deployment
+      name: admin-api
+  - path: patches/startup-probe-v2.yaml
+    target:
+      kind: Deployment
+      name: internal-api

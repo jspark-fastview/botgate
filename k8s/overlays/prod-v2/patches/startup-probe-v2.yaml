@@ -1,0 +1,6 @@
+# 새 cluster cold start 시 admin-api / internal-api startup 이 65s 초과.
+# OTel agent + DB 첫 연결 등으로 base 의 12 * 5s = 60s 부족 → pod kill loop.
+# failureThreshold 60 (= 5분) 으로 연장. Spring 정상 부팅엔 영향 없음.
+- op: replace
+  path: /spec/template/spec/containers/0/startupProbe/failureThreshold
+  value: 60
