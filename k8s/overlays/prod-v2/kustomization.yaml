@@ -1,0 +1,51 @@
+# prod-v2 — guardus-eks-v2 cluster 전용 overlay.
+# Phase 5 DNS canary 시점에 새 ALB 로 트래픽 전환.
+# RDS/Redis 는 Phase 6 까지 옛 인프라 공유 (terraform-v2/iam.tf 의 SG ingress rule).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: guardus
+
+resources:
+  - ../../base
+  - external-secrets.yaml
+
+labels:
+  - includeSelectors: false
+    pairs:
+      guardus.io/env: prod
+      guardus.io/cluster: v2
+
+images:
+  - name: guardus/admin-api
+    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/admin-api
+    newTag: prod
+  - name: guardus/internal-api
+    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/internal-api
+    newTag: prod
+  - name: guardus/openresty
+    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/openresty
+    newTag: prod
+  - name: guardus/frontend
+    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/frontend
+    newTag: prod
+
+patches:
+  # 리소스 / replica — prod overlay 의 patches 사본 (kustomize root 밖 참조 불가)
+  - path: patches/openresty-prod-v2.yaml
+    target:
+      kind: Deployment
+      name: openresty
+  - path: patches/frontend-prod-v2.yaml
+    target:
+      kind: Deployment
+      name: frontend
+  - path: patches/openresty-hpa-prod-v2.yaml
+    target:
+      kind: HorizontalPodAutoscaler
+      name: openresty
+  # Ingress — v2 전용 (group.name=guardus-shared-v2, 전체 채널 host)
+  - path: patches/ingress-prod-v2.yaml
+    target:
+      kind: Ingress
+      name: guardus-ingress

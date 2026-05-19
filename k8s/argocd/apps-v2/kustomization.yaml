@@ -1,0 +1,18 @@
+# app-of-apps v2 — 새 cluster (guardus-eks-v2) ArgoCD 가 sync.
+# 각 Application 의 destination 은 in-cluster (https://kubernetes.default.svc) →
+# 새 cluster 의 ArgoCD 가 새 cluster 에 install. 옛 cluster 와 완전 분리.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # 플랫폼 — cluster-specific 한 것만 v2 path. 나머지는 옛 path 재사용 (각 cluster 자기 자신에 install).
+  - platform/aws-load-balancer-controller.yaml   # k8s/platform-v2/aws-load-balancer-controller
+  - platform/karpenter.yaml                       # k8s/platform-v2/karpenter
+  - platform/external-secrets.yaml                # k8s/platform/external-secrets (공유)
+  - platform/cert-manager.yaml                    # k8s/platform/cert-manager (공유)
+  - platform/kube-prometheus-stack.yaml           # k8s/platform/kube-prometheus-stack (공유)
+  - platform/loki.yaml                            # k8s/platform/loki (공유)
+  - platform/alloy.yaml                           # k8s/platform/alloy (공유)
+  # argocd-ingress 는 의도적으로 제외 (port-forward 로 접근, DNS 충돌 회피)
+  # 애플리케이션 — v2 전용
+  - guardus/guardus-prod-v2.yaml

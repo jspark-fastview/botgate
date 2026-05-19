@@ -1,0 +1,25 @@
+# App-of-apps v2 — 새 cluster (guardus-eks-v2) ArgoCD 에 한 번 적용.
+# 적용 절차:
+#   kubectl --context guardus-v2 apply -f k8s/bootstrap/app-of-apps-v2.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-of-apps
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jspark-fastview/botgate
+    targetRevision: main
+    path: k8s/argocd/apps-v2
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

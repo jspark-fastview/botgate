@@ -1,0 +1,27 @@
+# EC2NodeClass v2 — guardus-eks-v2 cluster 전용
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  amiFamily: Bottlerocket
+  amiSelectorTerms:
+    - alias: bottlerocket@latest
+
+  # Terraform terraform-v2/karpenter.tf 가 만든 node IAM role
+  # (terraform output karpenter_node_iam_role_name)
+  role: "Karpenter-guardus-eks-v2-20260519051555903200000016"
+
+  # Subnet discovery — terraform-v2/vpc.tf 가 b/d subnet 에 guardus-eks-v2 tag 부여
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: guardus-eks-v2
+
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: guardus-eks-v2
+
+  tags:
+    Name: guardus-eks-v2-karpenter-node
+    Component: karpenter
+    karpenter.sh/discovery: guardus-eks-v2

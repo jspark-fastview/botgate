@@ -1,0 +1,82 @@
+# prod-v2 Ingress patch — 새 ALB (group.name=guardus-shared-v2)
+# 옛 cluster 의 guardus-shared 와 별도 ALB hostname 생성됨.
+# Phase 5 에서 Route53 guardus-endpoint.viewus.co 의 weighted record 로 canary.
+- op: add
+  path: /metadata/annotations/alb.ingress.kubernetes.io~1tags
+  value: Project=GuardUs,Env=prod,Cluster=v2
+- op: replace
+  path: /metadata/annotations/alb.ingress.kubernetes.io~1group.name
+  value: guardus-shared-v2
+- op: replace
+  path: /spec/rules
+  value:
+    # ── 운영 어드민 (frontend SPA 직접) ──────────────
+    - host: guardus-admin.viewus.co
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: { number: 3003 }
+    # ── 채널 1: viewus.co ─────────────────────────
+    - host: viewus.co
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: openresty, port: { number: 80 } }
+    - host: www.viewus.co
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: openresty, port: { number: 80 } }
+    # ── 채널 2: pikle.io ──────────────────────────
+    - host: pikle.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: openresty, port: { number: 80 } }
+    - host: www.pikle.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: openresty, port: { number: 80 } }
+    # ── 채널 3: pure-beef.kr ──────────────────────
+    - host: pure-beef.kr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: openresty, port: { number: 80 } }
+    - host: www.pure-beef.kr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: openresty, port: { number: 80 } }
+    # ── 채널 4: mobilitytv.co.kr ──────────────────
+    - host: mobilitytv.co.kr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: openresty, port: { number: 80 } }
+    - host: www.mobilitytv.co.kr
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: openresty, port: { number: 80 } }

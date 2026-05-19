@@ -1,0 +1,4 @@
+# prod — 2 replica
+- op: replace
+  path: /spec/replicas
+  value: 2

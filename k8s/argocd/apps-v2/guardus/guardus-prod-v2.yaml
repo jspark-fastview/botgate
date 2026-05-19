@@ -1,0 +1,32 @@
+# ArgoCD Application — prod-v2 overlay (guardus-eks-v2 cluster)
+# 옛 cluster 의 guardus-prod 와 별도. 같은 namespace (guardus) 지만 각 cluster 자기 자신에 install.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guardus-prod-v2
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jspark-fastview/botgate
+    targetRevision: main
+    path: k8s/overlays/prod-v2
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: guardus
+  syncPolicy:
+    # 새 cluster bootstrap 중 — 처음엔 자동 sync (빠른 반복), 안정 후 수동 전환 권장
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m

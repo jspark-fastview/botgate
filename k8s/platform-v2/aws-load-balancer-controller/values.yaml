@@ -1,0 +1,22 @@
+# AWS Load Balancer Controller v2 — guardus-eks-v2 cluster 전용
+# 인증: EKS Pod Identity (Terraform terraform-v2/iam.tf 의 aws_lb_controller association)
+clusterName: guardus-eks-v2
+region: ap-northeast-2
+
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+
+replicaCount: 2
+
+serviceMonitor:
+  enabled: true
+  namespace: monitoring
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 200Mi
+  limits:
+    cpu: 500m
+    memory: 500Mi

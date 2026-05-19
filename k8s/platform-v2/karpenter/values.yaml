@@ -1,0 +1,32 @@
+# Karpenter controller v2 — guardus-eks-v2 전용
+settings:
+  clusterName: guardus-eks-v2
+  interruptionQueue: Karpenter-guardus-eks-v2
+  batchMaxDuration: 10s
+  batchIdleDuration: 1s
+
+controller:
+  resources:
+    requests: { cpu: 200m, memory: 256Mi }
+    limits:   { cpu: 1000m, memory: 512Mi }
+
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: guardus.io/provisioner
+              operator: DoesNotExist
+
+serviceAccount:
+  create: true
+  name: karpenter
+
+logLevel: info
+
+replicas: 2
+
+podDisruptionBudget:
+  name: karpenter
+  maxUnavailable: 1
