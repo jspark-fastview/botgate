@@ -25,7 +25,7 @@ images:
   newTag: a4954decbc7aec4c4ce9558936cac364e669a76a
 - name: guardus/openresty
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/openresty
-  newTag: a4954decbc7aec4c4ce9558936cac364e669a76a
+  newTag: 16cb0e5b8090957a22479faab942cb133704c507
 
 # 환경별 패치
 patches:
