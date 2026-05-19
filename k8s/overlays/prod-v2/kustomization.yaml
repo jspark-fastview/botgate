@@ -17,18 +17,20 @@ labels:
       guardus.io/cluster: v2
 
 images:
+  # tag = commit SHA (CI bump). 옛 cluster (overlays/dev) 와 동일 SHA 시작.
+  # CI 가 변경된 component 의 newTag 만 새 SHA 로 bump → ArgoCD auto-sync.
   - name: guardus/admin-api
     newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/admin-api
-    newTag: prod
+    newTag: 89846640554f9f0f5083fdb48c9349c3bb3f4f15
   - name: guardus/internal-api
     newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/internal-api
-    newTag: prod
+    newTag: a4954decbc7aec4c4ce9558936cac364e669a76a
   - name: guardus/openresty
     newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/openresty
-    newTag: prod
+    newTag: 16cb0e5b8090957a22479faab942cb133704c507
   - name: guardus/frontend
     newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/frontend
-    newTag: prod
+    newTag: 7ad5803954d65f0b58015c55602ad5e40124aa64
 
 patches:
   # 리소스 / replica — prod overlay 의 patches 사본 (kustomize root 밖 참조 불가)
