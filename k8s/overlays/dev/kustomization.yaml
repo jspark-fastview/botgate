@@ -19,13 +19,13 @@ images:
   newTag: 053e4330230c66ee48db488a0ef8284e911ff58c
 - name: guardus/frontend
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/frontend
-  newTag: 9798e6810c5157faed2775d3d1e9622bc515edc0
+  newTag: 82b44a953038c6f9a01bc3389dcca21fa9572d14
 - name: guardus/internal-api
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/internal-api
   newTag: a4954decbc7aec4c4ce9558936cac364e669a76a
 - name: guardus/openresty
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/openresty
-  newTag: 16cb0e5b8090957a22479faab942cb133704c507
+  newTag: 82b44a953038c6f9a01bc3389dcca21fa9572d14
 
 # 환경별 패치
 patches:
