@@ -1501,19 +1501,32 @@
   let trafficTimer = null;
 
   function nav(e, pageId) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     // deactivate all sections and links
     document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('.side a').forEach(a => a.classList.remove('active'));
     // activate target
-    document.getElementById(pageId).classList.add('active');
-    e.currentTarget.classList.add('active');
+    const target = document.getElementById(pageId);
+    if (!target) { return nav(null, 'page-dashboard'); }
+    target.classList.add('active');
+    // 사이드바 link 활성화 (event 가 있으면 그 link, 없으면 onclick 의 nav 인자로 매칭)
+    if (e && e.currentTarget) {
+      e.currentTarget.classList.add('active');
+    } else {
+      document.querySelectorAll(`.side a[onclick*="'${pageId}'"]`).forEach(a => a.classList.add('active'));
+    }
+
+    // URL hash 동기화 — 새로고침 시 같은 페이지 복원
+    if (location.hash !== '#' + pageId) {
+      history.replaceState(null, '', '#' + pageId);
+    }
 
     // stop any running traffic poll
     if (trafficTimer) { clearInterval(trafficTimer); trafficTimer = null; }
 
     // lazy-load page data
     populateSelectors();
+    if (pageId === 'page-dashboard') loadDashboard();
     if (pageId === 'page-analytics') loadAnalytics();
     if (pageId === 'page-traffic')   startTraffic();
     if (pageId === 'page-tokens')    loadTokens();
@@ -1523,6 +1536,16 @@
     if (pageId === 'page-catalog')   loadCatalog();
     if (pageId === 'page-policies')  loadPolicies();
   }
+
+  // 최초 로드 시 URL hash → 페이지 복원 (없으면 dashboard)
+  function restorePageFromHash() {
+    const hash = (location.hash || '').replace(/^#/, '');
+    const pageId = hash && document.getElementById(hash) ? hash : 'page-dashboard';
+    nav(null, pageId);
+  }
+
+  // 브라우저 back/forward 도 처리
+  window.addEventListener('hashchange', restorePageFromHash);
 
   /* ─── CHART helper (스택 영역 차트) ────────────────── */
   // series: [{ data: [{date,count},...], color: '#xxx', label: '...' }, ...]
@@ -3537,14 +3560,14 @@
       populateSelectors()
       loadSettings()
       refreshCachePurgeStatus()
-      loadDashboard()
+      restorePageFromHash()
     } catch(e) {
       if (e.message !== 'unauthorized') {
         // ADMIN_KEY 없는 개발 환경: 그냥 진행
         populateSelectors()
         loadSettings()
         refreshCachePurgeStatus()
-        loadDashboard()
+        restorePageFromHash()
       }
       // unauthorized: showLogin() 은 apiFetch 내부에서 이미 호출됨
     }
