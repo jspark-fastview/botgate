@@ -14,9 +14,9 @@ metadata:
     alb.ingress.kubernetes.io/ssl-redirect: '443'
     alb.ingress.kubernetes.io/healthcheck-path: /
     alb.ingress.kubernetes.io/group.name: guardus-shared-v2
-    # priority — host-specific rule 들보다 큰 값 (낮은 우선순위) 명시.
-    # ALB Controller 기본도 호스트 없는 rule 을 후순위 처리하지만 명시로 안전 확보.
-    alb.ingress.kubernetes.io/group.order: '9999'
+    # priority — host-specific rule (default order=0) 들보다 큰 값 = 낮은 우선순위.
+    # ALB Controller 허용 범위 [-1000, 1000]. 최대값 1000 으로 마지막 priority.
+    alb.ingress.kubernetes.io/group.order: '1000'
     alb.ingress.kubernetes.io/tags: Project=GuardUs,Env=prod,Cluster=v2,Type=catchall
 spec:
   ingressClassName: alb
