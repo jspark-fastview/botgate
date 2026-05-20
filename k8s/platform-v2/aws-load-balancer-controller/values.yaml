@@ -3,9 +3,9 @@
 clusterName: guardus-eks-v2
 region: ap-northeast-2
 
-# Webhook cert 를 cert-manager 가 발급 (chart 자체 self-signed 대신).
-# 두 replica 사이 cert 불일치로 TLS handshake error 사고 (2026-05-20) 방지.
-enableCertManager: true
+# cert-manager 자체가 stale 상태 (옛 cluster 사고 여파) 라 enableCertManager 미사용.
+# chart 의 self-signed cert 모드 (default). 새 Ingress 만들 일 없으면 운영 무관.
+# 영구 fix 는 cert-manager 재install 필요 (위험 작업, 별도).
 
 serviceAccount:
   create: true
