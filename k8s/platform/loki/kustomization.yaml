@@ -11,3 +11,10 @@ helmCharts:
     namespace: monitoring
     valuesFile: values.yaml
     includeCRDs: true
+
+# Chart 가 명시한 retention=Delete override (values.yaml 의 옵션 안 먹힘)
+patches:
+  - path: patches/retention.yaml
+    target:
+      kind: StatefulSet
+      name: loki

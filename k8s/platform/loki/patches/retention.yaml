@@ -1,0 +1,7 @@
+# Loki StatefulSet 의 PVC retention 정책 강제 변경.
+# Chart 가 default 'Delete' 를 명시해서 values.yaml 의 옵션으로 override 안 됨 → kustomize patch.
+- op: add
+  path: /spec/persistentVolumeClaimRetentionPolicy
+  value:
+    whenDeleted: Retain
+    whenScaled: Retain
