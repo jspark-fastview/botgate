@@ -30,7 +30,7 @@ images:
   newTag: a4954decbc7aec4c4ce9558936cac364e669a76a
 - name: guardus/openresty
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/openresty
-  newTag: 16cb0e5b8090957a22479faab942cb133704c507
+  newTag: 82b44a953038c6f9a01bc3389dcca21fa9572d14
 
   # 리소스 / replica — prod overlay 의 patches 사본 (kustomize root 밖 참조 불가)
   # Ingress — v2 전용 (group.name=guardus-shared-v2, 전체 채널 host)
