@@ -31,16 +31,9 @@ loki:
 
   schemaConfig:
     configs:
-      # 옛 schema (filesystem) — 새 cluster fresh 라 데이터 없음, 그러나 chart 가 schemaConfig 요구
+      # S3 backend 단일 schema. 옛 filesystem schema 제거 (cross-schema scan 으로 query 30s+ 소요).
+      # 새 cluster 라 historical 데이터 없음 — from 을 과거로 잡아도 안전.
       - from: "2024-01-01"
-        store: tsdb
-        object_store: filesystem
-        schema: v13
-        index:
-          prefix: loki_index_
-          period: 24h
-      # 새 schema (S3) — 2026-05-21 부터 적용
-      - from: "2026-05-21"
         store: tsdb
         object_store: s3
         schema: v13
