@@ -13,6 +13,7 @@ resources:
   - platform/kube-prometheus-stack.yaml           # k8s/platform/kube-prometheus-stack (공유)
   - platform/loki.yaml                            # k8s/platform/loki (공유)
   - platform/alloy.yaml                           # k8s/platform/alloy (공유)
+  - platform/argocd-ingress.yaml                  # k8s/platform-v2/argocd-ingress — argocd.viewus.co
   # argocd-ingress 는 의도적으로 제외 (port-forward 로 접근, DNS 충돌 회피)
   # 애플리케이션 — v2 전용
   - guardus/guardus-prod-v2.yaml
