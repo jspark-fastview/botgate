@@ -3,9 +3,9 @@
 clusterName: guardus-eks-v2
 region: ap-northeast-2
 
-# cert-manager 자체가 stale 상태 (옛 cluster 사고 여파) 라 enableCertManager 미사용.
-# chart 의 self-signed cert 모드 (default). 새 Ingress 만들 일 없으면 운영 무관.
-# 영구 fix 는 cert-manager 재install 필요 (위험 작업, 별도).
+# Webhook cert 를 cert-manager 가 발급 — chart self-signed 모드의 replica 간 mismatch 사고 (2026-05-20) 방지.
+# cert-manager 재install 후 활성화 (2026-05-20).
+enableCertManager: true
 
 serviceAccount:
   create: true
