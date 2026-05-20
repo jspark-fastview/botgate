@@ -1,7 +1,14 @@
 # cert-manager helm values
-# ALB 에서 ACM 인증서를 직접 사용하면 cert-manager 는 사실 불필요하지만,
-# 학습/내부 mTLS/추후 확장을 위해 설치.
+# ALB Controller webhook cert 발급용 (replica 간 mismatch 사고 fix 후 활성).
 installCRDs: true
+
+# Leader election namespace = cert-manager (default kube-system 에서 변경).
+# kustomize 가 chart 의 모든 namespaced resource 를 cert-manager 로 옮기는데,
+# chart default leader-election 은 kube-system. 결과: Role 이 cert-manager 에 만들어지지만
+# pod 는 kube-system 의 lease 찾으려고 → forbidden 에러. namespace 통일로 fix.
+global:
+  leaderElection:
+    namespace: cert-manager
 
 replicaCount: 1
 webhook:
