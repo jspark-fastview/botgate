@@ -1,7 +1,7 @@
 # prod-v2 Ingress patch — 새 ALB (group.name=guardus-shared-v2)
 #
-# Phase A (현재): 기존 host-specific rule 유지 + ingress-catchall.yaml 별도 Ingress 추가
-# Phase B (검증 후): admin host 만 남기고 채널 host rule 제거 — catch-all 이 받음
+# admin host 만 명시. 모든 채널 트래픽은 ingress-catchall.yaml 의 default rule 으로 → OpenResty.
+# 채널 추가/제거 시 K8s 변경 불필요 — admin UI 의 DB CRUD 만으로 효과.
 - op: add
   path: /metadata/annotations/alb.ingress.kubernetes.io~1tags
   value: Project=GuardUs,Cluster=v2
@@ -11,7 +11,7 @@
 - op: replace
   path: /spec/rules
   value:
-    # ── 운영 어드민 (frontend SPA 직접) ──────────────
+    # ── 운영 어드민 (frontend SPA 직접) — 명시적 host ─────
     - host: guardus-admin.viewus.co
       http:
         paths:
@@ -21,48 +21,3 @@
               service:
                 name: frontend
                 port: { number: 3003 }
-    # ── 채널 1: viewus.co ─────────────────────────
-    - host: viewus.co
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: openresty, port: { number: 80 } }
-    - host: www.viewus.co
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: openresty, port: { number: 80 } }
-    # ── 채널 3: pure-beef.kr ──────────────────────
-    - host: pure-beef.kr
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: openresty, port: { number: 80 } }
-    - host: www.pure-beef.kr
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: openresty, port: { number: 80 } }
-    # ── 채널 4: mobilitytv.co.kr ──────────────────
-    - host: mobilitytv.co.kr
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: openresty, port: { number: 80 } }
-    - host: www.mobilitytv.co.kr
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: openresty, port: { number: 80 } }
