@@ -581,7 +581,7 @@
   <section id="page-dashboard" class="page-section active">
     <div class="page-head">
       <div>
-        <h1>안녕하세요, 패스트뷰 님</h1>
+        <h1>안녕하세요, <span id="greeting-user-name">…</span> 님</h1>
         <div class="greeting">봇 트래픽 현황을 실시간으로 확인하세요.</div>
       </div>
       <div class="right" style="gap:14px;align-items:center;">
@@ -1294,6 +1294,19 @@
         <h1>사용자 관리</h1>
         <div class="greeting">가입한 채널 오너 계정을 확인하고 관리하세요.</div>
       </div>
+    </div>
+
+    <!-- 내 정보 — 대시보드 인사말에 표시되는 이름 -->
+    <div class="panel" style="margin-bottom:16px;">
+      <div style="font-weight:600;margin-bottom:8px;">내 정보</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label for="user-name-input" style="font-size:13px;color:var(--ink-2);min-width:80px;">표시 이름</label>
+        <input id="user-name-input" type="text" placeholder="이름" maxlength="40"
+          style="flex:1;max-width:280px;padding:6px 10px;border:1px solid var(--bd);border-radius:6px;font-size:14px;" />
+        <button onclick="saveUserName()"
+          style="padding:6px 14px;background:var(--brand);color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">저장</button>
+      </div>
+      <div style="font-size:12px;color:var(--ink-mute);margin-top:6px;">대시보드 인사말 (예: "안녕하세요, OOO 님") 에 표시됩니다.</div>
     </div>
 
     <div class="panel" style="padding:0;overflow:hidden;">
@@ -3040,7 +3053,43 @@
       renderStrictToggle();
       _bypassMode = s.bypass_mode === '1';
       renderBypassBanner();
+      // 사용자 이름 — 처음 진입 시 없으면 prompt 로 입력 받고 저장
+      let userName = (s.user_name || '').trim();
+      if (!userName) {
+        userName = (prompt('이름을 입력하세요 (대시보드 인사말에 표시).', '') || '').trim();
+        if (userName) {
+          await apiFetch(`${API}/admin/settings/user_name`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: userName }),
+          });
+        }
+      }
+      renderGreetingName(userName || '게스트');
+      const input = document.getElementById('user-name-input');
+      if (input) input.value = userName;
     } catch(_) {}
+  }
+
+  function renderGreetingName(name) {
+    const el = document.getElementById('greeting-user-name');
+    if (el) el.textContent = name;
+  }
+
+  async function saveUserName() {
+    const input = document.getElementById('user-name-input');
+    if (!input) return;
+    const value = input.value.trim();
+    if (!value) { alert('이름을 입력하세요'); return; }
+    try {
+      await apiFetch(`${API}/admin/settings/user_name`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value }),
+      });
+      renderGreetingName(value);
+      alert('저장됨');
+    } catch(e) { alert('저장 실패: ' + e.message); }
   }
 
   function renderBypassBanner() {

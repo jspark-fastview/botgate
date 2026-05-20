@@ -138,18 +138,17 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Bump image tags in overlays (dev + prod-v2)
+      - name: Bump image tags in overlays (dev only — prod 는 수동 promote)
         run: |
-          # 옛 cluster (overlays/dev) + 새 cluster (overlays/prod-v2) 둘 다 동시 bump.
-          # 옛 cluster destroy 후엔 prod-v2 만 남기고 dev 라인 제거.
+          # CLAUDE.md 환경 분리 규칙: 신규 기능 dev 에서 먼저 검증.
+          # prod-v2 는 수동 promote — dev 충분히 검증 후 별도 PR/commit 으로 SHA 갱신.
           curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz | tar xz
           sudo mv kustomize /usr/local/bin/
 
           bump() {
             local c="$1"
             (cd k8s/overlays/dev      && kustomize edit set image guardus/$c=${ECR_REGISTRY}/guardus/$c:${GITHUB_SHA})
-            (cd k8s/overlays/prod-v2  && kustomize edit set image guardus/$c=${ECR_REGISTRY}/guardus/$c:${GITHUB_SHA})
-            echo "  bumped: $c (dev + prod-v2)"
+            echo "  bumped: $c (dev)"
           }
           [ "$CHG_ADMIN"     = "true" ] && bump admin-api    || echo "  skip: admin-api 변경 없음"
           [ "$CHG_INTERNAL"  = "true" ] && bump internal-api || echo "  skip: internal-api 변경 없음"
@@ -164,8 +163,8 @@ jobs:
             echo "변경 없음 — skip"
             exit 0
           fi
-          git add k8s/overlays/dev/kustomization.yaml k8s/overlays/prod-v2/kustomization.yaml
-          git commit -m "ci: bump image tags to ${GITHUB_SHA::7}"
+          git add k8s/overlays/dev/kustomization.yaml
+          git commit -m "ci: bump dev image tags to ${GITHUB_SHA::7}"
           # race condition (다른 commit 이 거의 동시에 들어와서 push reject) 대응: rebase + 재시도
           for i in 1 2 3 4 5; do
             if git push; then
