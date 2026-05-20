@@ -7,57 +7,56 @@ kind: Kustomization
 namespace: guardus
 
 resources:
-  - ../../base
-  - external-secrets.yaml
-  - ingress-catchall.yaml
+- ../../base
+- external-secrets.yaml
+- ingress-catchall.yaml
 
 labels:
-  - includeSelectors: false
-    pairs:
-      guardus.io/env: prod
-      guardus.io/cluster: v2
+- pairs:
+    guardus.io/cluster: v2
+    guardus.io/env: prod
 
-images:
   # tag = commit SHA (CI bump). 옛 cluster (overlays/dev) 와 동일 SHA 시작.
   # CI 가 변경된 component 의 newTag 만 새 SHA 로 bump → ArgoCD auto-sync.
-  - name: guardus/admin-api
-    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/admin-api
-    newTag: 89846640554f9f0f5083fdb48c9349c3bb3f4f15
-  - name: guardus/internal-api
-    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/internal-api
-    newTag: a4954decbc7aec4c4ce9558936cac364e669a76a
-  - name: guardus/openresty
-    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/openresty
-    newTag: 16cb0e5b8090957a22479faab942cb133704c507
-  - name: guardus/frontend
-    newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/frontend
-    newTag: 7ad5803954d65f0b58015c55602ad5e40124aa64
+images:
+- name: guardus/admin-api
+  newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/admin-api
+  newTag: 4a85ba681a8c8470148fd6518bfb21a741a6667b
+- name: guardus/frontend
+  newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/frontend
+  newTag: 7ad5803954d65f0b58015c55602ad5e40124aa64
+- name: guardus/internal-api
+  newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/internal-api
+  newTag: a4954decbc7aec4c4ce9558936cac364e669a76a
+- name: guardus/openresty
+  newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/openresty
+  newTag: 16cb0e5b8090957a22479faab942cb133704c507
 
-patches:
   # 리소스 / replica — prod overlay 의 patches 사본 (kustomize root 밖 참조 불가)
-  - path: patches/openresty-prod-v2.yaml
-    target:
-      kind: Deployment
-      name: openresty
-  - path: patches/frontend-prod-v2.yaml
-    target:
-      kind: Deployment
-      name: frontend
-  - path: patches/openresty-hpa-prod-v2.yaml
-    target:
-      kind: HorizontalPodAutoscaler
-      name: openresty
   # Ingress — v2 전용 (group.name=guardus-shared-v2, 전체 채널 host)
-  - path: patches/ingress-prod-v2.yaml
-    target:
-      kind: Ingress
-      name: guardus-ingress
   # admin-api / internal-api startup probe 연장 (새 cluster cold start 보완)
-  - path: patches/startup-probe-v2.yaml
-    target:
-      kind: Deployment
-      name: admin-api
-  - path: patches/startup-probe-v2.yaml
-    target:
-      kind: Deployment
-      name: internal-api
+patches:
+- path: patches/openresty-prod-v2.yaml
+  target:
+    kind: Deployment
+    name: openresty
+- path: patches/frontend-prod-v2.yaml
+  target:
+    kind: Deployment
+    name: frontend
+- path: patches/openresty-hpa-prod-v2.yaml
+  target:
+    kind: HorizontalPodAutoscaler
+    name: openresty
+- path: patches/ingress-prod-v2.yaml
+  target:
+    kind: Ingress
+    name: guardus-ingress
+- path: patches/startup-probe-v2.yaml
+  target:
+    kind: Deployment
+    name: admin-api
+- path: patches/startup-probe-v2.yaml
+  target:
+    kind: Deployment
+    name: internal-api

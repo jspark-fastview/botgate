@@ -16,7 +16,7 @@ labels:
 images:
 - name: guardus/admin-api
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/admin-api
-  newTag: 89846640554f9f0f5083fdb48c9349c3bb3f4f15
+  newTag: 4a85ba681a8c8470148fd6518bfb21a741a6667b
 - name: guardus/frontend
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/frontend
   newTag: 7ad5803954d65f0b58015c55602ad5e40124aa64
