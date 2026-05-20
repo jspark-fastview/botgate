@@ -19,6 +19,11 @@ singleBinary:
     enabled: true
     storageClass: gp3
     size: 10Gi
+  # PVC 보존 정책 — StatefulSet 삭제 / scale-down 시 PVC 같이 사라지는 default(Delete) 변경.
+  # 의도하지 않은 데이터 손실 방지. 명시적 kubectl delete pvc 는 여전히 가능 (의도된 cleanup).
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
 
 # 학습용 — auth 비활성 (multi-tenant 안 씀)
 loki:
