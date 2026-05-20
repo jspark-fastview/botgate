@@ -9,6 +9,7 @@ namespace: guardus
 resources:
   - ../../base
   - external-secrets.yaml
+  - ingress-catchall.yaml
 
 labels:
   - includeSelectors: false

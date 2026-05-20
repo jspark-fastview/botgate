@@ -38,13 +38,14 @@ When your changes create orphans:
 The test: every changed line should trace directly to the user's request.
 
 ## 4. 인프라 명령은 사용자가 직접 실행
-**Terraform 등 비용/state 영향 있는 명령은 절대 직접 실행 X.**
+**비용/state 영향 있는 mutation 명령은 절대 직접 실행 X.**
 
-- `terraform init / plan / apply / destroy` → 사용자가 실행. 명령어만 제공.
+- `terraform apply / destroy` → 사용자가 실행. 명령어만 제공.
+- `terraform init / plan / validate / state list / show` → **read-only, Claude 가 직접 실행 OK.** plan 출력 분석 후 사용자에게 요약 제공.
 - `.tf` 파일 편집, plan 미리보기, output 해석은 OK.
-- IaC 폴더: `/Users/fastview/botcontroller/terraform/` (EKS + VPC + ECR + IRSA + Secrets stub)
-- 같은 원칙 적용 대상: `kubectl apply`, `helm install`, `eksctl create`, `aws ... create-*`
-  → 일회성 mutation 명령은 사용자가 직접. 조회 (`get`, `describe`, `sts get-caller-identity` 등) 는 자동 OK.
+- IaC 폴더: `/Users/fastview/botcontroller/terraform/` (옛 cluster, destroy 완료), `/Users/fastview/botcontroller/terraform-v2/` (현재 cluster guardus-eks-v2)
+- 같은 원칙 적용 대상: `kubectl apply / delete`, `helm install / upgrade`, `eksctl create`, `aws ... create-* / delete-* / modify-*`
+  → 일회성 mutation 명령은 사용자가 직접. 조회 (`get`, `describe`, `kubectl logs`, `aws ... describe-*`, `sts get-caller-identity` 등) 는 자동 OK.
 
 ## 5. 🚨 제약사항으로 목표 미달 시 반드시 명시 🚨
 **사용자가 의도한 결과를 못 달성하면 작업 끝나고 "잘 됐어요" 보고 X. 명시적으로 알림.**
@@ -107,6 +108,18 @@ docker compose up -d        # localhost:8081
 git push origin main        # CI/CD → EC2 자동 배포
 ```
 
+## 환경 분리
+
+- **prod** namespace `guardus` — 운영 트래픽. 직접 배포 금지.
+- **dev** namespace `guardus-dev` — 모든 신규 기능 / 변경 / 실험은 여기서 먼저.
+  - 별도 RDS (`guardus-prod-pg-dev`, t4g.micro) + 별도 Redis (`guardus-prod-redis-dev`, t4g.micro)
+  - 같은 cluster (`guardus-eks-v2`), 같은 ALB (`group.name=guardus-shared-v2`)
+  - host: `guardus-admin-dev.viewus.co` (admin UI 만 dev 분리, 채널 트래픽 없음)
+  - overlay: `k8s/overlays/dev/`
+- **prod 직접 배포 시나리오**:
+  - dev 에서 충분히 검증 후 prod 로 promote
+  - hotfix 도 가능하면 dev 우회 후 prod (시간 압박 시 예외)
+
 ## 핵심 규칙
 
 - `X-Botgate-Bypass` 헤더명은 **절대 바꾸지 말 것** — Cloudflare WAF 룰 의존
@@ -140,7 +153,6 @@ git push origin main        # CI/CD → EC2 자동 배포
 | 도메인 | 방식 |
 |---|---|
 | `viewus.co` | Cloudflare Worker `/en` |
-| `pikle.io` / `www.pikle.io` | Route 53 CNAME → `guardus-endpoint.viewus.co` |
 | `pure-beef.kr` / `www.pure-beef.kr` | Cloudflare DNS-only → `guardus-endpoint.viewus.co` |
 | `mobilitytv.co.kr` / `www.mobilitytv.co.kr` | Cloudflare DNS-only → `guardus-endpoint.viewus.co` |
 

@@ -1,0 +1,31 @@
+# ArgoCD Application — dev overlay (같은 cluster guardus-eks-v2, namespace=guardus-dev)
+# DB / Redis 는 별도 인스턴스 (guardus-prod-pg-dev, guardus-prod-redis-dev)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guardus-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jspark-fastview/botgate
+    targetRevision: main
+    path: k8s/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: guardus-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m

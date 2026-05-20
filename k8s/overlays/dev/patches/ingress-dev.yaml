@@ -1,35 +1,16 @@
-# dev EKS Ingress — 채널 도메인 4개 + staging 도메인 추가.
-# DNS 컷오버 전이라 실제 트래픽 없음. 사용자가 Cloudflare / Route 53 에서
-# origin 을 EKS ALB 로 바꾸면 그때부터 활성.
-#
-# ALB Controller 가 SNI 자동 검색: 매칭되는 ACM wildcard 인증서 자동 attach.
-# - *.viewus.co  → guardus-fv-dev.viewus.co, www.viewus.co
-# - *.pikle.io   → www.pikle.io
-# - *.pure-beef.kr → www.pure-beef.kr
-# - apex (viewus.co / pikle.io / pure-beef.kr) → wildcard 부정확 매칭 (EC2 와 동일)
-#   클라이언트가 apex 직접 SNI 요청하면 cert mismatch — Cloudflare orange 또는
-#   www → apex 리다이렉트 시나리오에서는 영향 없음.
-
+# dev 환경 Ingress — 같은 ALB (group.name=guardus-shared-v2) 공유
+# host 만 다르게: guardus-admin-dev.viewus.co
+# 채널 트래픽은 받지 않음 — admin UI 만 dev 분리
 - op: add
   path: /metadata/annotations/alb.ingress.kubernetes.io~1tags
   value: Project=GuardUs,Env=dev
 - op: replace
+  path: /metadata/annotations/alb.ingress.kubernetes.io~1group.name
+  value: guardus-shared-v2
+- op: replace
   path: /spec/rules
   value:
-    # ── staging (현재 동작 중) ─────────────────────
-    - host: guardus-fv-dev.viewus.co
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: openresty
-                port: { number: 80 }
-    # ── 운영 어드민 (frontend SPA 직접, OpenResty 우회) ─────────
-    # EC2 의 guardus-fv.viewus.co → port 3003 패턴 동일.
-    # frontend 가 admin SPA + portal SPA 다 서빙.
-    - host: guardus-admin.viewus.co
+    - host: guardus-admin-dev.viewus.co
       http:
         paths:
           - path: /
@@ -38,63 +19,3 @@
               service:
                 name: frontend
                 port: { number: 3003 }
-    # ── 채널 1: viewus.co ─────────────────────────
-    - host: viewus.co
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: openresty, port: { number: 80 } }
-    - host: www.viewus.co
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: openresty, port: { number: 80 } }
-    # ── 채널 2: pikle.io ──────────────────────────
-    - host: pikle.io
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: openresty, port: { number: 80 } }
-    - host: www.pikle.io
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: openresty, port: { number: 80 } }
-    # ── 채널 3: pure-beef.kr ──────────────────────
-    - host: pure-beef.kr
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: openresty, port: { number: 80 } }
-    - host: www.pure-beef.kr
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: openresty, port: { number: 80 } }
-    # ── 채널 4: mobilitytv.co.kr (Cloudflare proxied) ──────
-    - host: mobilitytv.co.kr
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: openresty, port: { number: 80 } }
-    - host: www.mobilitytv.co.kr
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: openresty, port: { number: 80 } }

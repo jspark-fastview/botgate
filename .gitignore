@@ -24,3 +24,31 @@ frontend/out/
 **/.DS_Store
 redis.plan
 *.plan
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform/destory*.txt
+terraform/destroy*.txt
+terraform-v2/plan.txt
+
+# Claude worktrees
+.claude/worktrees/
+
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform-v2/plan.txt
+terraform-v2/apply*.txt
+terraform/destory*.txt
+terraform/destroy*.txt
+terraform/apply*.txt
+terraform/apply*.log
+
+# Claude
+.claude/worktrees/
