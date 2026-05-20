@@ -1,44 +1,28 @@
-# GuardUs · Kubernetes 마이그레이션
+# GuardUs · Kubernetes
 
-> 현재 EC2 + Docker Compose 운영 그대로 유지. EKS 는 별도 환경으로 병행 구축.
+EKS `guardus-eks-v2` (ap-northeast-2 b/d) prod 운영 중. ArgoCD GitOps, Kustomize overlay.
 
----
-
-## 디자인 원칙
-
-1. **GitOps (ArgoCD)** — 클러스터 상태는 이 repo 가 source of truth. `kubectl apply` 직접 X
-2. **Kustomize overlay** — `base/` 공통 + `overlays/{dev,prod}` 환경 별 패치 (helm 보다 light)
-3. **Cloud-native AWS** — ALB Controller / EBS CSI / External Secrets / IRSA
-4. **단일 책임 매니페스트** — 각 디렉터리 = 한 컴포넌트, kustomization.yaml 로 묶음
-5. **점진적 마이그레이션** — 한 번에 한 서비스씩, EC2 운영 무중단
-
----
-
-## 디렉터리 구조
+## 디렉토리
 
 ```
 k8s/
-├── bootstrap/                 # 클러스터 부팅 (수동 1회)
-│   ├── argocd-install.yaml    # ArgoCD core
-│   └── app-of-apps.yaml       # ArgoCD 가 자기 자신 + 다른 앱 관리
+├── bootstrap/
+│   ├── argocd-install.yaml      # ArgoCD core (수동 1회 적용)
+│   └── app-of-apps-v2.yaml      # ArgoCD 가 다른 모든 app 관리
 │
-├── argocd/apps/               # ArgoCD Application 정의
-│   ├── platform/              # 클러스터 인프라
-│   │   ├── aws-load-balancer-controller.yaml
-│   │   ├── external-secrets.yaml
-│   │   ├── cert-manager.yaml
-│   │   └── kube-prometheus-stack.yaml
-│   └── guardus/               # 우리 앱
-│       ├── guardus-dev.yaml
-│       └── guardus-prod.yaml
+├── platform-v2/                 # v2 cluster 전용 platform Application 정의
+│   └── argocd-ingress/           # argocd.viewus.co ALB Ingress
 │
-├── platform/                  # 플랫폼 도구 helm values
-│   ├── aws-load-balancer-controller/values.yaml
-│   ├── external-secrets/values.yaml
-│   ├── cert-manager/values.yaml
-│   └── kube-prometheus-stack/values.yaml
+├── platform/                    # platform 컴포넌트 helm values
+│   ├── kube-prometheus-stack/   # Prometheus + Grafana + Alertmanager
+│   │   └── dashboards/          # ConfigMap 으로 Grafana 자동 import
+│   ├── loki/                    # Loki (S3 backend)
+│   ├── alloy/                   # 로그 수집 → Loki
+│   ├── cert-manager/
+│   ├── external-secrets/
+│   └── argocd-image-updater/
 │
-├── base/                      # 우리 앱 공통 manifest
+├── base/                        # 앱 공통 매니페스트
 │   ├── namespace.yaml
 │   ├── admin-api/
 │   ├── internal-api/
@@ -48,92 +32,80 @@ k8s/
 │   └── kustomization.yaml
 │
 └── overlays/
-    ├── dev/                   # 개발/학습 환경 (Spot, 작은 리소스)
-    │   ├── kustomization.yaml
-    │   └── patches/
-    └── prod/                  # 운영 환경 (HA, 큰 리소스)
-        ├── kustomization.yaml
-        └── patches/
+    ├── dev/                     # guardus-dev namespace (CI 자동 SHA bump)
+    └── prod-v2/                 # guardus namespace (수동 promote)
 ```
 
----
+## 컴포넌트 통신
 
-## 초기 부트스트랩 절차
-
-### 1. EKS 클러스터 생성
-
-```bash
-# eksctl 사용 — k8s/bootstrap/cluster.yaml 참조
-eksctl create cluster -f k8s/bootstrap/cluster.yaml
+```
+ALB (group=guardus-shared-v2)
+  ├── host=guardus-admin.viewus.co           → frontend (admin SPA)
+  ├── host=guardus-admin-dev.viewus.co       → frontend (dev)
+  ├── host=argocd.viewus.co                  → argocd-server
+  └── host=* (catchall, group.order=1000)    → openresty
+                                                 ├── /admin/*, /me/*, /auth/*  → admin-api
+                                                 ├── /internal/*               → internal-api
+                                                 └── (그 외 채널 host)         → 외부 origin
 ```
 
-### 2. ECR 레포 생성 + 이미지 푸시
-
-```bash
-# admin-api, internal-api, openresty, frontend 4개
-for svc in admin-api internal-api openresty frontend; do
-  aws ecr create-repository --repository-name guardus/$svc --region ap-northeast-2
-done
-
-# 빌드 + 푸시 (학습 시점에 수동 — 추후 CI/CD)
-docker build -t guardus/admin-api ./admin-api
-docker tag guardus/admin-api 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/admin-api:latest
-docker push 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/admin-api:latest
-# ... (반복)
-```
-
-### 3. ArgoCD 설치
-
-```bash
-kubectl create namespace argocd
-kubectl apply -n argocd -f k8s/bootstrap/argocd-install.yaml
-# 또는 helm
-```
-
-### 4. app-of-apps 적용
-
-```bash
-kubectl apply -f k8s/bootstrap/app-of-apps.yaml
-# 이후 ArgoCD 가 platform + guardus 앱 자동 동기화
-```
-
----
+채널 등록은 admin UI 에서. K8s Ingress 변경 없음 (`ingress-catchall.yaml` 이 모든 host 수신).
 
 ## 환경별 차이
 
-| 항목 | dev | prod |
+| 항목 | dev | prod-v2 |
 |---|---|---|
-| 노드 타입 | Spot t4g.small | On-Demand t4g.large |
-| 노드 수 | 1~2 | 2~5 (HPA) |
-| 도메인 | `*.eks-dev.viewus.co` | (현재 EC2 도메인 그대로) |
-| DB | SQLite PVC | RDS (Phase B 이후) |
-| Replicas | admin/internal-api 1, frontend 1 | admin/internal 1 (SQLite 단일 writer), frontend 2 |
-| 모니터링 | kube-prometheus-stack | 동일 + Loki/Tempo (선택) |
+| Namespace | `guardus-dev` | `guardus` |
+| Host | `guardus-admin-dev.viewus.co` | `guardus-admin.viewus.co` + 채널 도메인 catchall |
+| RDS | `guardus-prod-pg-dev` (t4g.micro) | `guardus-prod-pg-v2` |
+| Redis | `guardus-prod-redis-dev` (t4g.micro) | `guardus-prod-redis-v2` |
+| Replicas | admin/internal-api 1, frontend 1, openresty 1 | admin 2, internal 2, frontend 2, openresty 3+ (HPA) |
+| CI 동작 | 컴포넌트 변경 시 newTag 자동 bump | newTag 수동 변경 (dev → prod promote) |
 
----
+## ArgoCD app 목록
 
-## 주의 — SQLite 제약
+```
+app-of-apps                  → 자기 자신 + 모든 platform / guardus app
+platform 부류:
+  alloy
+  argocd-ingress
+  aws-load-balancer-controller
+  cert-manager
+  external-secrets
+  karpenter
+  kube-prometheus-stack
+  loki
+  argocd-image-updater
+guardus 앱:
+  guardus-dev                → overlays/dev
+  guardus-prod-v2            → overlays/prod-v2
+```
 
-현재 admin-api / internal-api 는 SQLite 단일 writer.
-K8s 에서는:
-- `replicas: 1` 고정 + `strategy: Recreate`
-- PVC `ReadWriteOnce` (EBS gp3)
-- 노드 장애 시 EBS 가 다른 노드로 attach (수 분 소요)
+## 일상 운영
 
-이게 진짜 cloud-native 가 아님. **다음 단계: RDS PostgreSQL 이관 (Phase B)** 후
-admin-api 만 `replicas: 2+` 로 확장 가능.
+```bash
+# Pod 상태
+kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded
 
----
+# ArgoCD app 상태
+kubectl get application -n argocd
 
-## 학습 우선 순위
+# dev 배포 (자동) — 코드 push 후 CI 가 dev overlay 의 newTag bump
+git push origin main
 
-1. **kubectl 기본** (Pod/Deployment/Service)
-2. **Kustomize overlay** — base 와 overlay 변형
-3. **ArgoCD UI + GitOps** — drift / sync / rollback
-4. **AWS Load Balancer Controller** — Ingress → ALB 자동 생성
-5. **IRSA** (IAM Roles for Service Accounts) — 파드가 AWS API 호출
-6. **External Secrets** — AWS Secrets Manager 연동
-7. **kube-prometheus-stack** — ServiceMonitor / PrometheusRule
-8. **HPA + KEDA** — 메트릭 기반 자동 스케일
-9. **NetworkPolicy** — 파드 간 통신 제어
-10. **Karpenter** — 노드 오토스케일 (ASG 대체)
+# prod promote — 변경된 컴포넌트만 prod-v2 의 newTag 를 dev SHA 로 변경
+$EDITOR k8s/overlays/prod-v2/kustomization.yaml
+git commit -am 'chore(prod-v2): promote X' && git push
+
+# 로그
+kubectl logs -n guardus -l app.kubernetes.io/name=openresty --tail=200
+# 또는 Grafana → Explore → Loki: {namespace="guardus", app="openresty"}
+```
+
+## 핵심 운영 규칙
+
+1. **prod 직접 mutation 금지** — 모든 변경은 git → ArgoCD 경유
+2. **ingress catchall + admin Ingress 분리** — 채널은 admin UI 로만 등록 (K8s manifest 안 건드림)
+3. **`group.name=guardus-shared-v2` 변경 금지** — ALB hostname 재생성 사고 위험
+4. **PVC AZ 의존** — node AZ 와 PV AZ 일치해야 schedule. PVC 가 2b 인데 2b 노드 부족 시 pending.
+5. **EKS cluster subnet 변경 불가** — 생성 후 AZ 집합 변경 시 InvalidParameterException. control plane IP 부족 시 cluster 재생성 외 방법 없음.

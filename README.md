@@ -1,189 +1,105 @@
-# GuardUs (구 botgate)
+# GuardUs
 
-OpenResty 기반 AI 봇 트래픽 수익화 게이트웨이.
+AI 봇 트래픽 수익화 게이트웨이. OpenResty 가 요청을 봇 종류별로 분류·과금·차단하고, 등록된 채널(사이트)을 리버스 프록시로 연결.
 
-AI 크롤러(GPTBot, ClaudeBot 등)의 rDNS 이중 검증 + 토큰 인증으로 유료 접근을 관리하고,  
-등록된 채널(사이트)을 리버스 프록시로 연결해 봇 트래픽 통계를 수집합니다.
-
-> **현재 운영**: EKS (`guardus-eks`, ap-northeast-2). 매니페스트 / 운영 정보는 [`k8s/README.md`](k8s/README.md).  
-> **이 문서**: 로컬 / dev 환경 (Docker Compose) 위주. 옛 token-api (Fastify + SQLite) 아키텍처 그대로. 운영은 **admin-api (Spring Boot + Postgres + Redis + Loki)** 로 옮겨졌음.
+- **운영**: EKS `guardus-eks-v2` (ap-northeast-2 b/d), prod + dev namespace
+- **로컬 개발**: Docker Compose
+- **GitOps**: ArgoCD app-of-apps-v2 (이 repo 가 source of truth)
 
 ## 아키텍처
 
 ```
-AI봇 요청
-    ↓
-OpenResty (port 80)
-  ├─ bot_filter.lua   악성 UA → 403
-  ├─ rdns.lua         PTR + forward A 이중 검증
-  ├─ filter.lua       토큰 검증 → access_log 기록
-  └─ channels.lua     Host 헤더 → 채널 upstream 조회 (60s 캐시)
-       ↓ (리버스 프록시)
-  실제 오리진 서버
-       ↓ (fire-and-forget)
-token-api (Fastify / port 3000)
-  ├─ /internal        OpenResty 전용 (검증·로깅·캐시 무효화)
-  ├─ /admin           어드민 API (ADMIN_KEY 인증)
-  ├─ /auth            회원 인증 (register·login·logout·me)
-  ├─ /me              채널 오너 포털 API
-  └─ SQLite           botgate.db
+                    ┌─ Cloudflare DNS (DNS-only) ─┐
+                    │   *.viewus.co               │
+                    │   채널 도메인 → guardus-endpoint.viewus.co
+                    └────────────┬────────────────┘
+                                 │
+                          ALB (group guardus-shared-v2)
+                                 │
+                          OpenResty (Lua)
+                                 │
+                  ┌──────────────┼──────────────┐
+                  │              │              │
+            (bot 검증)      (admin SPA)    (채널 origin)
+                  │              │
+            internal-api    admin-api
+            (Spring/Java)   (Spring/Java)
+                  └──────┬───────┘
+                         ▼
+            ┌──── RDS Postgres ────┐
+            │  guardus-prod-pg-v2   │
+            │  guardus-prod-pg-dev  │
+            └────┬──────────────────┘
+                 │
+            ElastiCache Redis (캐시)
+                 │
+            Loki + Alloy (로그 → S3)
+            Prometheus + Grafana (메트릭)
 ```
 
-## 디렉터리 구조
+## 컴포넌트
 
-```
-botgate/
-├── docker-compose.yml           # dev  (port 80)
-├── docker-compose.prod.yml      # prod (port 80, restart:always)
-├── .env.example                 # ADMIN_KEY 설정 예시
-├── openresty/
-│   ├── nginx.conf
-│   ├── lua/
-│   │   ├── rdns.lua             # PTR + A 이중 검증 / 1시간 캐시
-│   │   ├── bot_filter.lua       # 악성 UA 차단
-│   │   ├── filter.lua           # 토큰 검증 + 접근 기록
-│   │   ├── channels.lua         # Host → upstream 조회 (shared_dict 캐시)
-│   │   └── path_rules.lua       # 경로별 allow/block/meter 규칙
-│   └── conf.d/dev/bot.conf      # 채널 리버스 프록시 + 내부 캐시 무효화 엔드포인트
-├── token-api/
-│   └── src/
-│       ├── app.js               # Fastify 앱, ADMIN_KEY 미들웨어
-│       ├── db/schema.js         # SQLite 스키마 + 마이그레이션
-│       └── routes/
-│           ├── internal.js      # 토큰 검증 + 접근 기록
-│           ├── client.js        # 클라이언트 토큰 API
-│           ├── admin.js         # 어드민 CRUD + 통계
-│           ├── auth.js          # 회원 인증 (scrypt)
-│           └── user.js          # 채널 오너 /me/* 라우트
-└── web/                         # 정적 파일 (/ui/ prefix로 서빙)
-    ├── admin.html               # 퍼블리셔 랜딩 페이지
-    ├── index.html               # 어드민 대시보드 SPA
-    ├── portal.html              # 채널 오너 포털 SPA
-    ├── user.html                # AI회사용 랜딩 페이지
-    └── botgate-marketing.css
+| 디렉토리 | 역할 | 스택 |
+|---|---|---|
+| `openresty/` | 봇 분류, 정책(pass/meter/verify/token_only/block/gone), 리버스 프록시 | OpenResty + Lua |
+| `internal-api/` | OpenResty 전용 내부 API (토큰 검증, access 로깅, bot catalog) | Spring Boot 3 (Java) |
+| `admin-api/` | 어드민/포털 API: `/admin/*`, `/me/*`, `/auth/*`, `/admin/stats/*` | Spring Boot 3 (Java) |
+| `frontend/` | 정적 SPA (`portal-app.html`) — 어드민 대시보드 + 채널 오너 포털 | HTML + Vanilla JS |
+| `k8s/` | Kustomize overlay (base / overlays/dev / overlays/prod-v2) | Kustomize + Helm |
+| `terraform-v2/` | EKS / RDS / Redis / S3(Loki) / IAM Pod Identity | Terraform |
+| `token-api/` | **deprecated** — Node.js Fastify 옛 코드, deploy 안 됨 | — |
+
+## 환경 분리
+
+| | dev | prod |
+|---|---|---|
+| Namespace | `guardus-dev` | `guardus` |
+| RDS | `guardus-prod-pg-dev` (t4g.micro) | `guardus-prod-pg-v2` |
+| Redis | `guardus-prod-redis-dev` (t4g.micro) | `guardus-prod-redis-v2` |
+| Host | `guardus-admin-dev.viewus.co` (admin UI 만) | `guardus-admin.viewus.co` + 채널 도메인 |
+| 이미지 tag bump | CI 자동 (paths-filter) | dev SHA 검증 후 수동 promote |
+
+**신규 기능 / 변경 / 실험은 반드시 dev 먼저.** prod 직접 배포는 hotfix 또는 promote 만.
+
+## 로컬 개발
+
+```bash
+cp .env.example .env       # ADMIN_KEY, STATS_KEY 등 설정
+docker compose up -d       # localhost:8081
 ```
 
-## 페이지 흐름
+코드 변경 → `git push origin main` → CI → ECR 빌드 + dev overlay SHA 자동 bump → ArgoCD 가 dev 에 sync.
 
-```
-/ui/admin.html  (퍼블리셔 랜딩)
-    └─ 무료로 시작하기 →  /ui/index.html  (어드민 대시보드, ADMIN_KEY 필요)
+## Prod promote
 
-/ui/portal.html  (채널 오너 포털, 로그인 후 /me/* API 사용)
-```
+dev 검증 후 `k8s/overlays/prod-v2/kustomization.yaml` 의 변경된 컴포넌트 `newTag` 를 dev 의 새 SHA 로 수동 변경 → commit → push → ArgoCD prod sync.
 
-## 채널 리버스 프록시
+## 핵심 불변 규칙
 
-Host 헤더와 채널 테이블을 매핑해 봇 요청을 실 서버로 프록시합니다.
+- `X-Botgate-Bypass` 헤더명 / `GUARDUS_BYPASS_KEY` 환경변수명 변경 금지 (Cloudflare WAF 의존)
+- `alb.ingress.kubernetes.io/group.name: guardus-shared-v2` 변경 금지 (ALB hostname 재생성됨)
+- 신규 채널 DNS 는 `guardus-endpoint.viewus.co` CNAME 만 (ALB hostname 직접 가리키지 말 것)
+- prod 직접 push 지양, dev → 검증 → promote
+- `terraform apply / destroy` 는 사용자 직접 (Claude 는 plan / 조회만)
 
-```
-등록 예시:
-  도메인: news.example.com
-  업스트림: http://origin.example.com
+## 봇 정책 / 키
 
-동작:
-  AI봇 → botgate (news.example.com) → rDNS 검증 → origin.example.com
-                                         ↓ 로깅
-                                      access_logs (domain=news.example.com)
-```
+- 4-way 분류: `malicious` / `bot` / `other_bot` / `user`
+- 7 purpose: ai_training / ai_search / ai_assistant / search_engine / seo / social / generic
+- 6 액션: pass / meter / verify / token_only / block / gone
+- 외부 모니터링 (innerops 등) 은 STATS_KEY (read-only, GET /admin/stats/* + /admin/logs 만)
+- 통합 KPI 엔드포인트: `GET /admin/stats/summary?domain=<선택>`
 
-채널 설정 변경 시 `/_internal/cache/invalidate`가 자동 호출되어 Lua 캐시를 즉시 갱신합니다.
+## 등록 채널
 
-## 지원 AI 봇
-
-| 봇 | PTR 패턴 |
+| 도메인 | 방식 |
 |---|---|
-| GPTBot, ChatGPT-User | `*.openai.com` |
-| ClaudeBot, Claude-Web | `*.anthropic.com` |
-| Googlebot, Google-Extended | `*.googlebot.com` |
-| Applebot | `*.apple.com` |
-| PerplexityBot | `*.perplexity.ai` |
-| Amazonbot | `*.amazon.com` |
-| CCBot | `*.commoncrawl.org` |
-| Bytespider | `*.bytedance.com` |
+| `viewus.co` | Cloudflare Worker `/en` |
+| `pure-beef.kr` / `www.pure-beef.kr` | Cloudflare DNS-only → `guardus-endpoint.viewus.co` |
+| `mobilitytv.co.kr` / `www.mobilitytv.co.kr` | Cloudflare DNS-only → `guardus-endpoint.viewus.co` |
 
-## API 엔드포인트
+## 더 보기
 
-### Internal (OpenResty → token-api)
-| 메서드 | 엔드포인트 | 설명 |
-|---|---|---|
-| POST | `/internal/tokens/validate` | 토큰 유효성 확인 |
-| POST | `/internal/access` | 봇 접근 기록 |
-| GET | `/_internal/cache/invalidate` | Lua 캐시 무효화 (Docker 네트워크 전용) |
-
-### Admin (ADMIN_KEY Bearer 인증)
-| 메서드 | 엔드포인트 | 설명 |
-|---|---|---|
-| GET/POST | `/admin/tokens` | 토큰 목록/발급 |
-| PATCH/DELETE | `/admin/tokens/:id` | 활성화/삭제 |
-| GET | `/admin/channels` | 채널 목록 |
-| POST | `/admin/channels` | 채널 등록 |
-| PATCH/DELETE | `/admin/channels/:id` | 채널 수정/삭제 |
-| GET | `/admin/path-rules` | 경로 규칙 목록 |
-| POST | `/admin/path-rules` | 규칙 추가 |
-| PATCH/DELETE | `/admin/path-rules/:id` | 규칙 수정/삭제 |
-| GET | `/admin/stats/bots` | 봇별 통계 (`?domain=`) |
-| GET | `/admin/stats/daily` | 일별 통계 (`?domain=`) |
-| GET | `/admin/stats/hourly` | 시간별 통계 (`?date=&domain=`) |
-| GET | `/admin/stats/domains` | 도메인별 통계 |
-| GET | `/admin/stats/channels` | 채널별 요약 통계 |
-| GET | `/admin/logs` | 최근 접근 로그 (`?domain=&limit=`) |
-| GET/PATCH/DELETE | `/admin/users/:id` | 사용자 관리 |
-
-### Auth
-| 메서드 | 엔드포인트 | 설명 |
-|---|---|---|
-| POST | `/auth/register` | 회원가입 |
-| POST | `/auth/login` | 로그인 → 세션 토큰 |
-| POST | `/auth/logout` | 로그아웃 |
-| GET | `/auth/me` | 내 정보 |
-
-### User (세션 토큰 인증)
-| 메서드 | 엔드포인트 | 설명 |
-|---|---|---|
-| GET | `/me/dashboard` | 내 채널 요약 |
-| GET/POST | `/me/channels` | 내 채널 목록/추가 |
-| GET | `/me/tokens` | 내 토큰 목록 |
-| GET | `/me/profile` | 프로필 조회 |
-
-## 실행
-
-### Dev
-```bash
-cp .env.example .env          # ADMIN_KEY 설정
-docker compose up -d
-
-# 어드민 대시보드
-open http://localhost/ui/admin.html
-
-# 봇 테스트
-TOKEN=bg_xxx bash scripts/perplexitybot.sh
-TOKEN=bg_xxx bash scripts/googlebot.sh
-```
-
-### Prod (EC2)
-```bash
-cp .env.example .env          # ADMIN_KEY 강력한 값으로 교체
-docker compose -f docker-compose.prod.yml up -d
-```
-
-token-api는 외부에 포트를 열지 않고 (`expose: 3000`), SSH 포트포워딩 또는 동일 네트워크에서만 접근합니다.
-
-```bash
-# EC2에서 어드민 접근 (SSH 터널)
-ssh -L 3000:localhost:3000 ec2-user@<EC2_IP>
-open http://localhost:3000/ui/admin.html
-```
-
-## DB 스키마
-
-> Dev: SQLite (`botgate.db`). Prod: Postgres (`guardus-prod-pg-2a` @ ap-northeast-2a). 스키마 동일, Flyway migration 으로 양쪽 호환.
-
-```sql
-tokens        -- API 토큰 (id, token, owner, plan, active, user_id)
-access_logs   -- 봇 접근 기록 (token, bot_ua, domain, ip, path, verified, billed)
-channels      -- 등록 채널 (id, name, domain, upstream, active, owner_id, integration_mode)
-path_rules    -- 경로 규칙 (pattern, action: allow|block|meter)
-users         -- 채널 오너 계정 (email, password_hash, name, active)
-sessions      -- 로그인 세션 (token, user_id, expires_at)
-```
+- K8s 매니페스트 / 배포: [`k8s/README.md`](k8s/README.md)
+- IaC (EKS / RDS / IAM): [`terraform-v2/README.md`](terraform-v2/README.md)
+- LLM 작업 규칙 / 학습 사고: [`CLAUDE.md`](CLAUDE.md)
