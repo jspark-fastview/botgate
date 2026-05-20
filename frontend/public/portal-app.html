@@ -95,8 +95,25 @@
   .purpose-pill.active { color: #fff; }
   .csv-btn { margin-left:auto; padding:4px 10px; font-size:11px; font-weight:700; color:var(--ink-dim); background:var(--bg-soft); border:1px solid var(--line); border-radius:6px; cursor:pointer; letter-spacing:.02em; transition:background 150ms,color 150ms; flex-shrink:0; }
   .csv-btn:hover { background:var(--brand); color:#fff; border-color:var(--brand); }
-  .pricing-base-card:hover { background: var(--bg-soft); }
-  .pricing-base-card.active { border-color: var(--brand) !important; background: var(--brand-soft); }
+  .pricing-base-card { position:relative; opacity:0.72; transition:all 180ms ease; }
+  .pricing-base-card:hover { background: var(--bg-soft); opacity:0.92; }
+  .pricing-base-card.active {
+    border-color: var(--brand) !important;
+    background: var(--brand-soft);
+    opacity: 1;
+    box-shadow: 0 0 0 3px rgba(43,109,246,.12), 0 4px 14px rgba(43,109,246,.18);
+    transform: translateY(-1px);
+  }
+  .pricing-base-card.active::before {
+    content: '✓';
+    position: absolute; top: 10px; right: 12px;
+    width: 22px; height: 22px;
+    background: var(--brand); color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 800;
+    box-shadow: 0 2px 4px rgba(43,109,246,.3);
+  }
   .pricing-base-card.active div:last-child { color: var(--brand) !important; font-weight: 700; }
   .pricing-heatmap { display:none; flex-wrap:wrap; gap:3px; margin:10px 0 8px; min-height:22px; }
   .pricing-base-card.active .pricing-heatmap { display:flex; }
@@ -1873,7 +1890,11 @@
     _pricingBilledCount = _pricingStatValues[key] || 0;
     ['total','month','billed'].forEach(k => {
       const el = document.getElementById(`pricing-base-${k}`);
-      if (el) el.classList.toggle('active', k === key);
+      if (!el) return;
+      el.classList.toggle('active', k === key);
+      // 마지막 div ("계산에 적용 →" / "✓ 적용 중") 텍스트 토글
+      const last = el.querySelector('div:last-child');
+      if (last) last.textContent = (k === key) ? '✓ 현재 적용 중' : '이 기준으로 선택 →';
     });
     updatePricingPreview();
   }
