@@ -5,8 +5,6 @@ token-api/data/
 .env
 
 # Java / Maven
-admin-api/target/
-internal-api/target/
 **/target/
 
 # Next.js
@@ -22,33 +20,18 @@ frontend/out/
 # OS
 .DS_Store
 **/.DS_Store
-redis.plan
-*.plan
 
-# Terraform
-**/.terraform/
-*.tfstate
-*.tfstate.*
-*.tfplan
-terraform/destory*.txt
-terraform/destroy*.txt
-terraform-v2/plan.txt
-
-# Claude worktrees
-.claude/worktrees/
-
-# Terraform
+# Terraform — work artifacts (state 는 S3 backend)
 **/.terraform/
 **/.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
 *.tfplan
-terraform-v2/plan.txt
+*.plan
 terraform-v2/apply*.txt
-terraform/destory*.txt
-terraform/destroy*.txt
-terraform/apply*.txt
-terraform/apply*.log
+terraform-v2/destroy*.txt
+terraform-v2/plan.txt
+terraform/             # 옛 cluster 폴더 (destroy 완료, dead)
 
 # Claude
 .claude/worktrees/
