@@ -139,14 +139,7 @@ local function _record(action, verified, billed, blocked)
 end
 
 function _M.run()
-    -- ① 긴급 바이패스 킬 스위치 — 공유 dict에서 읽어 즉시 통과
-    local dict = ngx.shared.bot_catalog
-    if dict and dict:get("bypass") == "1" then
-        ngx.req.set_header("X-Botgate-Mode", "bypass")
-        return
-    end
-
-    -- ② pcall 랩핑 — Lua 내부 오류 시 500 대신 통과 (fail-open)
+    -- pcall 랩핑 — Lua 내부 오류 시 500 대신 통과 (fail-open)
     local ok, err = pcall(function()
 
     local raw_ua = ngx.var.http_user_agent
