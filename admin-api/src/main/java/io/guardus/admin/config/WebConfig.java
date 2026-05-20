@@ -16,10 +16,18 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        // viewus.co (apex/subdomain) + localhost(개발) 만 허용.
+        // 와일드카드 "*" 면 Authorization 헤더 있을 때 브라우저가 거부할 수 있고 CSRF 노출.
         registry.addMapping("/**")
-                .allowedOriginPatterns("*")
+                .allowedOriginPatterns(
+                    "https://*.viewus.co",
+                    "https://viewus.co",
+                    "http://localhost:*",
+                    "http://127.0.0.1:*"
+                )
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                .allowedHeaders("*");
+                .allowedHeaders("*")
+                .allowCredentials(true);
     }
 
     @Override

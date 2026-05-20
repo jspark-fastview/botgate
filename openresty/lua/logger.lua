@@ -17,6 +17,7 @@ local function send(premature, payload)
     local ok, err = sock:connect(HOST, PORT)
     if not ok then
         ngx.log(ngx.WARN, "[logger] connect failed: ", err)
+        sock:close()
         return
     end
 

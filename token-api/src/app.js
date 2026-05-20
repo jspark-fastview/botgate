@@ -19,8 +19,12 @@ await import('./db/schema.js')
 
 const app = Fastify({ logger: true })
 
-// PoC: 전체 오픈, 운영 시 origin 지정
-app.register(cors, { origin: true })
+// viewus.co (apex/subdomain) + localhost 만 허용.
+// 와일드카드 origin:true 면 어드민 SPA 외 임의 도메인 origin 에서 Authorization 헤더 노출 가능.
+app.register(cors, {
+  origin: [/^https:\/\/([a-z0-9-]+\.)?viewus\.co$/, /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/],
+  credentials: true,
+})
 
 // ── 어드민 인증 ────────────────────────────────────────────
 // ADMIN_KEY: 풀 권한 (read + write)
