@@ -1,6 +1,7 @@
 package io.guardus.admin.controller;
 
 import io.guardus.admin.service.ChannelsRedisCache;
+import io.guardus.admin.service.CloudflareDnsService;
 import io.guardus.admin.service.DnsService;
 import io.guardus.admin.service.LokiStatsService;
 import io.guardus.admin.util.CacheInvalidator;
@@ -43,13 +44,16 @@ public class ChannelAdminController {
     private final DnsService          dns;
     private final LokiStatsService    lokiStats;
     private final ChannelsRedisCache  channelsRedis;   // null = Redis 비활성 (EC2)
+    private final CloudflareDnsService cloudflareDns;
 
     public ChannelAdminController(JdbcTemplate db, DnsService dns, LokiStatsService lokiStats,
+                                  CloudflareDnsService cloudflareDns,
                                   @org.springframework.beans.factory.annotation.Autowired(required=false)
                                   ChannelsRedisCache channelsRedis) {
         this.db            = db;
         this.dns           = dns;
         this.lokiStats     = lokiStats;
+        this.cloudflareDns = cloudflareDns;
         this.channelsRedis = channelsRedis;
     }
 
@@ -103,8 +107,18 @@ public class ChannelAdminController {
         }
         CacheInvalidator.invalidate();
         syncChannelsRedis();
-        return ResponseEntity.status(201).body(
-                Map.of("id", id, "name", name, "domain", domain, "upstream", upstream, "active", 1));
+
+        // Cloudflare DNS 자동 추가 (실패해도 채널 생성 자체는 성공)
+        CloudflareDnsService.Result dnsResult = cloudflareDns.addCnameToEndpoint(domain);
+
+        Map<String, Object> body2 = new LinkedHashMap<>();
+        body2.put("id", id);
+        body2.put("name", name);
+        body2.put("domain", domain);
+        body2.put("upstream", upstream);
+        body2.put("active", 1);
+        body2.put("dnsResult", dnsResult.toMap());
+        return ResponseEntity.status(201).body(body2);
     }
 
     /** PATCH /admin/channels/:id */
@@ -134,12 +148,24 @@ public class ChannelAdminController {
 
     /** DELETE /admin/channels/:id */
     @DeleteMapping("/admin/channels/{id}")
-    public ResponseEntity<Void> deleteChannel(@PathVariable String id) {
+    public ResponseEntity<Map<String, Object>> deleteChannel(@PathVariable String id) {
+        // domain 먼저 조회 — DB 삭제 후 Cloudflare 호출용
+        List<Map<String, Object>> rows = db.queryForList("SELECT domain FROM channels WHERE id = ?", id);
+        if (rows.isEmpty()) return ResponseEntity.notFound().build();
+        String domain = (String) rows.get(0).get("domain");
+
         int changed = db.update("DELETE FROM channels WHERE id = ?", id);
         if (changed == 0) return ResponseEntity.notFound().build();
         CacheInvalidator.invalidate();
         syncChannelsRedis();
-        return ResponseEntity.noContent().build();
+
+        // Cloudflare DNS 자동 삭제 (실패해도 채널 삭제 자체는 성공)
+        CloudflareDnsService.Result dnsResult = cloudflareDns.deleteRecord(domain);
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("deleted", true);
+        resp.put("domain", domain);
+        resp.put("dnsResult", dnsResult.toMap());
+        return ResponseEntity.ok(resp);
     }
 
     /** GET /admin/channels/dns-status — bulk DNS check */

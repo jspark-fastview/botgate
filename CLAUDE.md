@@ -2,6 +2,15 @@
 
 > Tradeoff: These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
+## 🚨 0. 작업 범위 임의 축소 금지 (최상위)
+**"오늘은", "일단", "지금은" 같은 말로 작업 임의 축소 X.**
+
+사용자가 명시한 의도 (예: "다 정리하자", "전부 자동화") 가 있으면 그 끝까지 완수.
+
+- 시간 절약 / 안전 우려로 부분만 하려면 사용자에게 명시적으로 확인 받기.
+- 사용자 결정 없이 "1단계만" "오늘은 여기까지" 같은 자체 판단 금지.
+- 작업량이 크면 자기 추측으로 자르지 말고 "전체 작업 N단계, 어느 단계까지 진행할까?" 라고 직접 물어보기.
+
 ## 1. Think Before Coding
 **Don't assume. Don't hide confusion. Surface tradeoffs.**
 
