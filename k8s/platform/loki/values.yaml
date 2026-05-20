@@ -31,6 +31,7 @@ loki:
 
   schemaConfig:
     configs:
+      # 옛 schema (filesystem) — 새 cluster fresh 라 데이터 없음, 그러나 chart 가 schemaConfig 요구
       - from: "2024-01-01"
         store: tsdb
         object_store: filesystem
@@ -38,9 +39,26 @@ loki:
         index:
           prefix: loki_index_
           period: 24h
+      # 새 schema (S3) — 2026-05-21 부터 적용
+      - from: "2026-05-21"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_s3_index_
+          period: 24h
 
+  # S3 backend — IAM 자격증명은 Pod Identity (terraform-v2/s3-loki.tf 의 association) 으로 자동.
   storage:
-    type: filesystem
+    type: s3
+    bucketNames:
+      chunks: guardus-loki-chunks-v2
+      ruler:  guardus-loki-chunks-v2
+      admin:  guardus-loki-chunks-v2
+    s3:
+      region: ap-northeast-2
+      s3ForcePathStyle: false
+      insecure: false
 
   limits_config:
     retention_period: 60d
