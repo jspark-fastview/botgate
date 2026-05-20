@@ -34,6 +34,12 @@ module "eks_v2" {
     aws-ebs-csi-driver     = { most_recent = true }
   }
 
+  # Karpenter EC2NodeClass.securityGroupSelectorTerms 가 자동 발견.
+  # 누락 시 NodePool 이 NodeClassReady=False (SecurityGroupsNotFound) 로 빠져 provisioning 불가.
+  node_security_group_tags = {
+    "karpenter.sh/discovery" = var.cluster_name
+  }
+
   eks_managed_node_groups = {
     spot = {
       ami_type       = "BOTTLEROCKET_ARM_64"
