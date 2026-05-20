@@ -114,7 +114,7 @@
     font-size: 13px; font-weight: 800;
     box-shadow: 0 2px 4px rgba(43,109,246,.3);
   }
-  .pricing-base-card.active div:last-child { color: var(--brand) !important; font-weight: 700; }
+  .pricing-base-card.active .pricing-base-cta { color: var(--brand) !important; font-weight: 700; }
   .pricing-heatmap { display:none; flex-wrap:wrap; gap:3px; margin:10px 0 8px; min-height:22px; }
   .pricing-base-card.active .pricing-heatmap { display:flex; }
   #pricing-tip { position:fixed; background:var(--ink); color:#fff; font-size:11px; line-height:1.5; padding:5px 9px; border-radius:7px; pointer-events:none; display:none; z-index:9999; white-space:nowrap; }
@@ -840,7 +840,7 @@
             <div id="pricing-heat-total" class="pricing-heatmap"></div>
             <div style="font-size:11px;color:var(--ink-mute);">누적 전체 · 통과 + 차단 포함</div>
             <div style="font-size:10px;color:var(--ink-mute);margin-top:4px;">검색봇·기타봇 포함, 일부는 무료 통과</div>
-            <div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--ink-dim);">계산에 적용 →</div>
+            <div class="pricing-base-cta" style="margin-top:10px;font-size:12px;font-weight:600;color:var(--ink-dim);">계산에 적용 →</div>
           </div>
           <div id="pricing-base-month" class="pricing-base-card" onclick="applyPricingBase('month')" style="cursor:pointer;border:2px solid var(--line);border-radius:12px;padding:14px 16px;transition:border-color 150ms,background 150ms;">
             <div style="font-size:11px;font-weight:700;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">이번달 요청</div>
@@ -848,7 +848,7 @@
             <div id="pricing-heat-month" class="pricing-heatmap"></div>
             <div style="font-size:11px;color:var(--ink-mute);">최근 30일 · 통과 + 차단 포함</div>
             <div style="font-size:10px;color:var(--ink-mute);margin-top:4px;">월별 트래픽 규모 파악용</div>
-            <div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--ink-dim);">계산에 적용 →</div>
+            <div class="pricing-base-cta" style="margin-top:10px;font-size:12px;font-weight:600;color:var(--ink-dim);">계산에 적용 →</div>
           </div>
           <div id="pricing-base-billed" class="pricing-base-card" onclick="applyPricingBase('billed')" style="cursor:pointer;border:2px solid var(--line);border-radius:12px;padding:14px 16px;transition:border-color 150ms,background 150ms;">
             <div style="font-size:11px;font-weight:700;color:var(--ok);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">과금 대상</div>
@@ -856,7 +856,7 @@
             <div id="pricing-heat-billed" class="pricing-heatmap"></div>
             <div style="font-size:11px;color:var(--ink-mute);">meter 정책 적용 요청만</div>
             <div style="font-size:10px;color:var(--ink-mute);margin-top:4px;">실제 수익화 대상 — 전체보다 적음</div>
-            <div style="margin-top:10px;font-size:12px;font-weight:600;color:var(--ok);">계산에 적용 →</div>
+            <div class="pricing-base-cta" style="margin-top:10px;font-size:12px;font-weight:600;color:var(--ok);">계산에 적용 →</div>
           </div>
         </div>
 
@@ -1881,9 +1881,9 @@
       const el = document.getElementById(`pricing-base-${k}`);
       if (!el) return;
       el.classList.toggle('active', k === key);
-      // 마지막 div ("계산에 적용 →" / "✓ 적용 중") 텍스트 토글
-      const last = el.querySelector('div:last-child');
-      if (last) last.textContent = (k === key) ? '✓ 현재 적용 중' : '이 기준으로 선택 →';
+      // CTA 텍스트 토글. div:last-child 셀렉터는 히트맵 안 박스를 매치하므로 명시 class 필수.
+      const cta = el.querySelector('.pricing-base-cta');
+      if (cta) cta.textContent = (k === key) ? '✓ 현재 적용 중' : '이 기준으로 선택 →';
     });
     updatePricingPreview();
   }
