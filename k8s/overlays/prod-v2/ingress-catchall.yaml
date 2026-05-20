@@ -17,7 +17,7 @@ metadata:
     # priority — host-specific rule (default order=0) 들보다 큰 값 = 낮은 우선순위.
     # ALB Controller 허용 범위 [-1000, 1000]. 최대값 1000 으로 마지막 priority.
     alb.ingress.kubernetes.io/group.order: '1000'
-    alb.ingress.kubernetes.io/tags: Project=GuardUs,Env=prod,Cluster=v2,Type=catchall
+    alb.ingress.kubernetes.io/tags: Project=GuardUs,Cluster=v2,Type=catchall
 spec:
   ingressClassName: alb
   rules:

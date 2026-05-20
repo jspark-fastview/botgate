@@ -4,7 +4,7 @@
 # Phase B (검증 후): admin host 만 남기고 채널 host rule 제거 — catch-all 이 받음
 - op: add
   path: /metadata/annotations/alb.ingress.kubernetes.io~1tags
-  value: Project=GuardUs,Env=prod,Cluster=v2
+  value: Project=GuardUs,Cluster=v2
 - op: replace
   path: /metadata/annotations/alb.ingress.kubernetes.io~1group.name
   value: guardus-shared-v2
