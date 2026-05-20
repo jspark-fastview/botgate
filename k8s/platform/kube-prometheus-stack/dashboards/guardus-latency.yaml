@@ -1,0 +1,174 @@
+# GuardUs 요청 처리 latency 대시보드.
+# OpenResty 가 노출하는 nginx_http_request_duration_seconds histogram (호스트별).
+# Grafana sidecar 가 label grafana_dashboard=1 인 ConfigMap 자동 import.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: guardus-latency-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  guardus-latency.json: |
+    {
+      "title": "GuardUs — Request Latency",
+      "uid": "guardus-latency",
+      "schemaVersion": 39,
+      "timezone": "browser",
+      "time": { "from": "now-1h", "to": "now" },
+      "refresh": "30s",
+      "tags": ["guardus", "openresty"],
+      "templating": {
+        "list": [
+          {
+            "name": "host",
+            "type": "query",
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "query": "label_values(nginx_http_requests_total, host)",
+            "refresh": 2,
+            "includeAll": true,
+            "multi": true,
+            "allValue": ".*"
+          }
+        ]
+      },
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Latency p50 / p95 / p99 (전체)",
+          "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "s" } },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum by (le) (rate(nginx_http_request_duration_seconds_bucket{host=~\"$host\"}[5m])))",
+              "legendFormat": "p50",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(nginx_http_request_duration_seconds_bucket{host=~\"$host\"}[5m])))",
+              "legendFormat": "p95",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(nginx_http_request_duration_seconds_bucket{host=~\"$host\"}[5m])))",
+              "legendFormat": "p99",
+              "refId": "C"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "p95 latency by host",
+          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "s" } },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum by (host, le) (rate(nginx_http_request_duration_seconds_bucket{host=~\"$host\"}[5m])))",
+              "legendFormat": "{{host}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "p99 latency by host",
+          "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "s" } },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.99, sum by (host, le) (rate(nginx_http_request_duration_seconds_bucket{host=~\"$host\"}[5m])))",
+              "legendFormat": "{{host}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "heatmap",
+          "title": "Latency distribution (heatmap)",
+          "gridPos": { "x": 0, "y": 16, "w": 24, "h": 8 },
+          "options": { "yAxis": { "unit": "s" } },
+          "targets": [
+            {
+              "expr": "sum by (le) (rate(nginx_http_request_duration_seconds_bucket{host=~\"$host\"}[1m]))",
+              "format": "heatmap",
+              "legendFormat": "{{le}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Request rate by status",
+          "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "reqps" } },
+          "targets": [
+            {
+              "expr": "sum by (status) (rate(nginx_http_requests_total{host=~\"$host\"}[5m]))",
+              "legendFormat": "{{status}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "Request rate by bot_verified",
+          "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+          "fieldConfig": { "defaults": { "unit": "reqps" } },
+          "targets": [
+            {
+              "expr": "sum by (bot_verified) (rate(nginx_http_requests_total{host=~\"$host\"}[5m]))",
+              "legendFormat": "{{bot_verified}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Avg request_time (현재)",
+          "gridPos": { "x": 0, "y": 32, "w": 6, "h": 4 },
+          "fieldConfig": { "defaults": { "unit": "s" } },
+          "targets": [
+            {
+              "expr": "sum(rate(nginx_http_request_duration_seconds_sum{host=~\"$host\"}[5m])) / sum(rate(nginx_http_request_duration_seconds_count{host=~\"$host\"}[5m]))",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Req/s (현재)",
+          "gridPos": { "x": 6, "y": 32, "w": 6, "h": 4 },
+          "fieldConfig": { "defaults": { "unit": "reqps" } },
+          "targets": [
+            {
+              "expr": "sum(rate(nginx_http_requests_total{host=~\"$host\"}[5m]))",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Active connections",
+          "gridPos": { "x": 12, "y": 32, "w": 6, "h": 4 },
+          "targets": [
+            {
+              "expr": "sum by (state) (nginx_http_connections)",
+              "legendFormat": "{{state}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "Slow req (>1s) ratio (5m)",
+          "gridPos": { "x": 18, "y": 32, "w": 6, "h": 4 },
+          "fieldConfig": { "defaults": { "unit": "percentunit" } },
+          "targets": [
+            {
+              "expr": "1 - (sum(rate(nginx_http_request_duration_seconds_bucket{host=~\"$host\",le=\"1\"}[5m])) / sum(rate(nginx_http_request_duration_seconds_count{host=~\"$host\"}[5m])))",
+              "refId": "A"
+            }
+          ]
+        }
+      ]
+    }
