@@ -59,8 +59,10 @@ resource "aws_elasticache_replication_group" "redis_v2" {
   replication_group_id = "guardus-prod-redis-v2"
   description          = "GuardUs cache v2 (cluster guardus-eks-v2)"
 
-  engine         = "redis"
-  engine_version = "7.1"
+  # 2026-05-20: Redis 7.1 → Valkey 7.2 in-place engine migration.
+  # ElastiCache 가 자동 처리 — Redis-compatible API 유지, 약 33% 저렴.
+  engine         = "valkey"
+  engine_version = "7.2"
   node_type      = "cache.t4g.small"
   port           = 6379
 
@@ -68,7 +70,7 @@ resource "aws_elasticache_replication_group" "redis_v2" {
   automatic_failover_enabled = false
   multi_az_enabled           = false
 
-  parameter_group_name = "default.redis7"
+  parameter_group_name = "default.valkey7"
   subnet_group_name    = aws_elasticache_subnet_group.redis_v2.name
   security_group_ids   = [aws_security_group.redis_v2.id]
 
