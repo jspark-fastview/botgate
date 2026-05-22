@@ -1,0 +1,73 @@
+# dev 전용 Grafana — monitoring-dev namespace.
+# datasource: Mimir (장기) + Prometheus-Dev (단기 6h, fallback).
+# prod monitoring/grafana 와 완전 분리.
+
+# 학습 환경 — adminPassword 평문. 프로덕션 도입 시 ExternalSecret 으로 주입.
+adminPassword: "dev"
+
+# Dashboard / settings 영속
+persistence:
+  enabled: true
+  storageClassName: gp3
+  size: 5Gi
+
+# 컴포넌트 작게
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 512Mi
+
+# 단일 replica (dev 라)
+replicas: 1
+
+# Service type — port-forward 만 (외부 노출 X)
+service:
+  type: ClusterIP
+
+# Ingress 비활성 — port-forward 로 접근
+ingress:
+  enabled: false
+
+# Datasource auto-provisioning
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      # Mimir — 장기 metric (S3 backed, default)
+      - name: Mimir-Dev
+        type: prometheus
+        uid: mimir-dev
+        url: http://mimir-query-frontend.monitoring-dev.svc.cluster.local:8080/prometheus
+        access: proxy
+        isDefault: true
+        jsonData:
+          httpHeaderName1: X-Scope-OrgID
+          timeout: 60
+        secureJsonData:
+          httpHeaderValue1: guardus-dev
+      # 직접 dev Prometheus — 최신 6h (Mimir push 지연 시 fallback)
+      - name: Prometheus-Dev
+        type: prometheus
+        uid: prometheus-dev
+        url: http://prometheus-dev.monitoring-dev.svc.cluster.local:9090
+        access: proxy
+        isDefault: false
+
+# Sidecar — Grafana dashboard ConfigMap 자동 import (기존 monitoring 의 KPS 패턴 동일)
+sidecar:
+  dashboards:
+    enabled: true
+    label: grafana_dashboard_dev   # dev 전용 라벨 (prod 와 격리)
+    searchNamespace: monitoring-dev
+  datasources:
+    enabled: false  # 위 datasources block 직접 정의로 충분
+
+# 보안 — anonymous 비활성
+grafana.ini:
+  auth.anonymous:
+    enabled: false
+  security:
+    allow_embedding: false
