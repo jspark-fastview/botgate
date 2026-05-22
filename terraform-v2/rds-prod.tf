@@ -73,14 +73,20 @@ resource "aws_db_instance" "prod" {
   vpc_security_group_ids = [aws_security_group.rds_prod.id]
   publicly_accessible    = false
 
-  backup_retention_period = 1
+  # ⚠️ 봇 데이터 무유실 원칙 (principle_no_outage_no_data_loss.md):
+  #   - backup_retention_period 30일 (PITR 30일 가능)
+  #   - deletion_protection: true (실수 삭제 차단)
+  #   - skip_final_snapshot: false (destroy 시도 시 final snapshot 자동)
+  # Multi-AZ 는 cost ~2x 라 의식적 예외 — AZ 장애 시 snapshot 으로 복구.
+  backup_retention_period = 30
   backup_window           = "20:28-20:58"
   maintenance_window      = "sun:18:00-sun:19:00"
   copy_tags_to_snapshot   = true
-  deletion_protection     = false
+  deletion_protection     = true
 
   performance_insights_enabled = false
-  skip_final_snapshot          = true
+  skip_final_snapshot          = false
+  final_snapshot_identifier    = "guardus-prod-pg-v2-final"
   auto_minor_version_upgrade   = true
 
   ca_cert_identifier = "rds-ca-rsa2048-g1"
