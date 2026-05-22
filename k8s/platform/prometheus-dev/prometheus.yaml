@@ -13,7 +13,8 @@ metadata:
 spec:
   serviceAccountName: prometheus-dev
   image: quay.io/prometheus/prometheus:v3.0.1
-  replicas: 2
+  # 2026-05-22: dev HA 과함 — replicas 2 → 1 (dev metric 손실 허용 의식적 예외).
+  replicas: 1
 
   # Prometheus 3.x 는 nobody (UID 65534) 로 실행. PVC fsGroup 설정 누락 시
   # 'open /prometheus/queries.active: permission denied' 로 crash.

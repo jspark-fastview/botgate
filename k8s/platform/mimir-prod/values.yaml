@@ -149,7 +149,8 @@ alertmanager:
 ruler:
   enabled: false
 
-# 캐시 활성 — prod 트래픽 성능 ↑
+# 캐시 — 2026-05-22 4종 → 2종 축소 (트래픽 규모 대비 과도).
+# chunks + results 만 keep (가장 효과 큰 것). index/metadata 는 S3 직접 query 로 충분.
 chunks-cache:
   enabled: true
   replicas: 1
@@ -158,18 +159,10 @@ chunks-cache:
     limits:   { cpu: 500m, memory: 1Gi }
 
 index-cache:
-  enabled: true
-  replicas: 1
-  resources:
-    requests: { cpu: 100m, memory: 256Mi }
-    limits:   { cpu: 500m, memory: 1Gi }
+  enabled: false
 
 metadata-cache:
-  enabled: true
-  replicas: 1
-  resources:
-    requests: { cpu: 50m, memory: 128Mi }
-    limits:   { cpu: 200m, memory: 256Mi }
+  enabled: false
 
 results-cache:
   enabled: true
