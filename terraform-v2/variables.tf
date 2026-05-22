@@ -36,12 +36,14 @@ variable "node_min_size" {
 
 variable "node_desired_size" {
   type    = number
-  default = 2
+  # Mimir prod ingester RF=3 host-spread (3 다른 노드) + 기존 app load 수용.
+  # 2026-05-22 4→5 로 늘림.
+  default = 5
 }
 
 variable "node_max_size" {
   type    = number
-  default = 4
+  default = 7
 }
 
 variable "aws_account_id" {
