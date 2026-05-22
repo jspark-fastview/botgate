@@ -40,8 +40,9 @@ resource "random_password" "rds_dev_master" {
 }
 
 resource "aws_secretsmanager_secret" "rds_dev_master" {
-  name                    = "guardus/rds/dev/master"
-  recovery_window_in_days = 0
+  name = "guardus/rds/dev/master"
+  # ⚠️ 무유실 원칙 — 실수 delete 시 30일 격리 후 영구 삭제
+  recovery_window_in_days = 30
 }
 
 resource "aws_secretsmanager_secret_version" "rds_dev_master" {

@@ -41,7 +41,8 @@ resource "random_password" "redis_v2_auth" {
 
 resource "aws_secretsmanager_secret" "redis_v2_auth" {
   name                    = "guardus/redis/v2/auth"
-  recovery_window_in_days = 0
+  # ⚠️ 무유실 원칙 — 실수 delete 시 30일 격리 후 영구 삭제 (즉시 복구 불가 방지)
+  recovery_window_in_days = 30
 }
 
 resource "aws_secretsmanager_secret_version" "redis_v2_auth" {
