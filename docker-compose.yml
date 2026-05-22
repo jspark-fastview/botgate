@@ -1,32 +1,19 @@
+# 로컬 개발용 docker compose — OpenResty 만 단독 실행.
+# prod stack (admin-api/internal-api/frontend) 은 K8s 에서 운영. 로컬에선 K8s API 호출하지 않고
+# OpenResty 만 dry-run / Lua 변경 테스트.
+#
+# token-api (Node.js, deprecated 2026-05) 제거 — internal-api (Spring) 가 대체.
+# 로컬에서 internal-api 까지 띄울 일 있으면 별도 추가.
 services:
   openresty:
     image: openresty/openresty:1.25.3.2-alpine
     ports:
       - "8081:80"
     environment:
-      - TOKEN_API_HOST=token-api
-      - TOKEN_API_PORT=3000
-      - BOTGATE_BYPASS_KEY=${BOTGATE_BYPASS_KEY:-}
+      - GUARDUS_BYPASS_KEY=${GUARDUS_BYPASS_KEY:-}
       - ADMIN_KEY=${ADMIN_KEY:-}
     volumes:
       - ./openresty/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
       - ./openresty/conf.d/dev:/etc/nginx/conf.d:ro
       - ./openresty/lua:/etc/nginx/lua:ro
-    depends_on:
-      - token-api
     restart: unless-stopped
-
-  token-api:
-    build: ./token-api
-    ports:
-      - "3000:3000"
-    environment:
-      - ADMIN_KEY=${ADMIN_KEY:-}
-      - STATS_KEY=${STATS_KEY:-}      # innerops read-only 키 (선택)
-    volumes:
-      - token-data:/app/data
-      - ./web:/app/web:ro
-    restart: unless-stopped
-
-volumes:
-  token-data:

@@ -111,8 +111,9 @@ AI 봇 트래픽 수익화 게이트웨이 — OpenResty + Fastify + SQLite
 
 ```
 openresty/          Lua 기반 리버스 프록시 (봇 분류/정책/과금)
-token-api/          Fastify API + SQLite (어드민/포털/토큰)
-web/                정적 SPA (index/admin/portal/user.html + bg-*.jsx)
+admin-api/          Spring Boot — 어드민/포털 API (/admin/*, /me/*, /auth/*)
+internal-api/       Spring Boot — OpenResty 전용 내부 API (/internal/*)
+frontend/           정적 SPA (portal-app.html — 어드민 + 포털)
 ```
 
 ## 개발
