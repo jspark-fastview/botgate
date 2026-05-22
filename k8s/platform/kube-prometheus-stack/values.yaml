@@ -45,24 +45,11 @@ prometheus:
           minBackoff: 30ms
           maxBackoff: 5s
 
-# Grafana
+# Grafana — 2026-05-22 비활성 (3개 중복 → 2개로 통합).
+# prod 모니터링은 monitoring-prod/grafana-prod 가 인계 (Mimir-Prod + KPS Prom + Loki).
+# dev 는 monitoring-dev/grafana-dev.
 grafana:
-  enabled: true
-  adminPassword: "CHANGE_ME_VIA_SECRET"     # 실제로는 ExternalSecret 으로 주입 권장
-  persistence:
-    enabled: true
-    storageClassName: gp3
-    size: 10Gi
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
-  # ALB Ingress 로 노출 (optional)
-  ingress:
-    enabled: false      # 일단 port-forward 로 접근. 필요시 true.
+  enabled: false
 
 # Alertmanager
 alertmanager:

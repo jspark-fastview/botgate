@@ -4,8 +4,10 @@ kind: Kustomization
 namespace: monitoring-prod
 
 # ExternalSecret 이 K8s Secret 'grafana-prod-admin' 생성 → Grafana 가 사용
+# dashboards/ 의 ConfigMap 들은 grafana-prod sidecar 가 label grafana_dashboard_prod=1 로 발견
 resources:
   - externalsecret.yaml
+  - dashboards/guardus-latency.yaml
 
 helmCharts:
   - name: grafana

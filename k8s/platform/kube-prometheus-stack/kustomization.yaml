@@ -3,10 +3,7 @@ kind: Kustomization
 
 namespace: monitoring
 
-# Grafana sidecar 가 label grafana_dashboard=1 인 ConfigMap 자동 발견 → import.
-resources:
-  - dashboards/guardus-latency.yaml
-
+# 2026-05-22: dashboard ConfigMap 은 grafana-prod 로 이전됨 (KPS Grafana 비활성).
 helmCharts:
   - name: kube-prometheus-stack
     repo: https://prometheus-community.github.io/helm-charts
