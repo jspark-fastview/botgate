@@ -78,9 +78,11 @@ module "eks_v2" {
     # On-Demand baseline — spot 동시 회수 대비 (2026-05-18 학습) + openresty HA 배치 (2026-05-22)
     # openresty (채널 트래픽 entry) 가 nodeAffinity preferred 로 baseline 우선 schedule.
     # baseline 2대 → openresty HA (한 노드 죽어도 다른 노드 살아남, 채널 무중단).
+    # t4g.medium (17 pod max) → t4g.large (35 pod max): cluster system pod (cilium/coredns/etc)
+    # 가득 채워서 openresty 못 받았던 문제 해소. 1대당 cost ~$50/월 (medium $25 의 2배).
     baseline = {
       ami_type       = "BOTTLEROCKET_ARM_64"
-      instance_types = ["t4g.medium"]
+      instance_types = ["t4g.large"]
       capacity_type  = "ON_DEMAND"
 
       min_size     = 2
