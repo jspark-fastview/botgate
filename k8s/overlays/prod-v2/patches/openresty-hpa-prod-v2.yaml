@@ -1,9 +1,8 @@
-# prod — baseline 2대 1:1 매핑 (min=2).
-# nodeAffinity required (workload-baseline) 라 baseline capacity 한도 = max 2.
-# 진짜 traffic 폭증 시 baseline 추가 필요 (현재는 미예측).
+# prod — baseline 2대 평소 (min=2), spot fallback 으로 트래픽 폭증 시 scale up 가능 (max=10).
+# nodeAffinity preferred 라 spot 도 OK, baseline 가용 시 우선.
 - op: replace
   path: /spec/minReplicas
   value: 2
 - op: replace
   path: /spec/maxReplicas
-  value: 2
+  value: 10
