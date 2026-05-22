@@ -1,7 +1,9 @@
-# prod — HPA 폭 확대
+# prod — baseline 2대 1:1 매핑 (min=2).
+# nodeAffinity required (workload-baseline) 라 baseline capacity 한도 = max 2.
+# 진짜 traffic 폭증 시 baseline 추가 필요 (현재는 미예측).
 - op: replace
   path: /spec/minReplicas
-  value: 3
+  value: 2
 - op: replace
   path: /spec/maxReplicas
-  value: 20
+  value: 2

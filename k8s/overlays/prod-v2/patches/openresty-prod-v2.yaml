@@ -1,7 +1,7 @@
-# prod — 더 큰 리소스 + 더 많은 replica baseline + on-demand baseline 우선 배치
+# prod — 큰 리소스 + baseline 2대 1:1 매핑 (replicas=2) + on-demand baseline 100% 강제
 - op: replace
   path: /spec/replicas
-  value: 3
+  value: 2
 - op: replace
   path: /spec/template/spec/containers/0/resources/requests/cpu
   value: 200m
