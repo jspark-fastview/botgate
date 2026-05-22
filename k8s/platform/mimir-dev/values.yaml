@@ -27,7 +27,8 @@ mimir:
         endpoint: s3.ap-northeast-2.amazonaws.com
         region: ap-northeast-2
 
-    # dev — single replica 라 RF=1, write_consistency 약화 가능. 검증 후 prod 에선 RF=2.
+    # ⚠️ dev 는 의식적 예외 — RF=1 (test metric 이라 손실 허용).
+    # prod 도입 시 반드시 RF=2 강제 + ingester replicas=2 (메모리 principle_no_outage_no_data_loss.md).
     ingester:
       ring:
         replication_factor: 1
