@@ -1,0 +1,85 @@
+# prod 전용 Grafana — monitoring-prod namespace.
+# datasource: Mimir-Prod (장기 S3) + KPS Prometheus (단기 15d 캐시).
+# dev (grafana-dev) 와 완전 분리, 기존 monitoring/grafana (KPS) 와도 분리.
+#
+# ⚠️ adminPassword 는 임시 평문. 운영 강화 시 admin.existingSecret + ExternalSecret 전환 권고.
+admin:
+  existingSecret: ""   # 비워두면 chart 가 password 생성
+  userKey: admin-user
+  passwordKey: admin-password
+
+adminUser: admin
+# 임시 password — 운영 강화 시 ExternalSecret 으로 교체
+adminPassword: "guardus-prod-2026-CHANGE-ME"
+
+# Dashboard / settings 영속
+persistence:
+  enabled: true
+  storageClassName: gp3
+  size: 10Gi
+
+# prod 라 더 큰 resource
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi
+
+# HA — 2 replicas (단 sqlite 백엔드라 1만 권장. prod 도 1)
+replicas: 1
+
+# port-forward only (Ingress 분리, 외부 노출 X)
+service:
+  type: ClusterIP
+ingress:
+  enabled: false
+
+# Datasource auto-provisioning
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      # Mimir prod — 장기 metric (default)
+      - name: Mimir-Prod
+        type: prometheus
+        uid: mimir-prod
+        url: http://mimir-query-frontend.monitoring-prod.svc.cluster.local:8080/prometheus
+        access: proxy
+        isDefault: true
+        jsonData:
+          httpHeaderName1: X-Scope-OrgID
+          timeout: 60
+        secureJsonData:
+          httpHeaderValue1: guardus-prod
+      # 기존 KPS Prometheus — 단기 15d 캐시 (Mimir push 지연 시 fallback)
+      - name: Prometheus-KPS
+        type: prometheus
+        uid: prometheus-kps
+        url: http://kps-prometheus.monitoring.svc.cluster.local:9090
+        access: proxy
+        isDefault: false
+      # Loki (공통, prod log)
+      - name: Loki
+        type: loki
+        uid: loki
+        url: http://loki.monitoring.svc.cluster.local:3100
+        access: proxy
+        isDefault: false
+
+# Sidecar — prod 전용 dashboard ConfigMap 자동 import
+sidecar:
+  dashboards:
+    enabled: true
+    label: grafana_dashboard_prod
+    searchNamespace: monitoring-prod
+  datasources:
+    enabled: false   # 위 datasources block 직접 정의로 충분
+
+# 보안
+grafana.ini:
+  auth.anonymous:
+    enabled: false
+  security:
+    allow_embedding: false
