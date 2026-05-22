@@ -14,21 +14,21 @@
 - op: replace
   path: /spec/template/spec/containers/0/resources/limits/memory
   value: 512Mi
-# 채널 무중단 — baseline (on-demand) 노드 최우선. spot 회수 사고 시에도 채널 트래픽 유지.
-# weight 100 = strongly preferred. baseline 부족 시 spot fallback (preferred 라 scheduling 가능).
+# 채널 무중단 — baseline (on-demand) 노드 100% 강제. spot 회수 사고 시 영향 0.
+# required: baseline 부족 시 pending 감수. replicas=3, baseline=2 라 host-spread preferred
+# 로 두면 한 노드에 2 pod 가능 (또는 host-spread 위반 pending 1).
 - op: replace
   path: /spec/template/spec/affinity
   value:
     nodeAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          preference:
-            matchExpressions:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
               - key: role
                 operator: In
                 values: [workload-baseline]
     podAntiAffinity:
-      # host-spread — 다른 노드 분산 (HA)
+      # host-spread preferred (required 면 baseline 부족 시 더 pending)
       preferredDuringSchedulingIgnoredDuringExecution:
         - weight: 100
           podAffinityTerm:
@@ -36,3 +36,7 @@
               matchLabels:
                 app.kubernetes.io/name: openresty
             topologyKey: kubernetes.io/hostname
+# zone topologySpread 제거 — 2 AZ 환경 (b/d) 에서 zone 1 죽으면 어차피 50% 영향.
+# baseline 우선이 더 의도 충족 (spot 회수 보다 흔한 사고).
+- op: remove
+  path: /spec/template/spec/topologySpreadConstraints
