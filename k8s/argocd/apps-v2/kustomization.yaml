@@ -16,6 +16,7 @@ resources:
   - platform/mimir-dev.yaml                       # k8s/platform/mimir-dev — dev 전용 metric 장기보관 S3
   - platform/prometheus-dev.yaml                  # k8s/platform/prometheus-dev — dev 전용 Prom HA + remoteWrite to Mimir
   - platform/grafana-dev.yaml                     # k8s/platform/grafana-dev — dev 전용 Grafana (Mimir + Prometheus-Dev datasource)
+  - platform/metrics-server.yaml                  # k8s/platform/metrics-server — HPA cpu/memory metric source
   - platform/argocd-ingress.yaml                  # k8s/platform-v2/argocd-ingress — argocd.viewus.co
   # argocd-ingress 는 의도적으로 제외 (port-forward 로 접근, DNS 충돌 회피)
   # 애플리케이션 — v2 전용

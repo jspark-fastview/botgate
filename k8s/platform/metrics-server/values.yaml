@@ -1,0 +1,39 @@
+# metrics-server — HPA 가 cpu/memory metric 가져오는 source.
+# 미설치 시 HPA <unknown> → scale-up 불가. 2026-05-22 발견.
+#
+# EKS 환경 특이사항:
+#   - kubelet 의 serving cert 가 self-signed → metrics-server 가 verify 못 함
+#   - `--kubelet-insecure-tls` 또는 valid CA 필요. 보통 insecure-tls 로 단순화.
+
+args:
+  - --cert-dir=/tmp
+  - --secure-port=10250
+  - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+  - --kubelet-use-node-status-port
+  - --metric-resolution=15s
+  - --kubelet-insecure-tls   # EKS self-signed cert 회피
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 100Mi
+  limits:
+    cpu: 200m
+    memory: 200Mi
+
+replicas: 2   # HA — control plane component 이라 무중단 중요
+
+# anti-affinity — 다른 노드에 배치
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: metrics-server
+          topologyKey: kubernetes.io/hostname
+
+# APIService 등록 (kubectl top, HPA 가 이걸로 metric API 발견)
+apiService:
+  create: true
