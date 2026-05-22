@@ -1,0 +1,151 @@
+# Grafana Mimir (microservices) — dev 전용. monitoring-dev namespace.
+# Prometheus 가 remoteWrite 로 push → Mimir 가 S3 영구 저장.
+# Phase 5 검증 후 prod KPS 도 remoteWrite 추가 예정.
+
+# S3 backend 설정 (Pod Identity 사용, access_key X)
+mimir:
+  structuredConfig:
+    common:
+      storage:
+        backend: s3
+        s3:
+          bucket_name: guardus-mimir-metrics-dev
+          endpoint: s3.ap-northeast-2.amazonaws.com
+          region: ap-northeast-2
+
+    blocks_storage:
+      backend: s3
+      s3:
+        bucket_name: guardus-mimir-metrics-dev
+        endpoint: s3.ap-northeast-2.amazonaws.com
+        region: ap-northeast-2
+
+    ruler_storage:
+      backend: s3
+      s3:
+        bucket_name: guardus-mimir-metrics-dev
+        endpoint: s3.ap-northeast-2.amazonaws.com
+        region: ap-northeast-2
+
+    # dev — single replica 라 RF=1, write_consistency 약화 가능. 검증 후 prod 에선 RF=2.
+    ingester:
+      ring:
+        replication_factor: 1
+    distributor:
+      ring:
+        kvstore:
+          store: memberlist
+    # 멀티 tenant — Prometheus remoteWrite 시 X-Scope-OrgID 헤더 강제
+    multitenancy_enabled: true
+    # dev 라 한 tenant 만 받음
+    # limits.max_global_series_per_user 등은 default
+    limits:
+      ingestion_rate: 50000
+      ingestion_burst_size: 100000
+      max_global_series_per_user: 1000000
+
+# 모든 컴포넌트가 같은 SA → terraform Pod Identity (monitoring-dev/mimir) 매칭
+serviceAccount:
+  create: true
+  name: mimir
+
+# MinIO 비활성 (S3 사용)
+minio:
+  enabled: false
+
+# 컴포넌트별 replicas (dev — 모두 1)
+distributor:
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+ingester:
+  replicas: 1
+  zoneAwareReplication:
+    enabled: false
+  persistentVolume:
+    enabled: true
+    size: 10Gi
+    storageClass: gp3
+  resources:
+    requests: { cpu: 200m, memory: 512Mi }
+    limits:   { cpu: 1000m, memory: 2Gi }
+  # dev RF=1 이라 affinity 약화
+  topologySpreadConstraints: {}
+  affinity: {}
+
+querier:
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+query_frontend:
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { cpu: 300m, memory: 256Mi }
+
+query_scheduler:
+  replicas: 1
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 200m, memory: 256Mi }
+
+store_gateway:
+  replicas: 1
+  zoneAwareReplication:
+    enabled: false
+  persistentVolume:
+    enabled: true
+    size: 5Gi
+    storageClass: gp3
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+compactor:
+  replicas: 1
+  persistentVolume:
+    size: 5Gi
+    storageClass: gp3
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 1Gi }
+
+# 선택 컴포넌트 비활성
+alertmanager:
+  enabled: false
+ruler:
+  enabled: false
+
+# 캐시 — dev 라 비활성 (학습 단계에선 query 직접 S3)
+chunks-cache:
+  enabled: false
+index-cache:
+  enabled: false
+metadata-cache:
+  enabled: false
+results-cache:
+  enabled: false
+
+# nginx gateway 비활성 (Grafana 가 query-frontend 직접 호출)
+nginx:
+  enabled: false
+gateway:
+  enabled: false
+
+# Overrides exporter / dashboard 등 부수 - dev 단순화 위해 default 유지
+overrides_exporter:
+  enabled: false
+
+# rollout-operator (zoneAware 비활성이라 불필요)
+rollout_operator:
+  enabled: false
+
+# Monitoring (ServiceMonitor 자동 생성)
+metaMonitoring:
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring-dev

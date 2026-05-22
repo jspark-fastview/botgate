@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monitoring-dev
+
+# monitoring-dev namespace + ArgoCD 가 자동 생성하지만 명시
+resources:
+  - namespace.yaml
+
+helmCharts:
+  - name: mimir-distributed
+    repo: https://grafana.github.io/helm-charts
+    version: 5.7.0
+    releaseName: mimir
+    namespace: monitoring-dev
+    valuesFile: values.yaml
+    includeCRDs: true
