@@ -2,15 +2,12 @@
 # datasource: Mimir-Prod (장기 S3) + KPS Prometheus (단기 15d 캐시).
 # dev (grafana-dev) 와 완전 분리, 기존 monitoring/grafana (KPS) 와도 분리.
 #
-# ⚠️ adminPassword 는 임시 평문. 운영 강화 시 admin.existingSecret + ExternalSecret 전환 권고.
+# Admin credentials — AWS Secrets Manager (guardus/prod/grafana-admin) → ExternalSecret → K8s Secret 'grafana-prod-admin'.
+# secret 생성 명령은 externalsecret.yaml 헤더 참조.
 admin:
-  existingSecret: ""   # 비워두면 chart 가 password 생성
+  existingSecret: grafana-prod-admin
   userKey: admin-user
   passwordKey: admin-password
-
-adminUser: admin
-# 임시 password — 운영 강화 시 ExternalSecret 으로 교체
-adminPassword: "guardus-prod-2026-CHANGE-ME"
 
 # Dashboard / settings 영속
 persistence:

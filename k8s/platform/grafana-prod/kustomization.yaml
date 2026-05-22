@@ -3,6 +3,10 @@ kind: Kustomization
 
 namespace: monitoring-prod
 
+# ExternalSecret 이 K8s Secret 'grafana-prod-admin' 생성 → Grafana 가 사용
+resources:
+  - externalsecret.yaml
+
 helmCharts:
   - name: grafana
     repo: https://grafana.github.io/helm-charts
