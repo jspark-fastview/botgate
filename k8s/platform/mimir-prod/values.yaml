@@ -1,0 +1,197 @@
+# Grafana Mimir prod — guardus namespace metric 영구 S3 보관.
+# monitoring-prod namespace, dev (monitoring-dev) 와 완전 분리.
+#
+# 패턴: 기존 monitoring/KPS Prometheus 가 remoteWrite 로 push (Step 3 에서 설정).
+# 새 prometheus-prod 안 만듦 — KPS Prom 의 15d 는 단기 캐시 역할.
+#
+# ⚠️ prod 원칙 (principle_no_outage_no_data_loss.md):
+#   - ingester replicas=3 + replication_factor=3 (quorum=2 → 1개 죽어도 write 진행)
+#   - host-spread (2 AZ b/d 제약상 zone-aware 완벽 X, podAntiAffinity 로 다른 노드 분산)
+#   - STS PVC retention=Retain (Loki/Mimir-dev 패턴)
+
+mimir:
+  structuredConfig:
+    common:
+      storage:
+        backend: s3
+        s3:
+          bucket_name: guardus-mimir-metrics-prod
+          endpoint: s3.ap-northeast-2.amazonaws.com
+          region: ap-northeast-2
+
+    blocks_storage:
+      backend: s3
+      s3:
+        bucket_name: guardus-mimir-metrics-prod
+        endpoint: s3.ap-northeast-2.amazonaws.com
+        region: ap-northeast-2
+
+    ruler_storage:
+      backend: s3
+      s3:
+        bucket_name: guardus-mimir-metrics-prod
+        endpoint: s3.ap-northeast-2.amazonaws.com
+        region: ap-northeast-2
+
+    # ⚠️ prod 안전성 — RF=3, quorum=2, 1개 ingester 죽어도 write 진행
+    ingester:
+      ring:
+        replication_factor: 3
+
+    distributor:
+      ring:
+        kvstore:
+          store: memberlist
+
+    multitenancy_enabled: true
+    limits:
+      # prod 트래픽 대비 (실제 size 보고 조정)
+      ingestion_rate: 200000
+      ingestion_burst_size: 400000
+      max_global_series_per_user: 5000000
+
+# 모든 컴포넌트 같은 SA → Pod Identity (monitoring-prod/mimir) 매칭
+serviceAccount:
+  create: true
+  name: mimir
+
+minio:
+  enabled: false
+
+# distributor
+distributor:
+  replicas: 2
+  resources:
+    requests: { cpu: 200m, memory: 512Mi }
+    limits:   { cpu: 1000m, memory: 1Gi }
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: distributor
+            topologyKey: kubernetes.io/hostname
+
+# ingester — RF=3 의 핵심. 3 replicas + host-spread (다른 노드 강제)
+ingester:
+  replicas: 3
+  zoneAwareReplication:
+    enabled: false   # 2 AZ (b/d) 제약상 비활성. podAntiAffinity 로 host-spread.
+  persistentVolume:
+    enabled: true
+    size: 20Gi
+    storageClass: gp3
+  resources:
+    requests: { cpu: 500m, memory: 2Gi }
+    limits:   { cpu: 2000m, memory: 4Gi }
+  topologySpreadConstraints: {}
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: ingester
+          topologyKey: kubernetes.io/hostname
+
+querier:
+  replicas: 2
+  resources:
+    requests: { cpu: 200m, memory: 512Mi }
+    limits:   { cpu: 1000m, memory: 1Gi }
+
+query_frontend:
+  replicas: 2
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+query_scheduler:
+  replicas: 2
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 300m, memory: 512Mi }
+
+# store-gateway — S3 read 부담 분산. RF=3 같이.
+store_gateway:
+  replicas: 3
+  zoneAwareReplication:
+    enabled: false
+  persistentVolume:
+    enabled: true
+    size: 10Gi
+    storageClass: gp3
+  resources:
+    requests: { cpu: 200m, memory: 512Mi }
+    limits:   { cpu: 1000m, memory: 1Gi }
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/component: store-gateway
+          topologyKey: kubernetes.io/hostname
+
+# compactor — S3 compaction. single (idempotent, leader election 가능)
+compactor:
+  replicas: 1
+  persistentVolume:
+    size: 10Gi
+    storageClass: gp3
+  resources:
+    requests: { cpu: 200m, memory: 512Mi }
+    limits:   { cpu: 1000m, memory: 2Gi }
+
+# 선택 컴포넌트 비활성 (Alertmanager 는 KPS 사용, ruler 는 별도)
+alertmanager:
+  enabled: false
+ruler:
+  enabled: false
+
+# 캐시 활성 — prod 트래픽 성능 ↑
+chunks-cache:
+  enabled: true
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 1Gi }
+
+index-cache:
+  enabled: true
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 1Gi }
+
+metadata-cache:
+  enabled: true
+  replicas: 1
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 200m, memory: 256Mi }
+
+results-cache:
+  enabled: true
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 500m, memory: 1Gi }
+
+# nginx gateway 비활성 (Grafana 가 query-frontend 직접 호출)
+nginx:
+  enabled: false
+gateway:
+  enabled: false
+
+overrides_exporter:
+  enabled: false
+
+# zone-aware 비활성이라 rollout-operator 불필요
+rollout_operator:
+  enabled: false
+
+metaMonitoring:
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring-prod

@@ -1,0 +1,7 @@
+# Mimir prod STS 의 PVC retention 정책 강제. Loki / Mimir-dev 패턴 동일.
+# Chart default 가 'Delete' → STS 삭제 시 PVC 도 같이 삭제 (메트릭 손실).
+- op: add
+  path: /spec/persistentVolumeClaimRetentionPolicy
+  value:
+    whenDeleted: Retain
+    whenScaled: Retain

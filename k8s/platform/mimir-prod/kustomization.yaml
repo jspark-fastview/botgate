@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monitoring-prod
+
+resources:
+  - namespace.yaml
+
+helmCharts:
+  - name: mimir-distributed
+    repo: https://grafana.github.io/helm-charts
+    version: 5.7.0
+    releaseName: mimir
+    namespace: monitoring-prod
+    valuesFile: values.yaml
+    includeCRDs: true
+
+# STS PVC retention=Retain — Loki / Mimir-dev 와 동일 패턴
+patches:
+  - path: patches/sts-retention.yaml
+    target:
+      kind: StatefulSet
+      name: mimir-ingester
+  - path: patches/sts-retention.yaml
+    target:
+      kind: StatefulSet
+      name: mimir-store-gateway
+  - path: patches/sts-retention.yaml
+    target:
+      kind: StatefulSet
+      name: mimir-compactor
