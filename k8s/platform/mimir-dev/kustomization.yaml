@@ -15,3 +15,20 @@ helmCharts:
     namespace: monitoring-dev
     valuesFile: values.yaml
     includeCRDs: true
+
+# Chart 가 STS 의 persistentVolumeClaimRetentionPolicy 를 명시 안 함 →
+# K8s default (whenDeleted: Delete, whenScaled: Delete). STS 삭제 시 PVC 도 같이 삭제.
+# Loki 와 동일하게 Retain 으로 강제 (메트릭 무유실 보장).
+patches:
+  - path: patches/sts-retention.yaml
+    target:
+      kind: StatefulSet
+      name: mimir-ingester
+  - path: patches/sts-retention.yaml
+    target:
+      kind: StatefulSet
+      name: mimir-store-gateway
+  - path: patches/sts-retention.yaml
+    target:
+      kind: StatefulSet
+      name: mimir-compactor

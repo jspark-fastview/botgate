@@ -15,6 +15,13 @@ spec:
   image: quay.io/prometheus/prometheus:v3.0.1
   replicas: 2
 
+  # Prometheus 3.x 는 nobody (UID 65534) 로 실행. PVC fsGroup 설정 누락 시
+  # 'open /prometheus/queries.active: permission denied' 로 crash.
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+
   # 짧은 local retention — Mimir 가 장기보관 담당. WAL 안전성 위해 최소 2h.
   retention: 6h
   retentionSize: 5GB

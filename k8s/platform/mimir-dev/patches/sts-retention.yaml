@@ -1,0 +1,8 @@
+# Mimir StatefulSet 의 PVC retention 정책 강제.
+# Chart default 가 'Delete' → STS 삭제 시 PVC 도 같이 삭제 (메트릭 손실).
+# Loki 와 동일 패턴 — patches/retention.yaml.
+- op: add
+  path: /spec/persistentVolumeClaimRetentionPolicy
+  value:
+    whenDeleted: Retain
+    whenScaled: Retain
