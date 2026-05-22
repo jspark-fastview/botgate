@@ -75,15 +75,17 @@ module "eks_v2" {
       }
     }
 
-    # On-Demand baseline — spot 동시 회수 대비 (2026-05-18 학습)
+    # On-Demand baseline — spot 동시 회수 대비 (2026-05-18 학습) + openresty HA 배치 (2026-05-22)
+    # openresty (채널 트래픽 entry) 가 nodeAffinity preferred 로 baseline 우선 schedule.
+    # baseline 2대 → openresty HA (한 노드 죽어도 다른 노드 살아남, 채널 무중단).
     baseline = {
       ami_type       = "BOTTLEROCKET_ARM_64"
       instance_types = ["t4g.medium"]
       capacity_type  = "ON_DEMAND"
 
-      min_size     = 1
-      desired_size = 1
-      max_size     = 2
+      min_size     = 2
+      desired_size = 2
+      max_size     = 3
 
       subnet_ids = local.subnet_ids
 

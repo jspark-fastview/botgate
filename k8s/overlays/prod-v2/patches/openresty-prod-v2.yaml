@@ -1,4 +1,4 @@
-# prod — 더 큰 리소스 + 더 많은 replica baseline
+# prod — 더 큰 리소스 + 더 많은 replica baseline + on-demand baseline 우선 배치
 - op: replace
   path: /spec/replicas
   value: 3
@@ -14,3 +14,25 @@
 - op: replace
   path: /spec/template/spec/containers/0/resources/limits/memory
   value: 512Mi
+# 채널 무중단 — baseline (on-demand) 노드 최우선. spot 회수 사고 시에도 채널 트래픽 유지.
+# weight 100 = strongly preferred. baseline 부족 시 spot fallback (preferred 라 scheduling 가능).
+- op: replace
+  path: /spec/template/spec/affinity
+  value:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          preference:
+            matchExpressions:
+              - key: role
+                operator: In
+                values: [workload-baseline]
+    podAntiAffinity:
+      # host-spread — 다른 노드 분산 (HA)
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: openresty
+            topologyKey: kubernetes.io/hostname
