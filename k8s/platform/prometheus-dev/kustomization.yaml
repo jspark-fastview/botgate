@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monitoring-dev
+
+resources:
+  - serviceaccount.yaml
+  - prometheus.yaml

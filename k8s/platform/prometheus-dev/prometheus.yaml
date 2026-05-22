@@ -1,0 +1,109 @@
+# dev 전용 Prometheus instance — guardus-dev namespace metric 만 수집.
+# HA: replicas=2 (deduplication 은 Mimir 가 자동 처리).
+# remoteWrite → Mimir distributor (monitoring-dev) with X-Scope-OrgID tenant=guardus-dev.
+
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: prometheus-dev
+  namespace: monitoring-dev
+  labels:
+    app.kubernetes.io/name: prometheus-dev
+    guardus.io/env: dev
+spec:
+  serviceAccountName: prometheus-dev
+  image: quay.io/prometheus/prometheus:v3.0.1
+  replicas: 2
+
+  # 짧은 local retention — Mimir 가 장기보관 담당. WAL 안전성 위해 최소 2h.
+  retention: 6h
+  retentionSize: 5GB
+
+  # ServiceMonitor / PodMonitor 발견 범위 — guardus-dev namespace 만.
+  serviceMonitorNamespaceSelector:
+    matchLabels:
+      guardus.io/env: dev
+  podMonitorNamespaceSelector:
+    matchLabels:
+      guardus.io/env: dev
+  # 해당 namespace 안의 모든 SM/PM 발견
+  serviceMonitorSelector: {}
+  podMonitorSelector: {}
+  # PrometheusRule 도 같은 범위
+  ruleNamespaceSelector:
+    matchLabels:
+      guardus.io/env: dev
+  ruleSelector: {}
+
+  # remoteWrite → Mimir
+  remoteWrite:
+    - url: http://mimir-distributor.monitoring-dev.svc.cluster.local:8080/api/v1/push
+      headers:
+        X-Scope-OrgID: guardus-dev
+      # Mimir push 실패 시 retry 정책
+      queueConfig:
+        maxShards: 50
+        capacity: 10000
+        maxSamplesPerSend: 2000
+        batchSendDeadline: 5s
+        minBackoff: 30ms
+        maxBackoff: 5s
+      writeRelabelConfigs:
+        # Mimir tenant 격리용 external_labels 강제
+        - sourceLabels: [__name__]
+          regex: "(.*)"
+          targetLabel: __name__
+          replacement: "$1"
+
+  # external_labels — replicas=2 인 두 Prom 각각 다른 label 가져야 Mimir 에서 dedup
+  externalLabels:
+    cluster: guardus-eks-v2
+    env: dev
+
+  # PVC (WAL 임시)
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: gp3
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 10Gi
+
+  # Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+  # 무료 affinity — replicas=2 가 다른 노드에 배치
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                prometheus: prometheus-dev
+            topologyKey: kubernetes.io/hostname
+
+---
+# Prometheus 의 query API 노출 (Grafana datasource 용)
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-dev
+  namespace: monitoring-dev
+  labels:
+    app.kubernetes.io/name: prometheus-dev
+spec:
+  type: ClusterIP
+  ports:
+    - name: web
+      port: 9090
+      targetPort: 9090
+  selector:
+    prometheus: prometheus-dev
