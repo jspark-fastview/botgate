@@ -25,3 +25,13 @@ spec:
     Name: guardus-eks-v2-karpenter-node
     Component: karpenter
     karpenter.sh/discovery: guardus-eks-v2
+
+  # 2026-05-22: Bottlerocket 노드 cluster join 실패 fix.
+  # Karpenter user-data 가 cluster-dns-ip 누락 → 'Generate additional settings for Kubernetes' FAILED
+  # → init 중단 → 15분 timeout 후 termination 반복.
+  # mngd NG (잘 join 됨) 는 cluster-dns-ip = 10.100.0.10 명시.
+  # max-pods 도 mngd NG (35) 와 맞춤 — Cilium ENI mode 라 vpc-cni default (29) 와 다름.
+  kubelet:
+    clusterDNS:
+      - "10.100.0.10"
+    maxPods: 35
