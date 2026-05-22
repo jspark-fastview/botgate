@@ -74,6 +74,63 @@ sidecar:
   datasources:
     enabled: false   # 위 datasources block 직접 정의로 충분
 
+# grafana.com 의 표준 dashboard 자동 다운로드 (KPS Grafana 비활성 후 빈 슬롯 채움)
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: default
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+
+dashboards:
+  default:
+    # Node Exporter Full — 노드별 CPU/Mem/Disk/Net 상세
+    node-exporter-full:
+      gnetId: 1860
+      revision: 41
+      datasource: Mimir-Prod
+    # Kubernetes / Views / Pods — pod 별 자원 사용
+    kubernetes-views-pods:
+      gnetId: 15760
+      revision: 38
+      datasource: Mimir-Prod
+    # Kubernetes / Views / Nodes — 노드별 자원
+    kubernetes-views-nodes:
+      gnetId: 15759
+      revision: 36
+      datasource: Mimir-Prod
+    # Kubernetes / Views / Namespaces
+    kubernetes-views-namespaces:
+      gnetId: 15758
+      revision: 43
+      datasource: Mimir-Prod
+    # Kubernetes / Views / Global — cluster overview
+    kubernetes-views-global:
+      gnetId: 15757
+      revision: 43
+      datasource: Mimir-Prod
+    # Kubernetes / API server
+    kubernetes-api-server:
+      gnetId: 15761
+      revision: 19
+      datasource: Mimir-Prod
+    # Kubelet
+    kubelet:
+      gnetId: 15762
+      revision: 21
+      datasource: Mimir-Prod
+    # CoreDNS
+    coredns:
+      gnetId: 15762
+      revision: 21
+      datasource: Mimir-Prod
+
 # 보안
 grafana.ini:
   auth.anonymous:
