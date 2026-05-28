@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kube-system
+
+helmCharts:
+  - name: aws-node-termination-handler
+    repo: https://aws.github.io/eks-charts
+    version: 0.27.1
+    releaseName: aws-node-termination-handler
+    namespace: kube-system
+    valuesFile: values.yaml
+    includeCRDs: true

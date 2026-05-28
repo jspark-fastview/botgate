@@ -8,6 +8,15 @@
 - op: replace
   path: /metadata/annotations/alb.ingress.kubernetes.io~1group.name
   value: guardus-shared-v2
+# 2026-05-25 spot interruption 사고 학습 — ALB access log + target deregister 단축.
+# access_logs: 사고 시 request 별 reason 보존 (60일).
+# deregistration_delay: 300s default → 30s (spot 회수 시 stale target routing 시간 ↓).
+- op: add
+  path: /metadata/annotations/alb.ingress.kubernetes.io~1load-balancer-attributes
+  value: access_logs.s3.enabled=true,access_logs.s3.bucket=guardus-alb-access-logs
+- op: add
+  path: /metadata/annotations/alb.ingress.kubernetes.io~1target-group-attributes
+  value: deregistration_delay.timeout_seconds=30
 - op: replace
   path: /spec/rules
   value:

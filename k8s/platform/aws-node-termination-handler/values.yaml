@@ -1,0 +1,45 @@
+# aws-node-termination-handler — mngd NG spot 노드 회수 graceful drain.
+# Karpenter 노드는 Karpenter 가 자체 처리 (interruption queue), mngd NG 만 cover.
+#
+# 사고 사례: 2026-05-25 spot interruption 18회 발생 → openresty pod 가 graceful 종료 못 함 →
+# ALB 가 stale target 으로 routing → ELB 자체 5xx 수천회.
+#
+# IMDS mode (default, DaemonSet) — 노드 자체에서 spot interruption notice (2분 전) 받음.
+
+# DaemonSet 모드 — 모든 노드에 1개씩
+daemonsetTolerations: ""
+
+# Spot interruption + Rebalance recommendation 처리
+enableSpotInterruptionDraining: true
+enableRebalanceMonitoring: true
+enableRebalanceDraining: true
+
+# Scheduled maintenance (EC2 hardware 점검 등)
+enableScheduledEventDraining: true
+
+# Node 자체 cordon + drain
+cordonOnly: false
+
+# graceful timeout (pod evict 까지 대기)
+nodeTerminationGracePeriod: 120
+
+# pod terminationGracePeriodSeconds 와 일치 — pod 가 preStop + drain 시간 확보
+podTerminationGracePeriod: -1   # -1 = pod spec 의 terminationGracePeriodSeconds 사용
+
+# DaemonSet 자체 evict 안 함 (NTH 가 노드 떠나기 전까지 동작해야)
+ignoreDaemonSets: true
+
+# 같은 pod 두 번 drain 시도 안 함
+deleteLocalData: true
+
+# Webhook (Slack 등) — 일단 미설정. 추후 추가 가능
+webhookURL: ""
+
+# 리소스
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi

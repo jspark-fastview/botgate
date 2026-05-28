@@ -49,6 +49,8 @@ spec:
           labelSelector:
             matchLabels:
               app.kubernetes.io/name: openresty
+      # graceful shutdown — preStop (35s) + nginx quit + 여유. 2026-05-25 spot interruption 사고 학습.
+      terminationGracePeriodSeconds: 90
       containers:
         - name: openresty
           image: guardus/openresty:latest
@@ -89,3 +91,13 @@ spec:
             timeoutSeconds: 2
             failureThreshold: 30   # 90s 까지 prefetch 기다림 (admin-api cold start 보완)
             successThreshold: 1
+          # Graceful shutdown — ALB deregistration_delay (Ingress annotation 30s) 동안
+          # 새 connection 안 받으면서 기존 요청 처리. SIGTERM 즉시 nginx -s quit 하면
+          # ALB 가 아직 stale target 으로 routing → connection refused (5xx).
+          # 2026-05-25 사고 학습: NTH (graceful drain) + preStop sleep + ALB deregister 빠르게.
+          lifecycle:
+            preStop:
+              exec:
+                # 1) sleep 35s — ALB deregister 까지 (30s) 새 connection 차단
+                # 2) nginx -s quit — graceful (기존 요청 처리 후 종료)
+                command: ["/bin/sh", "-c", "sleep 35 && /usr/local/openresty/bin/openresty -s quit"]
