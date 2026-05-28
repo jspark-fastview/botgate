@@ -4,9 +4,14 @@ kind: EC2NodeClass
 metadata:
   name: default
 spec:
-  amiFamily: Bottlerocket
+  # 2026-05-28: Bottlerocket → AL2023.
+  # 원인: Karpenter 1.12.1 의 Bottlerocket userdata 가 K8s 1.34 cluster join 못 함
+  # (EC2 launch 됐지만 kubelet 시작 안 됨, NodeClaim Ready=Unknown 5분+).
+  # mngd NG 의 Bottlerocket 노드는 EKS 가 직접 userdata 관리해서 join OK.
+  # AL2023 = EKS 권장 AMI, Karpenter 1.12 와 더 안정적 호환.
+  amiFamily: AL2023
   amiSelectorTerms:
-    - alias: bottlerocket@latest
+    - alias: al2023@latest
 
   # Terraform terraform-v2/karpenter.tf 가 만든 node IAM role
   # (terraform output karpenter_node_iam_role_name)
@@ -26,12 +31,7 @@ spec:
     Component: karpenter
     karpenter.sh/discovery: guardus-eks-v2
 
-  # 2026-05-22: Bottlerocket 노드 cluster join 실패 fix.
-  # Karpenter user-data 가 cluster-dns-ip 누락 → 'Generate additional settings for Kubernetes' FAILED
-  # → init 중단 → 15분 timeout 후 termination 반복.
-  # mngd NG (잘 join 됨) 는 cluster-dns-ip = 10.100.0.10 명시.
-  # max-pods 도 mngd NG (35) 와 맞춤 — Cilium ENI mode 라 vpc-cni default (29) 와 다름.
+  # AL2023 는 EKS 가 cluster-dns/cluster-CA 등 자동 inject (kubelet config drop-in).
+  # maxPods 만 Cilium ENI mode 매칭 (vpc-cni default 다름).
   kubelet:
-    clusterDNS:
-      - "10.100.0.10"
     maxPods: 35
