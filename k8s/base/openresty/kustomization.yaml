@@ -4,7 +4,9 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
-  - hpa.yaml
+  # hpa.yaml 제거 — KEDA ScaledObject 가 HPA 자동 생성 (keda-hpa-openresty).
+  # 둘 다 두면 같은 Deployment 를 두 HPA 가 fight → 충돌.
+  - scaledobject.yaml
   - pdb.yaml
   - servicemonitor.yaml
 

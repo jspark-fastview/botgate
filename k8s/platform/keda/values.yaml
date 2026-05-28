@@ -1,0 +1,57 @@
+# KEDA Helm values
+# 트래픽 양 기반 동적 scale — KPS Prometheus 의 nginx_http_requests_total query trigger.
+# 기존 HPA (CPU/Memory) 대비 RPS 즉시 반응 → 10x burst 대응.
+
+# 리소스 — keda operator + metrics-apiserver + admission-webhook 3 pod
+resources:
+  operator:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  metricServer:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  webhooks:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 256Mi
+
+# arm64 cluster
+nodeSelector:
+  kubernetes.io/arch: arm64
+
+# baseline NG 우선 (안정성)
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: role
+              operator: In
+              values: [workload-baseline]
+
+# Prometheus metric 노출 (KEDA operator 자체 모니터링)
+prometheus:
+  metricServer:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: kube-prometheus-stack
+  operator:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: kube-prometheus-stack

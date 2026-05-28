@@ -1,0 +1,72 @@
+# KEDA ScaledObject — 트래픽 양 기반 동적 scale
+#
+# 기존 HPA (CPU/Memory) 대체. KEDA 가 내부적으로 HPA 자동 생성/관리.
+#
+# 트리거 (OR 조합 — 가장 많이 요구하는 쪽으로 scale):
+#   1. RPS (primary)  : nginx_http_requests_total rate(1m) — pod 당 100 RPS target
+#   2. CPU (safety)   : 50% utilization — RPS metric 실패 시 안전망
+#   3. Memory (safety): 70% utilization — 동일
+#
+# 10x burst 대응:
+#   minReplicas: 2  (baseline 1:1)
+#   maxReplicas: 20 (= 10x of 2)
+#   pollingInterval: 15s (빠른 반응)
+#   cooldownPeriod: 300s (flapping 방지)
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: openresty
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: openresty
+  pollingInterval: 15       # 15초마다 metric 조회
+  cooldownPeriod: 300       # scaleDown 전 5분 (flapping 방지)
+  minReplicaCount: 2        # baseline 1:1 — replicas=2 보장
+  maxReplicaCount: 20       # 10x burst 대응
+  fallback:
+    failureThreshold: 3     # Prom 3회 실패 시 fallback replicas 적용
+    replicas: 4             # Prom 죽었을 때 일단 4 pod 유지 (CPU/Memory 트리거가 backup)
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0      # 즉시 반응
+          policies:
+            - type: Percent
+              value: 200                     # 30초마다 3배까지 (2→6→18)
+              periodSeconds: 30
+            - type: Pods
+              value: 4                       # 또는 한 번에 4 pod
+              periodSeconds: 30
+            # 둘 중 max 적용
+        scaleDown:
+          stabilizationWindowSeconds: 300    # 5분 안정화
+          policies:
+            - type: Pods
+              value: 1
+              periodSeconds: 60
+  triggers:
+    # 1) Primary — RPS 기반 (전체 cluster RPS / target pod 수)
+    #    KEDA 가 query 결과 / threshold = desired replicas 계산.
+    #    예: 전체 RPS 800 / threshold 100 = 8 pods.
+    - type: prometheus
+      metadata:
+        serverAddress: http://kps-prometheus.monitoring.svc.cluster.local:9090
+        query: |
+          sum(rate(nginx_http_requests_total[1m]))
+        threshold: "100"
+        # pod 당 100 RPS = 안전 target. 100m CPU request 기준 여유 있음.
+
+    # 2) Safety — CPU (RPS query 실패 / Prom down 대비)
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: "50"
+
+    # 3) Safety — Memory
+    - type: memory
+      metricType: Utilization
+      metadata:
+        value: "70"
