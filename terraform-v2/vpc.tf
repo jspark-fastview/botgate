@@ -92,7 +92,10 @@ resource "aws_subnet" "b_ext" {
 
   tags = {
     Name                                        = "content-b-ec2-ext"
-    "karpenter.sh/discovery"                    = var.cluster_name
+    # 2026-05-28: karpenter.sh/discovery 태그 제거.
+    # secondary CIDR subnet 은 Pod IP 용 (Cilium ENI mode 가 secondary ENI 로 사용).
+    # 노드 자체 ENI 는 primary CIDR subnet 에 있어야 EKS API endpoint 도달 가능.
+    # Karpenter 가 이 subnet 에 노드 launch 시 cluster join 실패 (NodeNotFound 5분+).
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   }
 
@@ -107,7 +110,7 @@ resource "aws_subnet" "d_ext" {
 
   tags = {
     Name                                        = "content-d-ec2-ext"
-    "karpenter.sh/discovery"                    = var.cluster_name
+    # 2026-05-28: karpenter.sh/discovery 태그 제거 (b_ext 와 동일 이유).
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   }
 

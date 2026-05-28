@@ -35,3 +35,8 @@ spec:
   # maxPods 만 Cilium ENI mode 매칭 (vpc-cni default 다름).
   kubelet:
     maxPods: 35
+
+  # 2026-05-28: EKS API endpoint = public-only (PrivateAccess=false).
+  # mngd NG 는 launch_template 에 associate_public_ip_address=true 라 join OK.
+  # Karpenter 는 default false → public IP 없음 → 인터넷 차단 → EKS API 도달 불가 → join 실패.
+  associatePublicIPAddress: true
