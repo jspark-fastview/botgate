@@ -24,3 +24,21 @@ resources:
   limits:
     cpu: 500m
     memory: 500Mi
+
+# 2026-05-28: Karpenter 노드 secondary ENI SNAT 이슈로 외부 API 도달 불가.
+# Cilium ENI mode + Karpenter 의 multi-ENI 가 mngd 와 다른 구조 → ebs-csi/ALB controller CrashLoop.
+# 해결: mngd 노드만 schedule (karpenter.sh/nodepool 라벨 없는 노드).
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: karpenter.sh/nodepool
+              operator: DoesNotExist
+# baseline NG 의 openresty taint 통과 위해 toleration. 단 ALB controller 는 baseline 노드 X 가도록
+# 별도 affinity 안 함 (default = workload-baseline 도 OK 단 capacity 작아 schedule 실패할 가능성).
+tolerations:
+  - key: role
+    operator: Equal
+    value: openresty
+    effect: NoSchedule
