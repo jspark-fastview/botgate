@@ -7,7 +7,10 @@
 # IMDS mode (default, DaemonSet) — 노드 자체에서 spot interruption notice (2분 전) 받음.
 
 # DaemonSet 모드 — 모든 노드에 1개씩
-daemonsetTolerations: ""
+# 2026-05-28: baseline NG 가 NoSchedule taint (role=openresty) 적용됨.
+# universal toleration 으로 모든 노드 (baseline + workload) 에 schedule 보장.
+daemonsetTolerations:
+  - operator: Exists
 
 # Spot interruption + Rebalance recommendation 처리
 enableSpotInterruptionDraining: true

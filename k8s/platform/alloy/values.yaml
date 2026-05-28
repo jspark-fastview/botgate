@@ -85,3 +85,7 @@ alloy:
 
 controller:
   type: daemonset
+  # 2026-05-28: baseline NG 가 NoSchedule taint (role=openresty) 적용됨.
+  # universal toleration 으로 모든 노드 log 수집 보장.
+  tolerations:
+    - operator: Exists
