@@ -14,13 +14,19 @@
 - op: replace
   path: /spec/template/spec/containers/0/resources/limits/memory
   value: 512Mi
-# 채널 무중단 — baseline (on-demand) 우선, spot fallback 허용.
-# preferred weight 100: baseline 가용 시 100% baseline. baseline 부족 / capacity 한도 시 spot 으로 자동.
+# 채널 무중단 — baseline (on-demand) 우선, spot mngd fallback 허용.
+# 2026-05-28: Karpenter 노드 (secondary ENI primary CIDR) pod 의 외부 upstream 도달 불가 사고.
+# required nodeAffinity 로 mngd NG (Karpenter 외) 강제. baseline taint tolerate.
 # zone topologySpread 제거 (이전 1/3 baseline 만 schedule 된 원인).
 - op: replace
   path: /spec/template/spec/affinity
   value:
     nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: karpenter.sh/nodepool
+                operator: DoesNotExist
       preferredDuringSchedulingIgnoredDuringExecution:
         - weight: 100
           preference:

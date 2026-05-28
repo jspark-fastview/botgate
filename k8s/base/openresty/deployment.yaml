@@ -27,6 +27,15 @@ spec:
     spec:
       # admin-api/internal-api 와 다른 노드 분산 (anti-affinity 약하게)
       affinity:
+        # 2026-05-28: Karpenter 노드 (secondary ENI primary CIDR) pod 가 외부 upstream 도달 못 함.
+        # 채널 504 사고 학습 — openresty 는 반드시 mngd NG (Karpenter 외) 에만.
+        # mngd 노드 = baseline (taint tolerate) + spot NG (workload).
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: karpenter.sh/nodepool
+                    operator: DoesNotExist
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
             - weight: 100
