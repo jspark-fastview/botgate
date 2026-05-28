@@ -14,6 +14,15 @@ endpointRoutes:
   enabled: true
 eni:
   enabled: true
+
+# 2026-05-28: BPF masquerade 활성.
+# 원인: Karpenter 노드의 secondary ENI (172.21.x.x) pod 가 외부 API 도달 못 함.
+#   - mngd NG launch_template 와 Karpenter NodeClass 의 ENI 구조 차이로 iptables masq fail
+#   - ebs-csi-controller / aws-load-balancer-controller / kube-state-metrics 등 CrashLoop
+# BPF masquerade = eBPF 로 모든 ENI 의 pod outbound traffic SNAT → host primary IP 로.
+# ENI mode 호환 + Cilium 1.16+ 안정 지원.
+bpf:
+  masquerade: true
 hubble:
   enabled: true
   metrics:
