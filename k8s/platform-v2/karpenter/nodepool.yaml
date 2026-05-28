@@ -21,20 +21,31 @@ spec:
         - key: karpenter.sh/capacity-type
           operator: In
           values: ["spot", "on-demand"]
-        - key: karpenter.k8s.aws/instance-family
+        # 2026-05-28: Karpenter 1.12 가 `karpenter.k8s.aws/*` 도메인 라벨을 restricted 로 처리.
+        # 기존 instance-family / instance-size / instance-cpu 라벨 사용 시 NodeClaim invalid.
+        # 대체: K8s native `node.kubernetes.io/instance-type` 으로 명시적 list.
+        - key: node.kubernetes.io/instance-type
           operator: In
           values:
-            - t4g
-            - c6g
-            - c7g
-            - m6g
-            - m7g
-        - key: karpenter.k8s.aws/instance-size
-          operator: In
-          values: ["medium", "large", "xlarge", "2xlarge"]
-        - key: karpenter.k8s.aws/instance-cpu
-          operator: In
-          values: ["2", "4", "8"]
+            # t4g (burstable, baseline 용)
+            - t4g.medium
+            - t4g.large
+            - t4g.xlarge
+            - t4g.2xlarge
+            # c6g / c7g (compute optimized)
+            - c6g.large
+            - c6g.xlarge
+            - c6g.2xlarge
+            - c7g.large
+            - c7g.xlarge
+            - c7g.2xlarge
+            # m6g / m7g (general purpose)
+            - m6g.large
+            - m6g.xlarge
+            - m6g.2xlarge
+            - m7g.large
+            - m7g.xlarge
+            - m7g.2xlarge
         - key: topology.kubernetes.io/zone
           operator: In
           # v2 cluster 는 b/d 만 (2c IP 부족 회피, 2a segregation)
