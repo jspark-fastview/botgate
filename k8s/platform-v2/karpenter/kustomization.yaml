@@ -7,7 +7,11 @@ namespace: karpenter
 helmCharts:
   - name: karpenter
     repo: oci://public.ecr.aws/karpenter
-    version: "1.0.6"
+    # 2026-05-28: 1.0.6 → 1.12.1
+    # 원인: 1.0.6 이 K8s 1.34 호환 안 됨 ("karpenter version is not compatible with K8s version 1.34")
+    # 증상: NodeClaim launch 는 하지만 launched 노드가 cluster 에 register 안 됨 (12분 째 stuck).
+    # v1.x API 동일 (NodePool/EC2NodeClass karpenter.sh/v1) — values 호환.
+    version: "1.12.1"
     releaseName: karpenter
     namespace: karpenter
     valuesFile: values.yaml
