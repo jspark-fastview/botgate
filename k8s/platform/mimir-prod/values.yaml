@@ -18,6 +18,10 @@ mimir:
           bucket_name: guardus-mimir-metrics-prod
           endpoint: s3.ap-northeast-2.amazonaws.com
           region: ap-northeast-2
+          # 2026-05-28: S3 gateway endpoint (vpce-09729949a3b4ea478) 는 dualstack 미지원.
+          # mimir default 가 dualstack endpoint 호출 → S3 timeout.
+          # disable_dualstack=true 로 regional endpoint (s3.ap-northeast-2) 만 사용.
+          disable_dualstack: true
 
     blocks_storage:
       backend: s3
@@ -25,6 +29,7 @@ mimir:
         bucket_name: guardus-mimir-metrics-prod
         endpoint: s3.ap-northeast-2.amazonaws.com
         region: ap-northeast-2
+        disable_dualstack: true
 
     ruler_storage:
       backend: s3
@@ -32,6 +37,7 @@ mimir:
         bucket_name: guardus-mimir-metrics-prod
         endpoint: s3.ap-northeast-2.amazonaws.com
         region: ap-northeast-2
+        disable_dualstack: true
 
     # ⚠️ prod 안전성 — RF=3, quorum=2, 1개 ingester 죽어도 write 진행
     ingester:
