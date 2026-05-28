@@ -94,6 +94,14 @@ ingester:
     limits:   { cpu: 2000m, memory: 4Gi }
   topologySpreadConstraints: {}
   affinity:
+    # 2026-05-28: S3 외부 호출 — Karpenter 노드의 secondary ENI primary CIDR pod 가 도달 못 함.
+    # mngd NG (Karpenter 외) 강제. 같은 cluster 의 ebs-csi/ALB controller/openresty 와 동일 패턴.
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: karpenter.sh/nodepool
+                operator: DoesNotExist
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         - labelSelector:
@@ -132,6 +140,13 @@ store_gateway:
     requests: { cpu: 200m, memory: 512Mi }
     limits:   { cpu: 1000m, memory: 1Gi }
   affinity:
+    # S3 외부 호출 — mngd NG 강제 (Karpenter 노드 secondary ENI SNAT 이슈 회피)
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: karpenter.sh/nodepool
+                operator: DoesNotExist
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         - labelSelector:
@@ -148,6 +163,14 @@ compactor:
   resources:
     requests: { cpu: 200m, memory: 512Mi }
     limits:   { cpu: 1000m, memory: 2Gi }
+  # S3 외부 호출 — mngd NG 강제 (Karpenter 노드 secondary ENI SNAT 이슈 회피)
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: karpenter.sh/nodepool
+                operator: DoesNotExist
 
 # 선택 컴포넌트 비활성 (Alertmanager 는 KPS 사용, ruler 는 별도)
 alertmanager:
