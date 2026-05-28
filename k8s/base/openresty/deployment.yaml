@@ -49,6 +49,16 @@ spec:
           labelSelector:
             matchLabels:
               app.kubernetes.io/name: openresty
+      # baseline NG taint 통과 — baseline 노드를 openresty 전용으로 만듦.
+      # taint: role=openresty:NoSchedule (terraform-v2/eks.tf baseline NG).
+      # openresty 만 toleration 보유 → baseline 노드에 schedule.
+      # 다른 워크로드 (admin-api/argocd/mimir/etc) 는 taint 못 견뎌서 workload NG 로 자동 이동.
+      # 2026-05-28: ArgoCD application-controller 가 baseline 92% 차지하는 사고 학습.
+      tolerations:
+        - key: role
+          operator: Equal
+          value: openresty
+          effect: NoSchedule
       # graceful shutdown — preStop (35s) + nginx quit + 여유. 2026-05-25 spot interruption 사고 학습.
       terminationGracePeriodSeconds: 90
       containers:

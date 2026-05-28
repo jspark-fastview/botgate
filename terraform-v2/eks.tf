@@ -75,11 +75,12 @@ module "eks_v2" {
       }
     }
 
-    # On-Demand baseline — spot 동시 회수 대비 (2026-05-18 학습) + openresty HA 배치 (2026-05-22)
-    # openresty (채널 트래픽 entry) 가 nodeAffinity preferred 로 baseline 우선 schedule.
-    # baseline 2대 → openresty HA (한 노드 죽어도 다른 노드 살아남, 채널 무중단).
-    # t4g.medium (17 pod max) → t4g.large (35 pod max): cluster system pod (cilium/coredns/etc)
-    # 가득 채워서 openresty 못 받았던 문제 해소. 1대당 cost ~$50/월 (medium $25 의 2배).
+    # On-Demand baseline — openresty 전용 (2026-05-28 학습).
+    # 기존: openresty preferred affinity 만 → baseline 다른 워크로드와 공유. 결과:
+    #   - ArgoCD application-controller 가 baseline t4g.large 의 1 vCPU (92%) 차지
+    #   - openresty 가 baseline 못 잡고 workload 노드 fallback (사실상 baseline 매핑 실패)
+    # 해결: NoSchedule taint 로 baseline 을 openresty 전용. 다른 워크로드는 workload NG/Karpenter.
+    # 무중단 + 무유실: 채널 entry (openresty) 의 baseline 보장 강화.
     baseline = {
       ami_type       = "BOTTLEROCKET_ARM_64"
       instance_types = ["t4g.large"]
@@ -108,6 +109,15 @@ module "eks_v2" {
       }
 
       labels = { role = "workload-baseline" }
+      # openresty 만 toleration 보유 (k8s/base/openresty/deployment.yaml).
+      # 다른 pod 는 NoSchedule 로 차단 → workload NG / Karpenter 로 자동 이동.
+      taints = {
+        openresty_only = {
+          key    = "role"
+          value  = "openresty"
+          effect = "NO_SCHEDULE"
+        }
+      }
       tags = {
         "k8s.io/cluster-autoscaler/enabled"             = "true"
         "k8s.io/cluster-autoscaler/${var.cluster_name}" = "owned"
