@@ -43,33 +43,37 @@ resource "aws_security_group" "endpoint" {
   }
 }
 
-# Gateway endpoint — S3 (무료, route table 매칭만)
-# mimir-prod 의 metric storage / loki chunk storage 가 사용
-resource "aws_vpc_endpoint" "s3" {
-  vpc_id            = local.vpc_id
-  service_name      = "com.amazonaws.${var.region}.s3"
-  vpc_endpoint_type = "Gateway"
+# Gateway endpoint — S3:
+# 이미 존재 (vpce-09729949a3b4ea478, content VPC 전체 route table 에 attached).
+# terraform 외부 관리 — resource 명시 X.
 
-  # 모든 subnet 의 route table 에 endpoint route 추가
-  route_table_ids = [
-    data.aws_route_table.b.id,
-    data.aws_route_table.d.id,
-  ]
-
-  tags = {
-    Name      = "guardus-eks-v2-s3-gateway"
-    Component = "vpc-endpoint"
-  }
-}
-
-# Interface endpoint 공통 설정
+# Interface endpoints — service 별 지원 AZ 가 다름.
+# ec2 / elasticloadbalancing: 4 AZ 다 지원 → b + d
+# ecr.api / ecr.dkr / sts: a/b/c 만 (d 미지원) → b 만
 locals {
   interface_endpoints = {
-    ec2                   = "com.amazonaws.${var.region}.ec2"
-    ecr_api               = "com.amazonaws.${var.region}.ecr.api"
-    ecr_dkr               = "com.amazonaws.${var.region}.ecr.dkr"
-    sts                   = "com.amazonaws.${var.region}.sts"
-    elasticloadbalancing  = "com.amazonaws.${var.region}.elasticloadbalancing"
+    # b + d 둘 다 가능
+    ec2 = {
+      service = "com.amazonaws.${var.region}.ec2"
+      subnets = local.subnet_ids
+    }
+    elasticloadbalancing = {
+      service = "com.amazonaws.${var.region}.elasticloadbalancing"
+      subnets = local.subnet_ids
+    }
+    # AZ d 미지원 → b 만. AZ d 노드는 cross-AZ 로 b 의 endpoint 도달 (latency 약간 ↑, 비용 무시).
+    ecr_api = {
+      service = "com.amazonaws.${var.region}.ecr.api"
+      subnets = [data.aws_subnet.b.id]
+    }
+    ecr_dkr = {
+      service = "com.amazonaws.${var.region}.ecr.dkr"
+      subnets = [data.aws_subnet.b.id]
+    }
+    sts = {
+      service = "com.amazonaws.${var.region}.sts"
+      subnets = [data.aws_subnet.b.id]
+    }
   }
 }
 
@@ -77,9 +81,9 @@ resource "aws_vpc_endpoint" "interface" {
   for_each = local.interface_endpoints
 
   vpc_id              = local.vpc_id
-  service_name        = each.value
+  service_name        = each.value.service
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = local.subnet_ids
+  subnet_ids          = each.value.subnets
   security_group_ids  = [aws_security_group.endpoint.id]
   private_dns_enabled = true   # *.amazonaws.com 자동 resolve
 
