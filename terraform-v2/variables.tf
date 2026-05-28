@@ -31,19 +31,25 @@ variable "node_instance_types" {
 
 variable "node_min_size" {
   type    = number
-  default = 1
+  # 2026-05-28: spot mngd NG 는 절대 baseline 만 담당 (cluster-essential workload).
+  # Burst capacity 는 Karpenter 가 동적 추가 (NodePool limit 100 CPU).
+  default = 2
 }
 
 variable "node_desired_size" {
   type    = number
-  # Mimir prod ingester RF=3 host-spread (3 다른 노드) + 기존 app load 수용.
-  # 2026-05-22 4→5 로 늘림.
-  default = 5
+  # 2026-05-28: 5 → 2.
+  # 이전 정책: mngd NG 가 baseline + burst 둘 다 담당 → desired 크게.
+  # 새 정책: mngd NG 는 절대 baseline 만, Karpenter 가 burst.
+  # mimir RF=3 host-spread 는 Karpenter 노드도 포함 (3 다른 host 면 OK).
+  # 메모리: desired_size 는 terraform 의 ignore_changes — aws cli 로 즉시 조정 필요.
+  default = 2
 }
 
 variable "node_max_size" {
   type    = number
-  default = 7
+  # 2026-05-28: 7 → 4. burst 는 Karpenter 가 떠받음.
+  default = 4
 }
 
 variable "aws_account_id" {
