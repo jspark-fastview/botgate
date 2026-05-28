@@ -43,8 +43,11 @@ module "eks_v2" {
   eks_managed_node_groups = {
     spot = {
       ami_type       = "BOTTLEROCKET_ARM_64"
-      instance_types = var.node_instance_types
-      capacity_type  = "SPOT"
+      # 2026-05-28: 1.60.0 → 1.61.0 (baseline NG 와 통일). 보안/버그 patch.
+      # 명시적 ami_release_version → AWS auto-latest 의도하지 않은 drift 방지.
+      ami_release_version = "1.61.0-8ef015e0"
+      instance_types      = var.node_instance_types
+      capacity_type       = "SPOT"
 
       min_size     = var.node_min_size
       desired_size = var.node_desired_size
