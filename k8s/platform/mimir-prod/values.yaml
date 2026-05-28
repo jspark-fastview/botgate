@@ -102,12 +102,16 @@ ingester:
           - matchExpressions:
               - key: karpenter.sh/nodepool
                 operator: DoesNotExist
+    # 2026-05-28: required → preferred. AZ 2 + spot mngd 2 노드만 가능한 제약 하에서
+    # 3 ingester 모두 다른 host 배치 못 함. RF=3 의 host-spread 약화 — 단 redundancy 그대로.
     podAntiAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        - labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: ingester
-          topologyKey: kubernetes.io/hostname
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: ingester
+            topologyKey: kubernetes.io/hostname
 
 querier:
   replicas: 2
@@ -147,12 +151,15 @@ store_gateway:
           - matchExpressions:
               - key: karpenter.sh/nodepool
                 operator: DoesNotExist
+    # 2026-05-28: required → preferred (mngd capacity 부족 회피)
     podAntiAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        - labelSelector:
-            matchLabels:
-              app.kubernetes.io/component: store-gateway
-          topologyKey: kubernetes.io/hostname
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: store-gateway
+            topologyKey: kubernetes.io/hostname
 
 # compactor — S3 compaction. single (idempotent, leader election 가능)
 compactor:
