@@ -17,7 +17,8 @@ variable "k8s_version" {
   type    = string
   # EKS minor 마다 14개월 표준 지원 — 매번 14개월 지나면 또 upgrade.
   # 1.33 표준지원 종료: 2026.07.29 → 1.34 로 업그레이드 (표준지원 ~ 2026.10).
-  default = "1.34"
+  # 2026-05-28: 1.34 → 1.35. EKS upgrade insight 5/5 통과. deprecated API 사용 X.
+  default = "1.35"
 }
 
 # VPC/서브넷은 신규 생성 X — 기존 content-vpc 를 data source 로 참조 (vpc.tf)
