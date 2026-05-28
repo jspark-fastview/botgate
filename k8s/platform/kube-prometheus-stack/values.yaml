@@ -12,7 +12,9 @@ prometheus:
         memory: 1Gi
       limits:
         cpu: 1000m
-        memory: 2Gi
+        # 2026-05-28: WAL 1249 segments replay 시 OOMKilled. 2Gi → 4Gi 로.
+        # 장기 운영하면 series 양 늘어남 — WAL 도 같이 커짐.
+        memory: 4Gi
     storageSpec:
       volumeClaimTemplate:
         spec:
