@@ -13,7 +13,7 @@ mimir:
           endpoint: s3.ap-northeast-2.amazonaws.com
           region: ap-northeast-2
           # 2026-05-28: S3 gateway endpoint dualstack 미지원 → regional endpoint 만.
-          disable_dualstack: true
+          dualstack_enabled: false
 
     blocks_storage:
       backend: s3
@@ -21,7 +21,7 @@ mimir:
         bucket_name: guardus-mimir-metrics-dev
         endpoint: s3.ap-northeast-2.amazonaws.com
         region: ap-northeast-2
-        disable_dualstack: true
+        dualstack_enabled: false
 
     ruler_storage:
       backend: s3
@@ -29,7 +29,7 @@ mimir:
         bucket_name: guardus-mimir-metrics-dev
         endpoint: s3.ap-northeast-2.amazonaws.com
         region: ap-northeast-2
-        disable_dualstack: true
+        dualstack_enabled: false
 
     # ⚠️ dev 는 의식적 예외 — RF=1 (test metric 이라 손실 허용).
     # prod 도입 시 반드시 RF=3 강제 + ingester replicas=3 + zone-aware
