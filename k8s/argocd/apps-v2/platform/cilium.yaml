@@ -1,0 +1,31 @@
+# Cilium GitOps adopt (2026-05-28).
+# 기존: helm CLI 로 직접 install 된 release (revision 8, 1.16.19).
+# 변경: ArgoCD 가 같은 release name 으로 adopt — 변경 추적 + drift 모니터링.
+#
+# syncPolicy 의도적 manual — helm release 와 ownership conflict 가능성 회피.
+# 사용자가 ArgoCD UI 에서 sync 시점 결정. 안정 운영 확인 후 auto-sync 전환 고려.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cilium
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jspark-fastview/botgate
+    targetRevision: main
+    path: k8s/platform/cilium
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  # syncPolicy 의도적으로 비움 — manual sync.
+  # 안정 운영 확인 후 (1주~) 아래처럼 auto-sync 활성화:
+  #   syncPolicy:
+  #     automated:
+  #       prune: false        # CNI 라 prune false 안전
+  #       selfHeal: true
+  #     syncOptions:
+  #       - ServerSideApply=true
+  #       - RespectIgnoreDifferences=true

@@ -1,0 +1,30 @@
+# Cilium values — guardus-eks-v2 (2026-05-28 helm get 으로 추출 user-supplied values)
+# 이전 helm CLI 로 직접 install 됐던 4 revision 의 values 를 git 에 보존.
+# ArgoCD 가 같은 release name 으로 adopt — Manual sync (위험 회피).
+#
+# Mode: ENI (AWS native, secondary CIDR pod IP)
+# - endpointRoutes.enabled: pod → host network 직접 routing (AWS VPC native)
+# - eni.enabled: AWS ENI 를 IPAM 백엔드로 사용
+# - egressMasqueradeInterfaces: eth0 으로만 NAT (다른 interface 무시)
+#
+# Hubble: 옵저버빌리티 — DNS / drop / TCP / flow / ICMP / HTTP metrics + Relay UI
+
+egressMasqueradeInterfaces: eth0
+endpointRoutes:
+  enabled: true
+eni:
+  enabled: true
+hubble:
+  enabled: true
+  metrics:
+    enabled:
+      - dns:query;ignoreAAAA
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - http
+    serviceMonitor:
+      enabled: false
+  relay:
+    enabled: true

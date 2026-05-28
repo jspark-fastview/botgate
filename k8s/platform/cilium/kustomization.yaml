@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kube-system
+
+helmCharts:
+  - name: cilium
+    repo: https://helm.cilium.io/
+    # 2026-05-28: 1.16.4 → 1.16.19 (leftover routing rule cleanup 버그 해소).
+    # helm CLI 로 install (revision 1~8), 이후 ArgoCD adopt.
+    version: 1.16.19
+    releaseName: cilium
+    namespace: kube-system
+    valuesFile: values.yaml
+    includeCRDs: true
