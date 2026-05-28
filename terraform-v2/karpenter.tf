@@ -16,6 +16,18 @@ module "karpenter_v2" {
     AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
   }
 
+  # Karpenter 1.12 의 instance profile garbage collection controller 가 사용.
+  # 2026-05-28 학습: 모듈 v20.24 의 default IAM policy 에 이 권한 없음.
+  # 노드 launch 자체는 영향 없으나 stale instance profile 누적 → cleanup 위해 추가.
+  iam_policy_statements = [
+    {
+      sid       = "AllowInstanceProfileGC"
+      effect    = "Allow"
+      actions   = ["iam:ListInstanceProfiles", "iam:GetInstanceProfile"]
+      resources = ["*"]
+    }
+  ]
+
   tags = {
     Name      = "${var.cluster_name}-karpenter"
     Component = "karpenter"
