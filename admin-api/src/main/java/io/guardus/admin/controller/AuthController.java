@@ -20,10 +20,14 @@ public class AuthController {
 
     private final JdbcTemplate    db;
     private final SessionService  sessions;
+    // prewarm bean 은 K8s (prewarm.enabled=true) 에서만 존재 — ObjectProvider 로 optional 주입.
+    private final org.springframework.beans.factory.ObjectProvider<io.guardus.admin.job.StatsPrewarmJob> prewarm;
 
-    public AuthController(JdbcTemplate db, SessionService sessions) {
+    public AuthController(JdbcTemplate db, SessionService sessions,
+                          org.springframework.beans.factory.ObjectProvider<io.guardus.admin.job.StatsPrewarmJob> prewarm) {
         this.db       = db;
         this.sessions = sessions;
+        this.prewarm  = prewarm;
     }
 
     /** POST /auth/register */
@@ -84,6 +88,13 @@ public class AuthController {
                 Instant.now().plus(30, ChronoUnit.DAYS));
         db.update("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)",
                 token, user.get("id"), expiresAt);
+
+        // 로그인 직후 그 유저 cache 즉시 prewarm (비동기) — 첫 대시보드 화면 cold 회피.
+        // prewarm bean 없으면 (EC2) skip. login 응답은 기다리지 않음 (background).
+        io.guardus.admin.job.StatsPrewarmJob pw = prewarm.getIfAvailable();
+        if (pw != null) {
+            java.util.concurrent.CompletableFuture.runAsync(() -> pw.prewarmToken(token));
+        }
 
         var resp = new java.util.LinkedHashMap<String, Object>();
         resp.put("token", token);

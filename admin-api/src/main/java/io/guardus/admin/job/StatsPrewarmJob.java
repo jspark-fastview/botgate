@@ -187,4 +187,40 @@ public class StatsPrewarmJob {
         log.info("[prewarm-{}] {} users × {} eps — ok={} fail={} ({} ms, parallel)",
                 tier, sessions.size(), endpoints.size(), ok.get(), fail.get(), ms);
     }
+
+    /**
+     * 로그인 직후 그 유저 token 으로 즉시 prewarm (on-demand).
+     * AuthController.login 이 비동기 호출 — 사용자가 첫 화면 그릴 때 cache 이미 채워짐.
+     * fast + normal + slow 모든 endpoint (portal 대시보드 전부).
+     */
+    public void prewarmToken(String token) {
+        long t0 = System.currentTimeMillis();
+        List<String> all = new java.util.ArrayList<>(buildFastEndpoints());
+        all.addAll(NORMAL_ENDPOINTS);
+        all.addAll(SLOW_ENDPOINTS);
+
+        HttpHeaders h = new HttpHeaders();
+        h.setBearerAuth(token);
+        HttpEntity<Void> req = new HttpEntity<>(h);
+
+        java.util.concurrent.atomic.AtomicInteger ok   = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.concurrent.atomic.AtomicInteger fail = new java.util.concurrent.atomic.AtomicInteger();
+        java.util.List<java.util.concurrent.CompletableFuture<Void>> futures = new java.util.ArrayList<>();
+        for (String ep : all) {
+            futures.add(java.util.concurrent.CompletableFuture.runAsync(() -> {
+                try {
+                    http.exchange(selfUrl + ep, HttpMethod.GET, req, String.class);
+                    ok.incrementAndGet();
+                } catch (Exception e) {
+                    fail.incrementAndGet();
+                }
+            }, executor));
+        }
+        java.util.concurrent.CompletableFuture.allOf(
+                futures.toArray(new java.util.concurrent.CompletableFuture[0])).join();
+
+        long ms = System.currentTimeMillis() - t0;
+        log.info("[prewarm-login] 1 user × {} eps — ok={} fail={} ({} ms)",
+                all.size(), ok.get(), fail.get(), ms);
+    }
 }
