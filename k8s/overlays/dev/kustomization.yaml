@@ -34,6 +34,10 @@ images:
 
 # 환경별 패치
 patches:
+- path: patches/admin-api-dev.yaml
+  target:
+    kind: Deployment
+    name: admin-api
 - path: patches/openresty-dev.yaml
   target:
     kind: Deployment

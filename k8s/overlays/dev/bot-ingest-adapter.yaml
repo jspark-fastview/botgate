@@ -46,6 +46,11 @@ spec:
             # admin-api 와 동일 Loki (SimpleScalable gateway)
             - name: LOKI_URL
               value: http://loki-gateway.monitoring.svc:80
+            # Loki stream label namespace = pod 실제 namespace → dev/prod 격리
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           resources:
             requests:
               cpu: 50m

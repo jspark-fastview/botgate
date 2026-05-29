@@ -19,6 +19,7 @@ import (
 // Client 는 Loki push API (/loki/api/v1/push) 로 event 를 batch 전송한다.
 type Client struct {
 	url        string // LOKI_URL (예: http://loki-gateway.monitoring.svc:80)
+	namespace  string // stream label namespace (pod namespace — 환경 격리)
 	httpc      *http.Client
 	ch         chan canonical.Event
 	batchSize  int
@@ -29,9 +30,11 @@ type Client struct {
 }
 
 // New 는 push 클라이언트를 만든다. url 은 Loki base (push path 는 내부에서 붙임).
-func New(url string) *Client {
+// namespace 는 stream label 값 — pod 실제 namespace 로 dev/prod 격리.
+func New(url, namespace string) *Client {
 	return &Client{
 		url:        url + "/loki/api/v1/push",
+		namespace:  namespace,
 		httpc:      &http.Client{Timeout: 10 * time.Second},
 		ch:         make(chan canonical.Event, 10000), // 버퍼 — burst 흡수
 		batchSize:  500,
@@ -107,7 +110,7 @@ func (c *Client) send(batch []canonical.Event) error {
 		first := evs[0]
 		stream := map[string]string{
 			"app":       "bot-ingest",
-			"namespace": "guardus",
+			"namespace": c.namespace,
 			"source":    first.Source,
 			"host":      first.Domain,
 			"category":  first.Category,

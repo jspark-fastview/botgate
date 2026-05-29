@@ -36,12 +36,19 @@ public class LokiClient {
     // 너무 길면 사용자 첫 호출 latency 큼. 90s = "기다릴 수 있는 최대치 + cache 진입".
     private static final Duration REQ_TIMEOUT = Duration.ofSeconds(90);
     private final ObjectMapper mapper = new ObjectMapper();
+    private final String streamSelector; // {namespace="<env>", app=~"openresty|bot-ingest"}
 
-    public LokiClient(@Value("${loki.url:}") String baseUrl) {
+    public LokiClient(@Value("${loki.url:}") String baseUrl,
+                      @Value("${loki.namespace:guardus}") String namespace) {
         this.baseUrl = baseUrl;
+        // namespace 만 환경별(dev=guardus-dev / prod=guardus) — app 은 inline(openresty)+cdn(bot-ingest) 통합 고정.
+        this.streamSelector = "{namespace=\"" + namespace + "\", app=~\"openresty|bot-ingest\"}";
     }
 
     public boolean isEnabled() { return baseUrl != null && !baseUrl.isBlank(); }
+
+    /** stream label matcher: {namespace="&lt;env&gt;", app=~"openresty|bot-ingest"} (inline+cdn 통합) */
+    public String streamMatcher() { return streamSelector; }
 
     // ──────────────────────────────────────────────────────────────────
     // Stats helpers — admin-api 통계 컨트롤러용 LogQL 빌더 + 실행
@@ -52,16 +59,16 @@ public class LokiClient {
     public String baseSelector(String domain) {
         String hostFilter = (domain != null && !domain.isBlank())
                 ? " | host=`" + esc(domain) + "`" : "";
-        return "{namespace=\"guardus\", app=\"openresty\"} | json | __error__=``" + hostFilter;
+        return streamSelector + " | json | __error__=``" + hostFilter;
     }
 
     /** 여러 도메인을 host=~ 정규식으로 묶음. 비어있으면 매치 0 인 selector */
     public String baseSelectorMulti(List<String> domains) {
         if (domains == null || domains.isEmpty()) {
-            return "{namespace=\"guardus\", app=\"openresty\"} | host=`__NONE__`"; // 매치 0
+            return streamSelector + " | host=`__NONE__`"; // 매치 0
         }
         String regex = String.join("|", domains.stream().map(LokiClient::esc).toList());
-        return "{namespace=\"guardus\", app=\"openresty\"} | json | __error__=`` | host=~`" + regex + "`";
+        return streamSelector + " | json | __error__=`` | host=~`" + regex + "`";
     }
 
     /** category line filter (all/null/blank → 빈 문자열) */

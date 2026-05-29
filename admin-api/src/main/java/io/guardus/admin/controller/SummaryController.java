@@ -59,7 +59,7 @@ public class SummaryController {
                 ? "| host=`" + domain + "` " : "";
         // 모든 stream 의 access_logs (oprenresty pod 의 JSON)
         // | __error__=`` 필수 — JSON 추출 라벨로 sum by (...) 집계 시 필요 (parse error 행 제외)
-        String baseSel = "{namespace=\"guardus\", app=\"openresty\"} | json | __error__=`` " + hostFilter;
+        String baseSel = loki.streamMatcher() + " | json | __error__=`` " + hostFilter;
         // KST today 자정 ~ now 윈도우. 24h sliding 은 어제 데이터가 섞여서 hour bucket 이 어긋났음.
         java.time.ZoneId KST = java.time.ZoneId.of("Asia/Seoul");
         Instant nowI = Instant.now();

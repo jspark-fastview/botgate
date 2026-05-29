@@ -1,0 +1,8 @@
+# dev — admin-api 가 dev namespace(guardus-dev) 의 Loki 데이터를 쿼리하도록 override.
+# CDN(bot-ingest) + inline(openresty) 통합 표시를 dev 에서 검증하기 위함.
+# 기본(prod)은 application.properties 의 loki.namespace=guardus.
+- op: add
+  path: /spec/template/spec/containers/0/env/-
+  value:
+    name: LOKI_NAMESPACE
+    value: guardus-dev

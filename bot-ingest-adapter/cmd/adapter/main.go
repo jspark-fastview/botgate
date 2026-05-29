@@ -32,7 +32,7 @@ func main() {
 	defer stop()
 
 	// Loki batch push client.
-	lc := loki.New(cfg.LokiURL)
+	lc := loki.New(cfg.LokiURL, cfg.Namespace)
 	go lc.Start(ctx)
 
 	// CDN plugin registry.

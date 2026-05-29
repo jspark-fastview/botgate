@@ -9,6 +9,9 @@ type Config struct {
 	// IngestToken — POST /ingest/* 의 Bearer 토큰. CDN(Logpush header_Authorization) 이 보냄.
 	// 빈 값이면 인증 skip (dev 편의) — prod 는 반드시 설정.
 	IngestToken string
+	// Namespace — Loki stream label namespace 값. pod 의 실제 namespace(POD_NAMESPACE
+	// downward API)로 주입 → dev=guardus-dev / prod=guardus 환경 격리 (inline openresty 와 동일).
+	Namespace string
 }
 
 func Load() Config {
@@ -16,6 +19,7 @@ func Load() Config {
 		Port:        env("PORT", "8090"),
 		LokiURL:     env("LOKI_URL", "http://loki-gateway.monitoring.svc:80"),
 		IngestToken: env("INGEST_TOKEN", ""),
+		Namespace:   env("POD_NAMESPACE", "guardus"),
 	}
 }
 

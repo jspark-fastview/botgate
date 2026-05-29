@@ -40,7 +40,7 @@ public class LokiStatsController {
         if (!loki.isEnabled()) return List.of();
         Duration d = parseRange(range);
         String logql = "topk(10, sum by (bot_name, bot_purpose) ("
-                + "count_over_time({namespace=\"guardus\", app=\"openresty\"} "
+                + "count_over_time(" + loki.streamMatcher() + " "
                 + "| json | category != `user` | bot_name != `` "
                 + "[" + range + "])))";
         List<Map<String, Object>> rows = loki.instantQuery(logql);
@@ -62,7 +62,7 @@ public class LokiStatsController {
     public Map<String, Long> actions(@RequestParam(defaultValue = "24h") String range) {
         if (!loki.isEnabled()) return Map.of();
         String logql = "sum by (action) ("
-                + "count_over_time({namespace=\"guardus\", app=\"openresty\"} "
+                + "count_over_time(" + loki.streamMatcher() + " "
                 + "| json | __error__=`` "
                 + "[" + range + "]))";
         List<Map<String, Object>> rows = loki.instantQuery(logql);
