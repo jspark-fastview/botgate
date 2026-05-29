@@ -13,8 +13,13 @@ helmCharts:
     includeCRDs: true
 
 # Chart 가 명시한 retention=Delete override (values.yaml 의 옵션 안 먹힘)
+# 2026-05-29 SimpleScalable: loki(single) → loki-write + loki-backend sts.
 patches:
   - path: patches/retention.yaml
     target:
       kind: StatefulSet
-      name: loki
+      name: loki-write
+  - path: patches/retention.yaml
+    target:
+      kind: StatefulSet
+      name: loki-backend

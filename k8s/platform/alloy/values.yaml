@@ -75,7 +75,7 @@ alloy:
       // Loki 로 push — single-binary 모드 service 명
       loki.write "default" {
         endpoint {
-          url = "http://loki.monitoring.svc:3100/loki/api/v1/push"
+          url = "http://loki-gateway.monitoring.svc:80/loki/api/v1/push"
         }
       }
 

@@ -1,33 +1,55 @@
-# Loki — single-binary 모드 (학습/소규모 운영).
-# 추후 트래픽 늘면 simple-scalable 또는 distributed 로 마이그레이션 가능.
+# Loki — SimpleScalable 모드 (2026-05-29 전환).
+# 배경: admin-api stats cold start 시 query 폭증 → single-binary 1 pod CPU 폭주 + 노드 throttle.
+# 방향: scale-out — read(querier) 컴포넌트 autoscaling 으로 burst 시 여러 pod 분산.
+# (single pod 성능 짜내기 X — loki_scale_out_not_up 메모리 학습)
 #
-# 저장:
-#   - chunks/index: local PVC gp3 10GB (60일 유지 = 약 5GB 예상)
-#   - 운영급은 S3 backend 권장 (별도 작업)
+# 구조 (S3 backend, 데이터 무손실):
+#   - read    : querier + query-frontend. burst 시 autoscale (2~6). ★ cold/burst 분산
+#   - write   : ingester + distributor. RF 위해 replicas 2.
+#   - backend : compactor + ruler + index-gateway. replicas 2.
 
-deploymentMode: SingleBinary
+deploymentMode: SimpleScalable
 
-singleBinary:
-  replicas: 1
-  # Burstable QoS — cold prewarm 시 무거운 query 동시 처리, 평소엔 idle.
-  # 노드 여유 있으면 limit 까지 burst (K8s 의 native "일시 리소스 부스트").
-  # 노드 (t4g.xlarge = 4 vCPU/16Gi) 의 여유 분 활용. baseline 노드와 spot 둘 다 OK.
-  resources:
-    requests: { cpu: 500m, memory: 1Gi }
-    limits:   { cpu: 3500m, memory: 6Gi }
-  persistence:
+# ── read (querier) — burst 시 scale-out 핵심 ──────────────────────
+read:
+  replicas: 2
+  autoscaling:
     enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 60
+    targetMemoryUtilizationPercentage: 70
+  resources:
+    requests: { cpu: 300m, memory: 512Mi }
+    limits:   { cpu: 2000m, memory: 2Gi }
+
+# ── write (ingester) — RF=2 ───────────────────────────────────────
+write:
+  replicas: 2
+  persistence:
     storageClass: gp3
     size: 10Gi
-  # PVC 보존 정책은 chart values 로 override 안 되어 patches/retention.yaml 으로 강제.
+  resources:
+    requests: { cpu: 200m, memory: 512Mi }
+    limits:   { cpu: 1000m, memory: 2Gi }
+
+# ── backend (compactor/ruler/index-gateway) ───────────────────────
+backend:
+  replicas: 2
+  persistence:
+    storageClass: gp3
+    size: 10Gi
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: 1000m, memory: 1Gi }
 
 # 학습용 — auth 비활성 (multi-tenant 안 씀)
 loki:
   auth_enabled: false
 
-  # single-binary 라 replication 1 (default 3 이면 "not enough replicas" 에러)
+  # SimpleScalable write replicas=2 → RF=2 (quorum). 무유실 ↑.
   commonConfig:
-    replication_factor: 1
+    replication_factor: 2
 
   schemaConfig:
     configs:
@@ -61,18 +83,17 @@ loki:
     # /me/stats/pages 의 path 별 group by — 봇 트래픽이 다양한 URL 이라 시리즈 500+ 흔함.
     # 기본 500 이면 "maximum of series reached" HTTP 400 → admin-api 빈 응답.
     max_query_series: 5000
-    # 2026-05-29: admin-api stats cold start 시 offset 별 수십 query 병발 →
-    # single querier 큐 17s 폭증 + status=500 → stats/summary 30s+ timeout.
-    # split interval ↑ (15m→1h) = sub-query 1/4. max_query_parallelism ↑ = 동시 처리.
+    # 2026-05-29: SimpleScalable — sub-query 가 여러 read pod 에 분산되니
+    # split interval 1h 유지 (적정), parallelism 은 read replica 수에 맞춰 적정값.
     split_queries_by_interval: 1h
-    max_query_parallelism: 64
-    tsdb_max_query_parallelism: 64
+    max_query_parallelism: 32
+    tsdb_max_query_parallelism: 32
 
-  # querier worker 동시성 ↑ (default 4 → 16). cold start 의 병발 query 처리.
+  # querier worker 동시성 — read pod 당 8 (여러 pod 라 합산 충분). single-binary 16 폭주 회피.
   querier:
-    max_concurrent: 16
+    max_concurrent: 8
 
-  # query 큐 크기 ↑ — cold start burst 시 reject 방지.
+  # query 큐 크기 — burst 시 reject 방지.
   query_scheduler:
     max_outstanding_requests_per_tenant: 2048
 
@@ -85,22 +106,22 @@ loki:
   ruler:
     enable_api: true
 
-# scalable/distributed 컴포넌트 비활성 (single-binary 사용)
-read:    { replicas: 0 }
-write:   { replicas: 0 }
-backend: { replicas: 0 }
+# read/write/backend 는 상단에서 정의 (SimpleScalable). singleBinary 제거.
 
-# 캐시 — 2026-05-29: resultsCache 활성. admin-api stats 의 반복 query (offset 별 시간대)
-# 결과 캐싱 → cold start 후 2번째 호출부터 빠름. chunksCache 는 메모리 커서 보류.
+# 캐시 — resultsCache 활성. admin-api stats 반복 query (offset 별 시간대) 결과 캐싱.
 chunksCache:    { enabled: false }
 resultsCache:
   enabled: true
   defaultValidity: 12h   # offset 과거 데이터는 안 바뀜 — 길게 캐시
-  allocatedMemory: 512   # MB. single-binary 노드 여유분.
+  allocatedMemory: 512
 
-# gateway (nginx) — single-binary 모드면 굳이 필요 없음
+# gateway (nginx) — SimpleScalable 은 read/write 분리라 gateway 가 라우팅. 활성.
 gateway:
-  enabled: false
+  enabled: true
+  replicas: 1
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits:   { cpu: 300m, memory: 128Mi }
 
 # 모니터링 ServiceMonitor (KPS 와 연동)
 monitoring:
