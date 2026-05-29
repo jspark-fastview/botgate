@@ -13,7 +13,11 @@ namespace: argocd
 
 resources:
   # ArgoCD 안정 버전 핀 — 학습 후 주기적 bump 권장
-  - https://raw.githubusercontent.com/argoproj/argo-cd/v2.12.4/manifests/install.yaml
+  # 2026-05-29: v2.12.4 → v3.4.3. K8s 1.35 의 sts .status.terminatingReplicas field 를
+  # v2.12 이 schema 모름 → 여러 app sync "Unknown" (ComparisonError). 3.3+ 가 1.35 지원.
+  # v3 breaking change 영향 작음: Dex SSO 안 씀, repoURL inline, ApplyOutOfSyncOnly 안 씀.
+  # annotation-based tracking 전환 — 첫 sync 시 reconcile 자동.
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.4.3/manifests/install.yaml
 
 patches:
   # argocd-cm 에 kustomize.buildOptions=--enable-helm 주입.
