@@ -24,7 +24,8 @@ images:
   newTag: 3ebf1fc5c4100988a8394ae3728ac4d71a5a2ebd
 - name: guardus/frontend
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/frontend
-  newTag: a949c0d4a2dd68751e19ecfc89a5b6fa6b9556e5
+  # 2026-05-29: 로그아웃 버튼 추가 (f2a736e). dev 검증 후 prod promote.
+  newTag: f2a736e89b79ff17ef36cf49056865a22f53e001
 - name: guardus/internal-api
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/internal-api
   newTag: a4954decbc7aec4c4ce9558936cac364e669a76a
