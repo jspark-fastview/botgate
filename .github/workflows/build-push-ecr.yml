@@ -117,9 +117,10 @@ jobs:
           context: ${{ matrix.context }}
           platforms: linux/arm64       # t4g (Graviton) 노드 대상
           push: true
-          tags: |
-            ${{ env.ECR_REGISTRY }}/guardus/${{ matrix.component }}:dev
-            ${{ env.ECR_REGISTRY }}/guardus/${{ matrix.component }}:${{ github.sha }}
+          # 2026-05-29: :dev 고정 태그 제거 — ECR repository 가 IMMUTABLE 이라
+          # :dev 재push 시 "tag already exists, immutable" 로 build 실패.
+          # deploy (overlay kustomization) 는 SHA 태그만 사용 → :dev 불필요.
+          tags: ${{ env.ECR_REGISTRY }}/guardus/${{ matrix.component }}:${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.component }}
           cache-to:   type=gha,scope=${{ matrix.component }},mode=max
 
