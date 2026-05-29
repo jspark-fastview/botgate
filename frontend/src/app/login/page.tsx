@@ -23,6 +23,7 @@ export default function LoginPage() {
     const reason = params.get('reason')
     if (reason === 'expired') setNotice('세션이 만료되었습니다. 다시 로그인해 주세요.')
     else if (reason === 'signin') setNotice('로그인이 필요합니다.')
+    else if (reason === 'signout') setNotice('로그아웃되었습니다.')
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
