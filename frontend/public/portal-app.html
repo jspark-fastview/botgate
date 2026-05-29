@@ -1990,50 +1990,58 @@
     if ($('pricing-total-val'))      $('pricing-total-val').textContent      = billed ? fmt(billed) : '—';
   }
 
-  async function loadDashboard() {
-    try {
-      const cp = chParam();
-      const [bots, otherBots, dailyBot, dailyUser, tokens, billing, categoryStats] = await Promise.all([
-        apiFetch(`${API}/me/stats/bots?category=bot${cp}`).then(r => r.json()),
-        apiFetch(`${API}/me/stats/bots?category=other_bot${cp}`).then(r => r.json()),
-        apiFetch(`${API}/me/stats/daily?category=bot${cp}`).then(r => r.json()),
-        apiFetch(`${API}/me/stats/daily?category=user${cp}`).then(r => r.json()),
-        apiFetch(`${API}/me/tokens`).then(r => r.json()),
-        apiFetch(`${API}/me/stats/billing?_=1${cp}`).then(r => r.json()).catch(() => null),
-        apiFetch(`${API}/me/stats/category?_=1${cp}`).then(r => r.json()).catch(() => ({bot:0,other_bot:0,user:0})),
-      ]);
+  // 대시보드 — 위젯별 독립 로딩 (progressive). 준비되는 endpoint 부터 즉시 렌더,
+  // 가장 느린 query 가 전체를 막지 않음. (이전: Promise.all 로 7개 다 기다림)
+  function loadDashboard() {
+    const cp = chParam();
+    const el = id => document.getElementById(id);
+    const j = r => r.json();
 
-      const aiBotTotal    = categoryStats.bot       || 0;
-      const otherBotTotal = categoryStats.other_bot || 0;
-      const activeTokens  = tokens.filter(t => t.active).length;
-      const el = id => document.getElementById(id);
+    // category — KPI (AI봇/기타봇/악성) 카드
+    apiFetch(`${API}/me/stats/category?_=1${cp}`).then(j).then(c => {
+      if (el('kpi-requests'))  el('kpi-requests').textContent = fmt(c.bot || 0);
+      if (el('kpi-otherbot'))  el('kpi-otherbot').textContent = fmt(c.other_bot || 0);
+      if (el('kpi-malicious')) el('kpi-malicious').textContent = fmt(c.malicious || 0);
+    }).catch(() => {});
 
-      if (el('kpi-requests'))     el('kpi-requests').textContent = fmt(aiBotTotal);
+    // bots(bot) — AI 봇 종류 수 + 목록
+    apiFetch(`${API}/me/stats/bots?category=bot${cp}`).then(j).then(bots => {
       if (el('kpi-requests-sub')) el('kpi-requests-sub').textContent = `${bots.length}개 종류`;
-      if (el('kpi-otherbot'))     el('kpi-otherbot').textContent = fmt(otherBotTotal);
-      if (el('kpi-malicious'))    el('kpi-malicious').textContent = fmt(categoryStats.malicious || 0);
-      if (el('kpi-tokens'))       el('kpi-tokens').textContent = `${activeTokens}개`;
+      renderDashBotList(bots);
+    }).catch(() => {});
 
-      // Pricing 카드 업데이트
-      if (billing) {
-        _pricingBilledCount = billing.billed || 0;
-        updatePricingPreview();
-      }
+    // bots(other_bot) — 기타 봇 목록
+    apiFetch(`${API}/me/stats/bots?category=other_bot${cp}`).then(j)
+      .then(ob => renderDashUaList('dash-otherbot-list', ob, '#9d6bff')).catch(() => {});
 
+    // tokens — 활성 토큰 KPI
+    apiFetch(`${API}/me/tokens`).then(j).then(tokens => {
+      if (el('kpi-tokens')) el('kpi-tokens').textContent = `${tokens.filter(t => t.active).length}개`;
+    }).catch(() => {});
+
+    // billing — Pricing 카드
+    apiFetch(`${API}/me/stats/billing?_=1${cp}`).then(j).then(billing => {
+      if (billing) { _pricingBilledCount = billing.billed || 0; updatePricingPreview(); }
+    }).catch(() => {});
+
+    // daily(bot+user) — 일별 추이 차트 (둘 다 있어야 그릴 수 있어 이 둘만 묶음)
+    Promise.all([
+      apiFetch(`${API}/me/stats/daily?category=bot${cp}`).then(j),
+      apiFetch(`${API}/me/stats/daily?category=user${cp}`).then(j),
+    ]).then(([dailyBot, dailyUser]) => {
       buildChart('chart', 'chartx', [
         { data: dailyBot,  color: '#2b6df6', label: 'AI 봇' },
         { data: dailyUser, color: '#1aa377', label: '사용자' },
       ], 14);
-      renderDashBotList(bots);
-      renderDashUaList('dash-otherbot-list', otherBots, '#9d6bff');
-      loadRecentEvents();
-    } catch(e) {
-      console.warn('Dashboard API 실패:', e.message);
+    }).catch(() => {
       buildChart('chart', 'chartx', [
         { data: [], color: '#2b6df6', label: 'AI 봇' },
         { data: [], color: '#1aa377', label: '사용자' },
       ], 14);
-    }
+    });
+
+    // 최근 이벤트 — 독립
+    loadRecentEvents();
   }
 
   // 봇 목적별 메타 (bot_classifier 와 동기화)
