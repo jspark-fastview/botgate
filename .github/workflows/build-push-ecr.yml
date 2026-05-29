@@ -141,6 +141,7 @@ jobs:
       CHG_INTERNAL: ${{ needs.detect.outputs.internal-api }}
       CHG_OPENRESTY: ${{ needs.detect.outputs.openresty }}
       CHG_FRONTEND: ${{ needs.detect.outputs.frontend }}
+      CHG_BOTINGEST: ${{ needs.detect.outputs.bot-ingest-adapter }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -162,6 +163,7 @@ jobs:
           [ "$CHG_INTERNAL"  = "true" ] && bump internal-api || echo "  skip: internal-api 변경 없음"
           [ "$CHG_OPENRESTY" = "true" ] && bump openresty    || echo "  skip: openresty 변경 없음"
           [ "$CHG_FRONTEND"  = "true" ] && bump frontend     || echo "  skip: frontend 변경 없음"
+          [ "$CHG_BOTINGEST" = "true" ] && bump bot-ingest-adapter || echo "  skip: bot-ingest-adapter 변경 없음"
 
       - name: Commit & push
         run: |

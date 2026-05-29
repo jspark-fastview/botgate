@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 	"github.com/guardus/bot-ingest-adapter/internal/ingest"
 	"github.com/guardus/bot-ingest-adapter/internal/loki"
 	"github.com/guardus/bot-ingest-adapter/internal/verify"
+	"github.com/guardus/bot-ingest-adapter/plugins/cloudflare"
 )
 
 func main() {
@@ -33,8 +35,9 @@ func main() {
 	lc := loki.New(cfg.LokiURL)
 	go lc.Start(ctx)
 
-	// CDN plugin registry — 1차 CDN 확정 후 plugins/ 에서 Register.
+	// CDN plugin registry.
 	reg := ingest.NewRegistry()
+	reg.Register(cloudflare.New()) // 1차 CDN — cdn:cloudflare
 
 	// owner 매핑 — 1차 scaffold stub: 모든 도메인 등록으로 간주(owner 빈값).
 	// 후속: admin-api/DB 의 channels 조회 + 캐시.
@@ -49,7 +52,7 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ready"))
 	})
-	mux.HandleFunc("POST /ingest/{cdn}", ingest.Handler(reg, lc, resolveOwner))
+	mux.HandleFunc("POST /ingest/{cdn}", authIngest(cfg.IngestToken, ingest.Handler(reg, lc, resolveOwner)))
 	mux.HandleFunc("POST /verify", verify.Handler(verify.DefaultPolicy(), lc))
 
 	srv := &http.Server{
@@ -71,4 +74,22 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(shutdownCtx)
+}
+
+// authIngest — POST /ingest/* 의 Bearer 토큰 검증 미들웨어.
+// token 이 빈 값이면 인증 비활성 (dev 편의) — prod 는 INGEST_TOKEN 필수.
+func authIngest(token string, next http.HandlerFunc) http.HandlerFunc {
+	if token == "" {
+		slog.Warn("INGEST_TOKEN 미설정 — /ingest 인증 비활성 (dev only)")
+		return next
+	}
+	want := []byte("Bearer " + token)
+	return func(w http.ResponseWriter, r *http.Request) {
+		got := []byte(r.Header.Get("Authorization"))
+		if subtle.ConstantTimeCompare(got, want) != 1 {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next(w, r)
+	}
 }
