@@ -77,7 +77,7 @@ public class ChannelAdminController {
     @GetMapping("/admin/channels")
     public List<Map<String, Object>> listChannels() {
         return db.queryForList(
-                "SELECT id, name, domain, upstream, active, created_at," +
+                "SELECT id, name, domain, upstream, active, created_at, owner_id," +
                 "       integration_mode, verified_at, verification_method" +
                 " FROM channels ORDER BY created_at DESC");
     }
@@ -88,13 +88,17 @@ public class ChannelAdminController {
         String name     = (String) body.get("name");
         String domain   = (String) body.get("domain");
         String upstream = (String) body.get("upstream");
+        String ownerId  = (String) body.get("owner_id"); // nullable — 소유 계정(users.id) 연결
         if (name == null || domain == null || upstream == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "name, domain, upstream 필수"));
         }
+        if (ownerId != null && !ownerId.isBlank() && !ownerExists(ownerId)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "owner(user) not found: " + ownerId));
+        }
         String id = "ch_" + NanoId.generate(8);
         try {
-            db.update("INSERT INTO channels (id, name, domain, domain_canonical, upstream) VALUES (?, ?, ?, ?, ?)",
-                    id, name, domain, canonicalDomain(domain), upstream);
+            db.update("INSERT INTO channels (id, name, domain, domain_canonical, upstream, owner_id) VALUES (?, ?, ?, ?, ?, ?)",
+                    id, name, domain, canonicalDomain(domain), upstream, ownerId);
         } catch (Exception e) {
             if (e.getMessage() != null && e.getMessage().contains("UNIQUE")) {
                 return ResponseEntity.status(409).body(Map.of("error", "domain already exists"));
@@ -118,6 +122,7 @@ public class ChannelAdminController {
         String name     = body.containsKey("name")     ? (String) body.get("name")     : (String) existing.get("name");
         String domain   = body.containsKey("domain")   ? (String) body.get("domain")   : (String) existing.get("domain");
         String upstream = body.containsKey("upstream") ? (String) body.get("upstream") : (String) existing.get("upstream");
+        String ownerId  = body.containsKey("owner_id") ? (String) body.get("owner_id") : (String) existing.get("owner_id");
         int active;
         if (body.containsKey("active")) {
             Object v = body.get("active");
@@ -125,8 +130,12 @@ public class ChannelAdminController {
         } else {
             active = toInt(existing.get("active"));
         }
-        db.update("UPDATE channels SET name = ?, domain = ?, upstream = ?, active = ? WHERE id = ?",
-                name, domain, upstream, active, id);
+        // owner_id 가 명시되고 비어있지 않으면 users 존재 검증 (소유 계정 이전)
+        if (ownerId != null && !ownerId.isBlank() && !ownerExists(ownerId)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "owner(user) not found: " + ownerId));
+        }
+        db.update("UPDATE channels SET name = ?, domain = ?, upstream = ?, active = ?, owner_id = ? WHERE id = ?",
+                name, domain, upstream, active, ownerId, id);
         CacheInvalidator.invalidate();
         syncChannelsRedis();
         return ResponseEntity.ok(Map.of("ok", true));
@@ -172,6 +181,12 @@ public class ChannelAdminController {
         if (v instanceof Number n) return n.intValue();
         if (v instanceof Boolean b) return b ? 1 : 0;
         return 0;
+    }
+
+    /** owner_id(users.id) 존재 검증 — 잘못된 계정 연결 방지 */
+    private boolean ownerExists(String userId) {
+        Integer cnt = db.queryForObject("SELECT COUNT(*) FROM users WHERE id = ?", Integer.class, userId);
+        return cnt != null && cnt > 0;
     }
 
     static String canonicalDomain(String d) {
