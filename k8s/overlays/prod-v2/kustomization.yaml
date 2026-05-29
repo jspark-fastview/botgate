@@ -21,8 +21,9 @@ labels:
 images:
 - name: guardus/admin-api
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/admin-api
-  # 2026-05-29: @Scheduled pool 1→4 (prewarm 멈춤 fix). dev 검증 완료 promote.
-  newTag: 7a8e4f2c764780e67c591912cb299acf8386a805
+  # 2026-05-29: 로그인 직후 on-demand prewarm (7dcf4a7). dev 부팅/bean 검증 완료.
+  # (이전 7a8e4f2 = @Scheduled pool 1→4 도 포함)
+  newTag: 7dcf4a7d62d054360581b7af8270d29f3d9084fa
 - name: guardus/frontend
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/frontend
   # 2026-05-29: 로그아웃 버튼 추가 (f2a736e). dev 검증 후 prod promote.
