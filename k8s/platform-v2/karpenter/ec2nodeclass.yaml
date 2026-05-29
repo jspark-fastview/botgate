@@ -4,14 +4,15 @@ kind: EC2NodeClass
 metadata:
   name: default
 spec:
-  # 2026-05-28: Bottlerocket → AL2023.
-  # 원인: Karpenter 1.12.1 의 Bottlerocket userdata 가 K8s 1.34 cluster join 못 함
-  # (EC2 launch 됐지만 kubelet 시작 안 됨, NodeClaim Ready=Unknown 5분+).
-  # mngd NG 의 Bottlerocket 노드는 EKS 가 직접 userdata 관리해서 join OK.
-  # AL2023 = EKS 권장 AMI, Karpenter 1.12 와 더 안정적 호환.
-  amiFamily: AL2023
+  # 2026-05-29: AL2023 → Bottlerocket 되돌림.
+  # 근본 원인 추적: AL2023 노드의 secondary CIDR ENI (100.64.x) pod 가 Cilium ENI mode 에서
+  # cross-node 통신 broken (argocd-repo→redis timeout, mimir→S3 timeout 등).
+  # mngd 노드 (Bottlerocket 1.61.0) 의 secondary CIDR ENI pod 는 정상 → Bottlerocket 이 호환.
+  # 이전 "Bottlerocket join 실패" 의 진짜 원인은 public IP 누락 (associatePublicIPAddress)
+  # 이었고 AL2023 무관 — public IP fix 했으니 Bottlerocket 도 join 정상 예상.
+  amiFamily: Bottlerocket
   amiSelectorTerms:
-    - alias: al2023@latest
+    - alias: bottlerocket@latest
 
   # Terraform terraform-v2/karpenter.tf 가 만든 node IAM role
   # (terraform output karpenter_node_iam_role_name)
@@ -31,9 +32,11 @@ spec:
     Component: karpenter
     karpenter.sh/discovery: guardus-eks-v2
 
-  # AL2023 는 EKS 가 cluster-dns/cluster-CA 등 자동 inject (kubelet config drop-in).
-  # maxPods 만 Cilium ENI mode 매칭 (vpc-cni default 다름).
+  # Bottlerocket — Karpenter 가 cluster-dns/CA userdata 생성. maxPods Cilium ENI mode 매칭.
+  # mngd NG (Bottlerocket) 와 동일 설정 → 같은 정상 동작.
   kubelet:
+    clusterDNS:
+      - "10.100.0.10"
     maxPods: 35
 
   # 2026-05-28: EKS API endpoint = public-only (PrivateAccess=false).
