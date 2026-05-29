@@ -1,0 +1,91 @@
+# bot-ingest-adapter — CDN bot 데이터 변환 gateway (scaffold).
+# dev 전용: base 에 두면 prod-v2 overlay 도 포함돼 prod 배포됨 → dev 검증 후 base 로 promote.
+# 설계: docs/design/cdn-bot-ingest.md
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-ingest-adapter
+  labels:
+    app.kubernetes.io/name: bot-ingest-adapter
+    app.kubernetes.io/component: adapter
+    app.kubernetes.io/part-of: guardus
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # ENI mode Cilium IPAM 보호 — 새 pod 가 옛 pod 죽기 전 안 띄움 (admin-api 선례).
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: bot-ingest-adapter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: bot-ingest-adapter
+        app.kubernetes.io/component: adapter
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532          # distroless:nonroot uid
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: bot-ingest-adapter
+          image: guardus/bot-ingest-adapter:latest   # overlay images 에서 ECR+SHA 로 치환
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8090
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "8090"
+            # admin-api 와 동일 Loki (SimpleScalable gateway)
+            - name: LOKI_URL
+              value: http://loki-gateway.monitoring.svc:80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 300m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 15
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true       # 파일 안 씀 (stdout 로그 only)
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bot-ingest-adapter
+  labels:
+    app.kubernetes.io/name: bot-ingest-adapter
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: bot-ingest-adapter
+  ports:
+    - name: http
+      port: 8090
+      targetPort: http

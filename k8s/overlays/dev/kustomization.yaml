@@ -6,6 +6,8 @@ namespace: guardus-dev
 resources:
 - ../../base
 - external-secrets.yaml
+# bot-ingest-adapter — dev 전용 (검증 후 base 로 promote)
+- bot-ingest-adapter.yaml
 
 # 환경 식별 label
 labels:
@@ -26,6 +28,9 @@ images:
 - name: guardus/openresty
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/openresty
   newTag: f2a736e89b79ff17ef36cf49056865a22f53e001
+- name: guardus/bot-ingest-adapter
+  newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/bot-ingest-adapter
+  newTag: 00c6cf7cfcbfb044905450b6b7d7d2c3fc07bbea
 
 # 환경별 패치
 patches:
