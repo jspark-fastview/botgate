@@ -19,6 +19,14 @@ affinity:
             - key: guardus.io/provisioner
               operator: DoesNotExist
 
+# 2026-05-29: chart default 가 zone topologySpread DoNotSchedule 라
+# karpenter 2 replica 가 mngd 노드 (baseline taint 회피 + Karpenter 노드 회피) 환경에서
+# 같은 zone 2 pod 못 띄움 → 1 pod 영구 Pending. ScheduleAnyway 로 완화 (HA 유지, 강제 X).
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+
 serviceAccount:
   create: true
   name: karpenter
