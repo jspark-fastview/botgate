@@ -21,9 +21,9 @@ labels:
 images:
 - name: guardus/admin-api
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/admin-api
-  # 2026-05-29: 로그인 직후 on-demand prewarm (7dcf4a7). dev 부팅/bean 검증 완료.
-  # (이전 7a8e4f2 = @Scheduled pool 1→4 도 포함)
-  newTag: 7dcf4a7d62d054360581b7af8270d29f3d9084fa
+  # 2026-05-29: 채널 owner_id 기능 + Loki selector env 분리(prod=openresty 유지) (ada52cc). dev 검증 완료.
+  # (이전 7dcf4a7 on-demand prewarm, 7a8e4f2 pool 1→4 포함)
+  newTag: ada52ccda0ba0f53ff6ca9a0268fb895fc63f101
 - name: guardus/frontend
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/frontend
   # 2026-05-29: progressive 대시보드 로딩 (615dbef). 로그아웃(f2a736e) 포함. dev 검증 후 promote.
