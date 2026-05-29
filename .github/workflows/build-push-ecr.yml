@@ -22,6 +22,7 @@ on:
       - 'internal-api/**'
       - 'openresty/**'
       - 'frontend/**'
+      - 'bot-ingest-adapter/**'
       - 'k8s/**'
       - '.github/workflows/build-push-ecr.yml'
 
@@ -39,10 +40,11 @@ jobs:
     name: Detect changed components
     runs-on: ubuntu-latest
     outputs:
-      admin-api:    ${{ steps.force.outputs.all == 'true' || steps.filter.outputs.admin-api }}
-      internal-api: ${{ steps.force.outputs.all == 'true' || steps.filter.outputs.internal-api }}
-      openresty:    ${{ steps.force.outputs.all == 'true' || steps.filter.outputs.openresty }}
-      frontend:     ${{ steps.force.outputs.all == 'true' || steps.filter.outputs.frontend }}
+      admin-api:         ${{ steps.force.outputs.all == 'true' || steps.filter.outputs.admin-api }}
+      internal-api:      ${{ steps.force.outputs.all == 'true' || steps.filter.outputs.internal-api }}
+      openresty:         ${{ steps.force.outputs.all == 'true' || steps.filter.outputs.openresty }}
+      frontend:          ${{ steps.force.outputs.all == 'true' || steps.filter.outputs.frontend }}
+      bot-ingest-adapter: ${{ steps.force.outputs.all == 'true' || steps.filter.outputs.bot-ingest-adapter }}
     steps:
       - uses: actions/checkout@v4
       - id: force
@@ -59,6 +61,8 @@ jobs:
               - 'openresty/**'
             frontend:
               - 'frontend/**'
+            bot-ingest-adapter:
+              - 'bot-ingest-adapter/**'
 
   build:
     name: Build ${{ matrix.component }}
@@ -80,7 +84,10 @@ jobs:
           - component: frontend
             context: ./frontend
             changed: ${{ needs.detect.outputs.frontend }}
-    if: ${{ needs.detect.outputs.admin-api == 'true' || needs.detect.outputs.internal-api == 'true' || needs.detect.outputs.openresty == 'true' || needs.detect.outputs.frontend == 'true' }}
+          - component: bot-ingest-adapter
+            context: ./bot-ingest-adapter
+            changed: ${{ needs.detect.outputs.bot-ingest-adapter }}
+    if: ${{ needs.detect.outputs.admin-api == 'true' || needs.detect.outputs.internal-api == 'true' || needs.detect.outputs.openresty == 'true' || needs.detect.outputs.frontend == 'true' || needs.detect.outputs.bot-ingest-adapter == 'true' }}
     steps:
       - name: Skip if unchanged
         if: matrix.changed != 'true'
