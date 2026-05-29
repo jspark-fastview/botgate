@@ -77,8 +77,22 @@ adapter/
 ```
 - 새 CDN = plugin 1개 추가. core 무변경.
 - **핵심 로직 = 매핑 테이블** (§6).
-- 배포 위치: 독립 microservice `bot-ingest-adapter` (Spring 또는 경량 Fastify) — 기존 admin/internal-api 와 분리.
+- 배포 위치: 독립 microservice `bot-ingest-adapter` (**Go**) — 기존 admin/internal-api(Java) 와 분리.
   - 이유: CDN별 webhook 인증·rate·확장이 독립적. internal-api 결합 시 과금 로직과 얽힘.
+  - **Go 선택 근거**: ① KEDA burst scale 시 cold start ~ms (Java JVM warmup 24s 대비 결정적),
+    ② verify 저지연(goroutine+캐시), ③ Loki batch push(channel/goroutine, promtail 패턴),
+    ④ arm64(t4g) 네이티브 distroless ~15MB. 팀 주스택 Java 와 다르지만 canonical schema 만 공유 → 분리 부담 작음.
+  - 구조:
+    ```
+    bot-ingest-adapter/  (Go module)
+      cmd/adapter/main.go
+      internal/canonical/  event + policy schema (struct)
+      internal/ingest/     HTTP receiver + plugin interface (Transformer)
+      internal/loki/       batch push client (channel/goroutine, LOKI_URL)
+      internal/verify/     verify handler + 정책 cache (Redis)
+      plugins/             CDN별 (1차 CDN 확정 후)
+      Dockerfile           multi-stage, CGO_ENABLED=0 GOARCH=arm64, distroless
+    ```
 
 ### 두 통합 모드 (canonical schema 공유, 보완적)
 - **모드 A — Log Ingest (analytics)** ← 1차 목표
