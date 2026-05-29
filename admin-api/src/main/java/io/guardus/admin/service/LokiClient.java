@@ -39,10 +39,11 @@ public class LokiClient {
     private final String streamSelector; // {namespace="<env>", app=~"openresty|bot-ingest"}
 
     public LokiClient(@Value("${loki.url:}") String baseUrl,
-                      @Value("${loki.namespace:guardus}") String namespace) {
+                      @Value("${loki.namespace:guardus}") String namespace,
+                      @Value("${loki.app-matcher:openresty}") String appMatcher) {
         this.baseUrl = baseUrl;
-        // namespace 만 환경별(dev=guardus-dev / prod=guardus) — app 은 inline(openresty)+cdn(bot-ingest) 통합 고정.
-        this.streamSelector = "{namespace=\"" + namespace + "\", app=~\"openresty|bot-ingest\"}";
+        // namespace + app 둘 다 환경별(env). prod 기본=openresty(단독), dev=openresty|bot-ingest(CDN 통합).
+        this.streamSelector = "{namespace=\"" + namespace + "\", app=~\"" + appMatcher + "\"}";
     }
 
     public boolean isEnabled() { return baseUrl != null && !baseUrl.isBlank(); }

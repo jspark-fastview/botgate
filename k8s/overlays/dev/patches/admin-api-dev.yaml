@@ -6,3 +6,8 @@
   value:
     name: LOKI_NAMESPACE
     value: guardus-dev
+- op: add
+  path: /spec/template/spec/containers/0/env/-
+  value:
+    name: LOKI_APP_MATCHER
+    value: openresty|bot-ingest
