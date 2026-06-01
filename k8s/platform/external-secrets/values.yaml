@@ -7,11 +7,35 @@ serviceAccount:
   create: true
   name: external-secrets
 
-replicaCount: 1
+# HA — SPOF 제거. 단일 replica 가 IP 고갈/노드 장애로 죽으면 webhook 전체 down →
+# 모든 ArgoCD sync 가 막혔던 사고(2026-06-01) 재발 방지. 한 replica 가 죽어도
+# 다른 노드의 replica 가 endpoints 제공 → sync 안 막힘.
+replicaCount: 2
+
 webhook:
-  replicaCount: 1
+  replicaCount: 2
+  # 2 replica 를 서로 다른 노드에 — 한 노드 IP 고갈/interruption 시 동시 사망 회피
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: external-secrets-webhook
+            topologyKey: kubernetes.io/hostname
+
 certController:
-  replicaCount: 1
+  replicaCount: 2
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: external-secrets-cert-controller
+            topologyKey: kubernetes.io/hostname
 
 serviceMonitor:
   enabled: true
