@@ -18,10 +18,10 @@ labels:
 images:
 - name: guardus/admin-api
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/admin-api
-  newTag: 0cddb04f1b9b1a0e42e33ca99c28d3c4fbd7f934
+  newTag: 74f8abd36755a95695ac74fcb72a3710a83f91e1
 - name: guardus/bot-ingest-adapter
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/bot-ingest-adapter
-  newTag: c6e332df4c0cdfa9b69bbf016c7daf3e28d4bdba
+  newTag: 74f8abd36755a95695ac74fcb72a3710a83f91e1
 - name: guardus/frontend
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/frontend
   newTag: 3b61da750ff876b8054bcc038ac37a232fa215e6
