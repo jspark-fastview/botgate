@@ -4,6 +4,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/guardus/bot-ingest-adapter/internal/canonical"
 )
@@ -13,20 +14,28 @@ type Pusher interface {
 	Push(canonical.Event)
 }
 
-// OwnerResolver 는 domain → owner_id 매핑 (channels 테이블).
-// 1차 scaffold 는 stub(빈 문자열). 후속에 admin-api/DB 조회.
-type OwnerResolver func(domain string) (ownerID string, registered bool)
+// TokenResolver 는 ingest Bearer 토큰 → owner_id 매핑 (channels.Cache 래핑).
+// ok=false 면 미등록 토큰 → 401. 토큰이 채널을 식별하므로 owner_id 는 그 채널 소유자.
+type TokenResolver func(token string) (ownerID string, ok bool)
 
 const maxBody = 32 << 20 // 32MB — CDN batch push 대비
 
 // Handler 는 POST /ingest/{cdn} 를 처리한다.
-// {cdn} path param 으로 plugin 선택 → raw 변환 → normalize/validate → owner 매핑 → push.
-func Handler(reg *Registry, pusher Pusher, resolveOwner OwnerResolver) http.HandlerFunc {
+// Bearer 토큰으로 채널 인증 → plugin 변환 → owner 주입 → push.
+func Handler(reg *Registry, pusher Pusher, resolveToken TokenResolver) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cdn := r.PathValue("cdn")
 		t, ok := reg.Get("cdn:" + cdn)
 		if !ok {
 			http.Error(w, "unknown cdn: "+cdn, http.StatusNotFound)
+			return
+		}
+
+		// Bearer 토큰 → 채널 인증 (Logpush custom header: Authorization: Bearer <ingest_token>)
+		token := strings.TrimSpace(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+		ownerID, authed := resolveToken(token)
+		if !authed {
+			http.Error(w, "unauthorized: unknown ingest token", http.StatusUnauthorized)
 			return
 		}
 
@@ -47,17 +56,8 @@ func Handler(reg *Registry, pusher Pusher, resolveOwner OwnerResolver) http.Hand
 		for i := range events {
 			e := &events[i]
 			e.Source = t.Name()
+			e.OwnerID = ownerID // 토큰이 식별한 채널의 소유자
 			e.Normalize()
-
-			if resolveOwner != nil {
-				if owner, registered := resolveOwner(e.Domain); registered {
-					e.OwnerID = owner
-				} else {
-					// 미등록 도메인 — §9 미결정. 현재는 drop + 로그.
-					dropped++
-					continue
-				}
-			}
 			if err := e.Validate(); err != nil {
 				dropped++
 				continue
