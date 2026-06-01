@@ -26,16 +26,20 @@ public class UserController {
     private final DnsService              dns;
     private final SiteVerificationService siteVerify;
     private final ChannelsRedisCache      channelsRedis;  // null = Redis 비활성 (EC2)
+    private final String                  cdnIngestUrl;   // CDN Logpush ingest base (온보딩 가이드 표시용)
 
     public UserController(JdbcTemplate db, SessionService sessions,
                           DnsService dns, SiteVerificationService siteVerify,
                           @org.springframework.beans.factory.annotation.Autowired(required=false)
-                          ChannelsRedisCache channelsRedis) {
+                          ChannelsRedisCache channelsRedis,
+                          @org.springframework.beans.factory.annotation.Value("${cdn.ingest.url:}")
+                          String cdnIngestUrl) {
         this.db            = db;
         this.sessions      = sessions;
         this.dns           = dns;
         this.siteVerify    = siteVerify;
         this.channelsRedis = channelsRedis;
+        this.cdnIngestUrl  = cdnIngestUrl;
     }
 
     private void syncChannelsRedis() {
@@ -118,21 +122,25 @@ public class UserController {
         }
         if (upstream == null) upstream = "";
 
-        // upstream 입력 있으면 reverse_proxy, 없으면 external (외부 SaaS 통합)
-        String mode = upstream.isBlank() ? "external" : "reverse_proxy";
+        // 연동방식: 명시적 cdn_* (Logpush) > upstream 유무(reverse_proxy/external)
+        String reqMode = (String) body.get("integration_mode");
+        boolean isCdn  = reqMode != null && reqMode.startsWith("cdn_");
+        String mode = isCdn ? reqMode : (upstream.isBlank() ? "external" : "reverse_proxy");
 
         String id          = "ch_" + NanoId.generate(8);
-        String verifyToken = NanoId.generate(32);
+        String verifyToken = isCdn ? null : NanoId.generate(32);
+        String ingestToken = isCdn ? NanoId.generate(32) : null;   // CDN Logpush 인증 토큰
 
         try {
             db.update("INSERT INTO channels " +
-                      "(id, name, domain, domain_canonical, upstream, owner_id, verify_token, integration_mode) " +
-                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                      "(id, name, domain, domain_canonical, upstream, owner_id, verify_token, ingest_token, integration_mode) " +
+                      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     id, name, domain,
                     ChannelAdminController.canonicalDomain(domain),
                     upstream,
                     user.get("id"),
                     verifyToken,
+                    ingestToken,
                     mode);
         } catch (Exception e) {
             if (e.getMessage() != null && e.getMessage().contains("UNIQUE")) {
@@ -142,31 +150,48 @@ public class UserController {
         }
         syncChannelsRedis();
 
-        // 검증 가이드 함께 반환 — 다음 단계 (verify → site-key) 안내
-        Map<String, Object> instructions = Map.of(
-                "verify_token", verifyToken,
-                "dns_txt", Map.of(
-                        "name",  "_guardus-verify." + domain,
-                        "type",  "TXT",
-                        "value", verifyToken),
-                "well_known", Map.of(
-                        "url",  "https://" + domain + "/.well-known/guardus-verify.txt",
-                        "body", verifyToken)
-        );
-
         Map<String, Object> res = new LinkedHashMap<>();
         res.put("id", id);
         res.put("name", name);
         res.put("domain", domain);
         res.put("active", 1);
-        res.put("integration_mode", "external");
+        res.put("integration_mode", mode);
         res.put("verified_at", null);
-        res.put("verification", instructions);
-        res.put("next_steps", List.of(
-                "1) DNS TXT 또는 well-known 으로 verify_token 노출",
-                "2) POST /me/channels/" + id + "/verify",
-                "3) POST /me/channels/" + id + "/site-key — site_key 발급",
-                "4) Worker/nginx/SDK 에 site_key 박고 /v1/verify 호출"));
+
+        if (isCdn) {
+            // CDN(Cloudflare Logpush) 온보딩 가이드 — endpoint + 토큰 + 단계
+            String endpoint = (cdnIngestUrl == null ? "" : cdnIngestUrl) + "/ingest/cloudflare";
+            res.put("ingest", Map.of(
+                    "endpoint", endpoint,
+                    "token", ingestToken,
+                    "auth_header", "Authorization: Bearer " + ingestToken));
+            res.put("next_steps", List.of(
+                    "1) Cloudflare 대시보드 → Analytics & Logs → Logpush → Create a Logpush job",
+                    "2) Dataset = HTTP requests, Destination = HTTP",
+                    "3) Destination URL = " + endpoint,
+                    "4) Custom header → Authorization: Bearer " + ingestToken,
+                    "5) 필드: ClientRequestHost, ClientIP, ClientRequestPath, ClientRequestUserAgent, EdgeStartTimestamp, VerifiedBotCategory, RayID",
+                    "6) (선택) 필터: VerifiedBotCategory 있는 요청만 → 봇만 전송, 비용 절감",
+                    "7) 저장 후 GuardUs 에서 수신 확인 (수 분 내 도착)"));
+        } else {
+            // external/reverse_proxy — 도메인 소유 검증 가이드
+            Map<String, Object> instructions = Map.of(
+                    "verify_token", verifyToken,
+                    "dns_txt", Map.of(
+                            "name",  "_guardus-verify." + domain,
+                            "type",  "TXT",
+                            "value", verifyToken),
+                    "well_known", Map.of(
+                            "url",  "https://" + domain + "/.well-known/guardus-verify.txt",
+                            "body", verifyToken)
+            );
+            res.put("verification", instructions);
+            res.put("next_steps", List.of(
+                    "1) DNS TXT 또는 well-known 으로 verify_token 노출",
+                    "2) POST /me/channels/" + id + "/verify",
+                    "3) POST /me/channels/" + id + "/site-key — site_key 발급",
+                    "4) Worker/nginx/SDK 에 site_key 박고 /v1/verify 호출"));
+        }
         return ResponseEntity.status(201).body(res);
     }
 

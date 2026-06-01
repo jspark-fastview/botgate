@@ -11,3 +11,8 @@
   value:
     name: LOKI_APP_MATCHER
     value: openresty|bot-ingest
+- op: add
+  path: /spec/template/spec/containers/0/env/-
+  value:
+    name: CDN_INGEST_URL
+    value: https://cdn-ingest-dev.viewus.co

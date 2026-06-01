@@ -180,4 +180,55 @@ adapter/
 - [ ] 미등록 도메인 CDN 데이터 처리: drop vs 미등록 버킷.
 - [ ] 중복 제거 (CDN at-least-once delivery 시 event dedup key).
 - [ ] 과금 정책: CDN ingest 데이터도 billed 대상인가 (모드 A 는 analytics-only 이므로 보통 X).
-- [ ] CDN webhook 인증 방식 (CDN별 HMAC/secret/IP allowlist).
+- [ ] CDN webhook 인증 방식 (CDN별 HMAC/secret/IP allowlist). → §10.2 채널별 토큰으로 확정.
+
+## 10. CDN 온보딩 (Cloudflare) — 설계 확정 2026-06-01
+
+기존 `integration_mode` 축(reverse_proxy=인라인, external=퍼블리셔 직접 verify)에 CDN 을 얹는다.
+
+### 10.1 데이터 모델
+- `channels.integration_mode` 에 `cdn_cloudflare` 추가 (확장: `cdn_fastly` …).
+  - = **"주 수집 경로가 CDN"** 이라는 뜻. **OpenResty 라우팅을 강제 차단하지 않는다.**
+  - 정상 토폴로지(DNS=CDN, origin=퍼블리셔)면 OpenResty 우회라 inline 0. 하지만
+    ① origin 직접 접근 봇, ② inline↔CDN 전환기, ③ 이중 프록시(CF→OpenResty) 시엔
+    OpenResty 가 봇 트래픽을 **받을 수 있다** → 그땐 `source=inline` 으로 그대로 기록.
+  - 따라서 inline/cdn 둘 다 수집하고 **`source` 로 구분**(전제: "안 받는다"가 아니라 "받을 수 있다").
+  - **중복 주의**: 같은 요청이 양쪽으로 오는 경우(이중 프록시)만 진짜 double-count →
+    `RayID` 기반 dedup(후속, §9) 또는 온보딩 가이드에 "이중 프록시(CF origin=OpenResty) 피하라" 명시.
+- `channels.ingest_token` **신규 컬럼**(Flyway) — 채널별 ingest 인증 토큰. 채널 등록(CDN 모드) 시 발급(`openssl rand -hex 24`).
+  - `verify_token`(external 모드용)과 분리 — 용도/수명 다름.
+
+### 10.2 외부 노출 + 인증 (결정: 별도 host + 채널별 토큰)
+- **ingress**: `cdn-ingest.viewus.co`(prod) / `cdn-ingest-dev.viewus.co`(dev) → `bot-ingest-adapter:8090`.
+  기존 ALB(`group.name=guardus-shared-v2`). DNS = `guardus-endpoint.viewus.co` CNAME 패턴.
+- **인증**: 채널별 토큰. Cloudflare Logpush `header_Authorization: Bearer <ingest_token>`.
+- **adapter 토큰 검증/채널 매핑**: admin-api `GET /internal/channels/ingest`(domain, ingest_token, owner_id, integration_mode)
+  를 adapter 가 주기 동기화 → 메모리 캐시(token→channel). 현재 `resolveOwner` stub 을 이 캐시로 대체.
+  - openresty 의 channels 동기화 패턴과 동일 사상. 토큰 폐기(revoke) = 캐시 갱신으로 반영.
+- (선택) Cloudflare IP allowlist annotation.
+
+### 10.3 온보딩 플로우 (admin UI 패널)
+```
+채널 등록 → 연동방식 "CDN·Cloudflare" 선택
+  → GuardUs 발급: ingest URL + 채널 토큰 (패널에 복붙용 표시)
+  → 가이드(§10.4) 단계대로 Cloudflare 설정
+  → "수신 확인" 버튼 → adapter 로 데이터 들어오면 ✓ (verified_at 기록)
+```
+
+### 10.4 가이드 내용 (Cloudflare Logpush)
+- Logpush job: dataset = **HTTP requests**, destination = **HTTP**
+- URL: `https://cdn-ingest.viewus.co/ingest/cloudflare`
+- header: `Authorization: Bearer <채널 ingest_token>`
+- 필드: `ClientRequestHost, ClientIP, ClientRequestPath, ClientRequestUserAgent, EdgeStartTimestamp, VerifiedBotCategory, RayID`
+- **필터: `VerifiedBotCategory` 있는 요청만** (봇만 전송 → 트래픽·비용 절감). Bot Management(Enterprise) 없으면 전체 전송 후 adapter 가 분류.
+
+### 10.5 UI 정리 (전역 토글 → 통합)
+- `src-toggle`(전체/인라인/CDN) **제거**, `_dashSource`/`sourceParam` 제거 → 대시보드 **통합(전체) 고정**.
+- 채널 목록/선택: `integration_mode` **뱃지** (인라인 / CDN·Cloudflare / 외부).
+- 로그·봇 drill-down: `source` 컬럼(개별 레코드에서만 출처 표시).
+
+### 10.6 구현 Phase (dev 먼저 → prod promote)
+1. **DB + admin-api**: `ingest_token` migration + 채널 등록 시 integration_mode/token 발급 + `GET /internal/channels/ingest` + 온보딩 API(endpoint/token 반환, 수신확인).
+2. **adapter**: 채널 캐시(admin-api 동기화) + 채널별 토큰 인증 + domain→owner 매핑(stub 대체).
+3. **ingress + DNS**: `cdn-ingest(-dev).viewus.co` host.
+4. **frontend**: 전역 토글 제거 + 채널 뱃지 + 온보딩 가이드 패널 + drill-down source 컬럼.
