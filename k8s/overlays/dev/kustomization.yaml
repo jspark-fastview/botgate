@@ -21,7 +21,7 @@ images:
   newTag: 5452a6578b84a4ef1e0ee24360af880adcd26c30
 - name: guardus/bot-ingest-adapter
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/bot-ingest-adapter
-  newTag: 5fb47faa866aa64916bd036538c5fdb5e9a756bc
+  newTag: c6e332df4c0cdfa9b69bbf016c7daf3e28d4bdba
 - name: guardus/frontend
   newName: 124052247302.dkr.ecr.ap-northeast-2.amazonaws.com/guardus/frontend
   newTag: 5452a6578b84a4ef1e0ee24360af880adcd26c30
