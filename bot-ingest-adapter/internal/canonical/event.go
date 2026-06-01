@@ -36,12 +36,13 @@ type Event struct {
 	CDNRequestID   string `json:"cdn_request_id,omitempty"`   // 중복 제거 key
 	CDNRawCategory string `json:"cdn_raw_category,omitempty"` // 원본 분류 보존 (재매핑/디버깅)
 
-	// ── canonical (access_logs 와 동일) ──
-	Domain          string `json:"domain"`
+	// ── canonical (openresty Loki access log line 과 동일 키) ──
+	// ⚠️ openresty 는 host/ua 키 사용 → admin-api stats(| json | host=~) 호환 위해 일치 필수.
+	Domain          string `json:"host"`
 	DomainCanonical string `json:"domain_canonical,omitempty"`
 	IP              string `json:"ip"`
 	Path            string `json:"path,omitempty"`
-	BotUA           string `json:"bot_ua"`
+	BotUA           string `json:"ua"`
 	BotName         string `json:"bot_name,omitempty"`
 	BotVendor       string `json:"bot_vendor,omitempty"`
 	Category        string `json:"category"`    // 4-way
