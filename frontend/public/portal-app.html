@@ -606,6 +606,11 @@
               style="position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform 160ms;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>
           </span>
         </label>
+        <div id="src-toggle" style="display:inline-flex;border:1px solid var(--line,#e2e5ea);border-radius:8px;overflow:hidden;" title="봇 데이터 출처: 전체 / 인라인(OpenResty) / CDN(bot-ingest)">
+          <button type="button" id="src-all"    onclick="setDashSource('all')"    class="src-seg" style="padding:6px 12px;border:0;background:#2b6df6;color:#fff;font-size:12px;cursor:pointer;">전체</button>
+          <button type="button" id="src-inline" onclick="setDashSource('inline')" class="src-seg" style="padding:6px 12px;border:0;background:transparent;color:var(--ink-2,#5a6472);font-size:12px;cursor:pointer;">인라인</button>
+          <button type="button" id="src-cdn"    onclick="setDashSource('cdn')"    class="src-seg" style="padding:6px 12px;border:0;background:transparent;color:var(--ink-2,#5a6472);font-size:12px;cursor:pointer;">CDN</button>
+        </div>
         <select id="dash-ch-select" class="ch-select ch-selector" onchange="onChannelChange(this)">
           <option value="">전체 채널</option>
         </select>
@@ -1514,6 +1519,23 @@
     return _selectedChannel ? `&domain=${encodeURIComponent(_selectedChannel)}` : '';
   }
 
+  // 대시보드 봇 데이터 출처 토글: all(전체) / inline(OpenResty) / cdn(bot-ingest)
+  let _dashSource = 'all';
+  function srcParam() {
+    return (_dashSource && _dashSource !== 'all') ? `&source=${_dashSource}` : '';
+  }
+  function setDashSource(s) {
+    _dashSource = s;
+    ['all', 'inline', 'cdn'].forEach(k => {
+      const b = document.getElementById('src-' + k);
+      if (!b) return;
+      const on = k === s;
+      b.style.background = on ? '#2b6df6' : 'transparent';
+      b.style.color = on ? '#fff' : 'var(--ink-2,#5a6472)';
+    });
+    loadDashboard();
+  }
+
   /* ─── SPA navigation ──────────────────────────────── */
   let trafficTimer = null;
 
@@ -1993,7 +2015,7 @@
   // 대시보드 — 위젯별 독립 로딩 (progressive). 준비되는 endpoint 부터 즉시 렌더,
   // 가장 느린 query 가 전체를 막지 않음. (이전: Promise.all 로 7개 다 기다림)
   function loadDashboard() {
-    const cp = chParam();
+    const cp = chParam() + srcParam();
     const el = id => document.getElementById(id);
     const j = r => r.json();
 

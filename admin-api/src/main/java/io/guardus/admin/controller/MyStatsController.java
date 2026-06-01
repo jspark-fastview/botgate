@@ -66,14 +66,15 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/category?domain=&hellip; */
-    @Cacheable(value = "stats", key = "'cat:' + #auth + ':' + #domain",
+    @Cacheable(value = "stats", key = "'cat:' + #auth + ':' + #domain + ':' + #source",
                unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/category")
     public Map<String, Object> category(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestParam(required = false) String domain) {
+            @RequestParam(required = false) String domain,
+            @RequestParam(required = false) String source) {
         List<String> domains = filterDomains(myDomains(auth), domain);
-        if (lokiStats.isEnabled()) return lokiStats.category(domains);
+        if (lokiStats.isEnabled()) return lokiStats.category(domains, source);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("malicious", 0L);
         result.put("bot",       0L);
@@ -91,16 +92,17 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/daily?domain=&category=bot&billed= — /admin/stats/daily 와 동일 형식 */
-    @Cacheable(value = "stats", key = "'daily:' + #auth + ':' + #domain + ':' + #category + ':' + #billed",
+    @Cacheable(value = "stats", key = "'daily:' + #auth + ':' + #domain + ':' + #category + ':' + #billed + ':' + #source",
                unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/daily")
     public List<Map<String, Object>> daily(
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(required = false) String domain,
             @RequestParam(defaultValue = "bot") String category,
-            @RequestParam(required = false) String billed) {
+            @RequestParam(required = false) String billed,
+            @RequestParam(required = false) String source) {
         List<String> domains = filterDomains(myDomains(auth), domain);
-        if (lokiStats.isEnabled()) return lokiStats.daily(domains, category, billed);
+        if (lokiStats.isEnabled()) return lokiStats.daily(domains, category, billed, source);
         if (domains.isEmpty()) return List.of();
 
         List<Object> params = new ArrayList<>();
@@ -119,16 +121,17 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/bots?domain=&category=bot&limit=10 */
-    @Cacheable(value = "stats", key = "'bots:' + #auth + ':' + #domain + ':' + #category + ':' + #limit",
+    @Cacheable(value = "stats", key = "'bots:' + #auth + ':' + #domain + ':' + #category + ':' + #limit + ':' + #source",
                unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/bots")
     public List<Map<String, Object>> bots(
             @RequestHeader(value = "Authorization", required = false) String auth,
             @RequestParam(required = false) String domain,
             @RequestParam(defaultValue = "bot") String category,
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String source) {
         List<String> domains = filterDomains(myDomains(auth), domain);
-        if (lokiStats.isEnabled()) return lokiStats.bots(domains, category, limit);
+        if (lokiStats.isEnabled()) return lokiStats.bots(domains, category, limit, source);
         if (domains.isEmpty()) return List.of();
 
         List<Object> params = new ArrayList<>();
@@ -193,14 +196,15 @@ public class MyStatsController {
     }
 
     /** GET /me/stats/billing?domain= */
-    @Cacheable(value = "stats", key = "'bill:' + #auth + ':' + #domain",
+    @Cacheable(value = "stats", key = "'bill:' + #auth + ':' + #domain + ':' + #source",
                unless = "T(io.guardus.admin.util.CacheUtil).isEmpty(#result)")
     @GetMapping("/me/stats/billing")
     public Map<String, Object> billing(
             @RequestHeader(value = "Authorization", required = false) String auth,
-            @RequestParam(required = false) String domain) {
+            @RequestParam(required = false) String domain,
+            @RequestParam(required = false) String source) {
         List<String> domains = filterDomains(myDomains(auth), domain);
-        if (lokiStats.isEnabled()) return lokiStats.billing(domains);
+        if (lokiStats.isEnabled()) return lokiStats.billing(domains, source);
         if (domains.isEmpty()) return Map.of("total", 0, "billed", 0, "unit_price", 2, "estimated_amount", 0);
 
         List<Object> params = new ArrayList<>();

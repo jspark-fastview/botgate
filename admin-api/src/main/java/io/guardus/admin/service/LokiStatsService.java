@@ -36,22 +36,26 @@ public class LokiStatsService {
 
     // ── selector 빌더 ─────────────────────────────────────────────────
 
-    private String sel(List<String> domains, String category) {
-        String base = (domains == null) ? loki.baseSelector(null)
-                                        : loki.baseSelectorMulti(domains);
+    private String sel(List<String> domains, String category) { return sel(domains, category, null); }
+
+    private String sel(List<String> domains, String category, String source) {
+        String base = (domains == null) ? loki.baseSelector(null, source)
+                                        : loki.baseSelectorMulti(domains, source);
         return base + loki.catFilter(category);
     }
 
     // ── /me/stats/category, /admin/stats/category ─────────────────────
 
-    public Map<String, Object> category(List<String> domains) {
+    public Map<String, Object> category(List<String> domains) { return category(domains, null); }
+
+    public Map<String, Object> category(List<String> domains, String source) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("malicious", 0L);
         out.put("bot",       0L);
         out.put("other_bot", 0L);
         out.put("user",      0L);
         if (domains != null && domains.isEmpty()) return out;
-        Map<String, Long> agg = loki.sumByLabel("category", sel(domains, null), RANGE_30D);
+        Map<String, Long> agg = loki.sumByLabel("category", sel(domains, null, source), RANGE_30D);
         for (Map.Entry<String, Long> e : agg.entrySet()) {
             if (out.containsKey(e.getKey())) out.put(e.getKey(), e.getValue());
         }
@@ -60,18 +64,22 @@ public class LokiStatsService {
 
     // ── /me/stats/daily, /admin/stats/daily ───────────────────────────
 
-    public List<Map<String, Object>> daily(List<String> domains, String category, String billed) {
+    public List<Map<String, Object>> daily(List<String> domains, String category, String billed) { return daily(domains, category, billed, null); }
+
+    public List<Map<String, Object>> daily(List<String> domains, String category, String billed, String source) {
         if (domains != null && domains.isEmpty()) return List.of();
-        String selector = sel(domains, category);
+        String selector = sel(domains, category, source);
         if ("1".equals(billed)) selector += " | billed=`1`";
         return loki.dateBuckets(selector, 7);
     }
 
     // ── /me/stats/bots, /admin/stats/bots ─────────────────────────────
 
-    public List<Map<String, Object>> bots(List<String> domains, String category, int limit) {
+    public List<Map<String, Object>> bots(List<String> domains, String category, int limit) { return bots(domains, category, limit, null); }
+
+    public List<Map<String, Object>> bots(List<String> domains, String category, int limit, String source) {
         if (domains != null && domains.isEmpty()) return List.of();
-        String selector = sel(domains, category);
+        String selector = sel(domains, category, source);
         // bot_name 우선, 없으면 bot_ua. LogQL 로는 COALESCE 어려워 bot_name 만.
         Map<String, Long> agg = loki.sumByLabel("bot_name", selector, RANGE_30D);
         return agg.entrySet().stream()
@@ -127,10 +135,12 @@ public class LokiStatsService {
 
     // ── /me/stats/billing, /admin/stats/billing ───────────────────────
 
-    public Map<String, Object> billing(List<String> domains) {
+    public Map<String, Object> billing(List<String> domains) { return billing(domains, null); }
+
+    public Map<String, Object> billing(List<String> domains, String source) {
         Map<String, Object> empty = Map.of("total", 0L, "billed", 0L, "unit_price", 2, "estimated_amount", 0L);
         if (domains != null && domains.isEmpty()) return empty;
-        String selector = sel(domains, "bot");
+        String selector = sel(domains, "bot", source);
         long total  = loki.count(selector, RANGE_30D);
         long billed = loki.count(selector + " | billed=`1`", RANGE_30D);
         int unit = 2;

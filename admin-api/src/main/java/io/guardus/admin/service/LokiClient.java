@@ -36,20 +36,29 @@ public class LokiClient {
     // 너무 길면 사용자 첫 호출 latency 큼. 90s = "기다릴 수 있는 최대치 + cache 진입".
     private static final Duration REQ_TIMEOUT = Duration.ofSeconds(90);
     private final ObjectMapper mapper = new ObjectMapper();
-    private final String streamSelector; // {namespace="<env>", app=~"openresty|bot-ingest"}
+    private final String streamSelector; // {namespace="<env>", app=~"<app-matcher>"} (env 기본)
+    private final String lokiNamespace;  // source 토글 시 app override 재조립용
 
     public LokiClient(@Value("${loki.url:}") String baseUrl,
                       @Value("${loki.namespace:guardus}") String namespace,
                       @Value("${loki.app-matcher:openresty}") String appMatcher) {
         this.baseUrl = baseUrl;
+        this.lokiNamespace = namespace;
         // namespace + app 둘 다 환경별(env). prod 기본=openresty(단독), dev=openresty|bot-ingest(CDN 통합).
         this.streamSelector = "{namespace=\"" + namespace + "\", app=~\"" + appMatcher + "\"}";
     }
 
     public boolean isEnabled() { return baseUrl != null && !baseUrl.isBlank(); }
 
-    /** stream label matcher: {namespace="&lt;env&gt;", app=~"openresty|bot-ingest"} (inline+cdn 통합) */
+    /** 기본 stream matcher (env app-matcher — inline+cdn 통합 or prod 단독) */
     public String streamMatcher() { return streamSelector; }
+
+    /** source 토글용 selector prefix. cdn→bot-ingest, inline→openresty, 그 외(all/null)→env 기본 */
+    private String matcherFor(String source) {
+        if ("cdn".equals(source))    return "{namespace=\"" + lokiNamespace + "\", app=\"bot-ingest\"}";
+        if ("inline".equals(source)) return "{namespace=\"" + lokiNamespace + "\", app=\"openresty\"}";
+        return streamSelector;
+    }
 
     // ──────────────────────────────────────────────────────────────────
     // Stats helpers — admin-api 통계 컨트롤러용 LogQL 빌더 + 실행
@@ -57,19 +66,23 @@ public class LokiClient {
     // ──────────────────────────────────────────────────────────────────
 
     /** 공통 base selector. domain != null 이면 host 필터 추가 */
-    public String baseSelector(String domain) {
+    public String baseSelector(String domain) { return baseSelector(domain, null); }
+
+    public String baseSelector(String domain, String source) {
         String hostFilter = (domain != null && !domain.isBlank())
                 ? " | host=`" + esc(domain) + "`" : "";
-        return streamSelector + " | json | __error__=``" + hostFilter;
+        return matcherFor(source) + " | json | __error__=``" + hostFilter;
     }
 
     /** 여러 도메인을 host=~ 정규식으로 묶음. 비어있으면 매치 0 인 selector */
-    public String baseSelectorMulti(List<String> domains) {
+    public String baseSelectorMulti(List<String> domains) { return baseSelectorMulti(domains, null); }
+
+    public String baseSelectorMulti(List<String> domains, String source) {
         if (domains == null || domains.isEmpty()) {
-            return streamSelector + " | host=`__NONE__`"; // 매치 0
+            return matcherFor(source) + " | host=`__NONE__`"; // 매치 0
         }
         String regex = String.join("|", domains.stream().map(LokiClient::esc).toList());
-        return streamSelector + " | json | __error__=`` | host=~`" + regex + "`";
+        return matcherFor(source) + " | json | __error__=`` | host=~`" + regex + "`";
     }
 
     /** category line filter (all/null/blank → 빈 문자열) */
